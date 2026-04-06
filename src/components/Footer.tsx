@@ -7,17 +7,13 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
           <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-9 h-9 bg-brand-yellow rounded-lg flex items-center justify-center">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M6 20V10C6 7 8 4 12 4C16 4 18 7 18 10V20" stroke="#2D2D2D" strokeWidth="2.5" strokeLinecap="round"/>
-                  <path d="M9 20V14H15V20" stroke="#2D2D2D" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <div>
-                <div className="font-bold leading-tight">Flipsies</div>
-                <div className="text-[9px] text-gray-400 tracking-widest uppercase -mt-0.5">Furniture</div>
-              </div>
+            <div className="mb-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/images/logo.jpg"
+                alt="Flipsies Furniture"
+                className="h-10 w-auto object-contain brightness-0 invert"
+              />
             </div>
             <p className="text-sm text-gray-400 leading-relaxed">
               Quality furniture at honest prices. Visit our showrooms in Hoover and Irondale, Alabama.

@@ -18,17 +18,13 @@ export default function Navbar() {
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 shrink-0">
-            <div className="w-10 h-10 bg-brand-yellow rounded-lg flex items-center justify-center">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                <path d="M6 20V10C6 7 8 4 12 4C16 4 18 7 18 10V20" stroke="#2D2D2D" strokeWidth="2.5" strokeLinecap="round"/>
-                <path d="M9 20V14H15V20" stroke="#2D2D2D" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <div>
-              <div className="text-lg font-bold text-brand-charcoal leading-tight">Flipsies</div>
-              <div className="text-[10px] text-brand-charcoal-light tracking-widest uppercase -mt-0.5">Furniture</div>
-            </div>
+          <Link href="/" className="flex items-center shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/images/logo.jpg"
+              alt="Flipsies Furniture"
+              className="h-10 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop nav */}
