@@ -1,26 +1,83 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Flipsies Brand */
+  --brand-yellow: #F5B731;
+  --brand-yellow-light: #FEF3E1;
+  --brand-yellow-dark: #C48E0A;
+  --brand-charcoal: #2D2D2D;
+  --brand-charcoal-light: #4A4A4A;
+  --brand-white: #FFFFFF;
+  --brand-warm-gray: #F8F7F4;
+  --brand-border: #E8E6E1;
+  --brand-green: #1D9E75;
+  --brand-green-light: #E1F5EE;
+
+  --background: #FFFFFF;
+  --foreground: #2D2D2D;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-brand-yellow: var(--brand-yellow);
+  --color-brand-yellow-light: var(--brand-yellow-light);
+  --color-brand-yellow-dark: var(--brand-yellow-dark);
+  --color-brand-charcoal: var(--brand-charcoal);
+  --color-brand-charcoal-light: var(--brand-charcoal-light);
+  --color-brand-warm-gray: var(--brand-warm-gray);
+  --color-brand-border: var(--brand-border);
+  --color-brand-green: var(--brand-green);
+  --color-brand-green-light: var(--brand-green-light);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Button base */
+.btn-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 28px;
+  background: var(--brand-yellow);
+  color: var(--brand-charcoal);
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-brand:hover {
+  background: var(--brand-yellow-dark);
+  color: white;
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 28px;
+  background: transparent;
+  color: var(--brand-charcoal);
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 2px solid var(--brand-border);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-outline:hover {
+  border-color: var(--brand-charcoal);
 }
