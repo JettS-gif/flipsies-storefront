@@ -27,7 +27,7 @@ async function request<T = unknown>(method: string, path: string, body?: unknown
   return res.json();
 }
 
-// ── Public API (no auth required) ───────────────────────────────
+// ── Public Storefront API (no auth required) ────────────────────
 
 export interface Product {
   id: string;
@@ -42,19 +42,16 @@ export interface Product {
   room: string | null;
   retail_price: number;
   compare_at_price: number | null;
-  cost: number;
   qty_on_hand: number;
   inventory_status: string;
-  vendor_id: string | null;
   vendor?: { name: string };
-  attributes: string | null;
+  attributes?: string | null;
   sectional_piece_type: string | null;
   sectional_family: string | null;
   image_url?: string | null;
   images?: string[];
   description?: string | null;
   dimensions?: string | null;
-  created_at: string;
 }
 
 export interface ProductsResponse {
@@ -62,31 +59,34 @@ export interface ProductsResponse {
   count: number;
 }
 
+export interface CategoriesResponse {
+  categories: string[];
+  rooms: string[];
+}
+
 export const api = {
-  // Products — public browsing (uses a public endpoint we'll add)
   getProducts: (params: Record<string, string | number> = {}) => {
     const p = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
     });
-    return request<ProductsResponse>('GET', `/products?${p}`, undefined, {
+    return request<ProductsResponse>('GET', `/storefront/products?${p}`, undefined, {
       next: { revalidate: 60 },
     });
   },
 
   getProduct: (id: string) =>
-    request<Product>('GET', `/products/${id}`, undefined, {
+    request<Product>('GET', `/storefront/products/${id}`, undefined, {
       next: { revalidate: 60 },
     }),
 
   getProductBySku: (sku: string) =>
-    request<Product>('GET', `/products/scan/${encodeURIComponent(sku)}`, undefined, {
+    request<Product>('GET', `/storefront/products/scan/${encodeURIComponent(sku)}`, undefined, {
       next: { revalidate: 60 },
     }),
 
-  // Categories — derived from products
   getCategories: () =>
-    request<{ categories: string[] }>('GET', '/products/categories', undefined, {
+    request<CategoriesResponse>('GET', '/storefront/categories', undefined, {
       next: { revalidate: 300 },
     }),
 };
