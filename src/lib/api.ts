@@ -48,10 +48,16 @@ export interface Product {
   attributes?: string | null;
   sectional_piece_type: string | null;
   sectional_family: string | null;
+  images?: string[] | null;
+  /** Computed from images[0] — not a DB column */
   image_url?: string | null;
-  images?: string[];
   description?: string | null;
   dimensions?: string | null;
+}
+
+/** Ensure product has image_url derived from images array */
+function hydrateProduct(p: Product): Product {
+  return { ...p, image_url: p.image_url ?? p.images?.[0] ?? null };
 }
 
 export interface ProductsResponse {
@@ -65,25 +71,30 @@ export interface CategoriesResponse {
 }
 
 export const api = {
-  getProducts: (params: Record<string, string | number> = {}) => {
+  getProducts: async (params: Record<string, string | number> = {}) => {
     const p = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== null && v !== '') p.append(k, String(v));
     });
-    return request<ProductsResponse>('GET', `/storefront/products?${p}`, undefined, {
+    const res = await request<ProductsResponse>('GET', `/storefront/products?${p}`, undefined, {
       next: { revalidate: 60 },
     });
+    return { ...res, data: res.data.map(hydrateProduct) };
   },
 
-  getProduct: (id: string) =>
-    request<Product>('GET', `/storefront/products/${id}`, undefined, {
+  getProduct: async (id: string) => {
+    const p = await request<Product>('GET', `/storefront/products/${id}`, undefined, {
       next: { revalidate: 60 },
-    }),
+    });
+    return hydrateProduct(p);
+  },
 
-  getProductBySku: (sku: string) =>
-    request<Product>('GET', `/storefront/products/scan/${encodeURIComponent(sku)}`, undefined, {
+  getProductBySku: async (sku: string) => {
+    const p = await request<Product>('GET', `/storefront/products/scan/${encodeURIComponent(sku)}`, undefined, {
       next: { revalidate: 60 },
-    }),
+    });
+    return hydrateProduct(p);
+  },
 
   getCategories: () =>
     request<CategoriesResponse>('GET', '/storefront/categories', undefined, {

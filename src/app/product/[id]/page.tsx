@@ -2,6 +2,7 @@ import { api } from '@/lib/api';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import AddToCartButton from '@/components/AddToCartButton';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -125,9 +126,16 @@ export default async function ProductPage({ params }: Props) {
 
           {/* CTA Buttons */}
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
-            <button className="btn-brand text-base px-8 py-3">
-              Add to Cart
-            </button>
+            <AddToCartButton product={{
+              id: p.id,
+              sku: p.sku,
+              name: p.name,
+              collection: p.collection,
+              color: p.color,
+              retail_price: p.retail_price,
+              image_url: p.image_url,
+              category: p.category,
+            }} />
             <Link href="/locations" className="btn-outline text-base px-8 py-3 text-center">
               Visit Showroom
             </Link>

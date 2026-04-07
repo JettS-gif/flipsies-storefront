@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import SearchBar from './SearchBar';
+import CartButton from './CartButton';
 
 const NAV_LINKS = [
   { href: '/shop', label: 'Shop' },
@@ -44,13 +45,7 @@ export default function Navbar() {
           {/* Right side */}
           <div className="flex items-center gap-2">
             <SearchBar />
-            <Link href="/cart" className="relative p-2 hover:bg-brand-warm-gray rounded-lg transition-colors">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <path d="M16 10a4 4 0 01-8 0"/>
-              </svg>
-            </Link>
+            <CartButton />
             <Link
               href="/login"
               className="hidden sm:inline-flex text-sm font-medium text-brand-charcoal-light hover:text-brand-charcoal transition-colors"

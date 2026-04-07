@@ -25,8 +25,17 @@ export default function ProductCard({ product }: { product: Product }) {
           />
         ) : (
           <div className="text-center p-4">
-            <div className="text-4xl mb-2 opacity-30">🛋</div>
-            <div className="text-xs text-brand-charcoal-light opacity-50 font-mono">{p.sku}</div>
+            <div className="text-4xl mb-2 opacity-20">
+              {p.category?.toLowerCase().includes('bed') ? '🛏' :
+               p.category?.toLowerCase().includes('mattress') ? '💤' :
+               p.category?.toLowerCase().includes('table') || p.category?.toLowerCase().includes('dining') ? '🍽' :
+               p.category?.toLowerCase().includes('desk') || p.category?.toLowerCase().includes('office') ? '💼' :
+               p.category?.toLowerCase().includes('lamp') || p.category?.toLowerCase().includes('light') ? '💡' :
+               p.category?.toLowerCase().includes('rug') ? '🟫' :
+               p.category?.toLowerCase().includes('recliner') ? '💺' :
+               '🛋'}
+            </div>
+            <div className="text-xs text-brand-charcoal-light opacity-40 font-mono">{p.sku}</div>
           </div>
         )}
         {/* Badges */}
