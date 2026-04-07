@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     if (invoice_id) {
       try {
         // Record payment in DeliverDesk backend
-        await fetch(`${API_BASE}/store/record-payment`, {
+        const res = await fetch(`${API_BASE}/store/record-payment`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -46,8 +46,17 @@ export async function POST(req: Request) {
             customer_name,
           }),
         });
+
+        if (!res.ok) {
+          const errBody = await res.text();
+          console.error('Payment recording failed:', res.status, errBody);
+          // Return 500 so Stripe retries the webhook
+          return NextResponse.json({ error: 'Payment recording failed' }, { status: 500 });
+        }
       } catch (err) {
         console.error('Failed to record payment:', err);
+        // Return 500 so Stripe retries the webhook
+        return NextResponse.json({ error: 'Payment recording error' }, { status: 500 });
       }
     }
   }
