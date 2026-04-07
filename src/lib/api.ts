@@ -100,4 +100,9 @@ export const api = {
     request<CategoriesResponse>('GET', '/storefront/categories', undefined, {
       next: { revalidate: 300 },
     }),
+
+  getTaxRate: (city?: string) =>
+    request<{ rate: number; jurisdiction: string }>('GET', `/storefront/tax-rate${city ? '?city=' + encodeURIComponent(city) : ''}`, undefined, {
+      cache: 'no-store',
+    }),
 };

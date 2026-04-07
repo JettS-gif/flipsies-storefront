@@ -44,9 +44,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Determine tax rate based on delivery destination or pickup location
+    let taxRate = 0.10; // default fallback
+    let jurisdiction = 'Default';
+    try {
+      // For delivery: use customer's city from address; for pickup: use Irondale
+      const taxCity = fulfillment.type === 'pickup' ? 'Irondale' : extractCity(fulfillment.address);
+      if (taxCity) {
+        const taxRes = await fetch(`${API_BASE}/storefront/tax-rate?city=${encodeURIComponent(taxCity)}`);
+        if (taxRes.ok) {
+          const taxData = await taxRes.json();
+          taxRate = Number(taxData.rate) || 0.10;
+          jurisdiction = taxData.jurisdiction || 'Default';
+        }
+      }
+    } catch { /* use default rate */ }
+
     // Calculate total server-side to prevent client-side tampering
     const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
-    const taxRate = 0.10; // Alabama + local
     const tax = Math.round(subtotal * taxRate * 100) / 100;
     const total = subtotal + tax + delivery_fee;
     const amountCents = Math.round(total * 100);
@@ -65,6 +80,8 @@ export async function POST(req: Request) {
           price: i.price,
         })),
         fulfillment,
+        tax_rate: taxRate,
+        tax_jurisdiction: jurisdiction,
         notes: `Online order — payment pending via Stripe`,
       }),
     });
@@ -96,6 +113,8 @@ export async function POST(req: Request) {
       invoice_number: order.invoice_number,
       invoice_id: order.invoice_id,
       total,
+      taxRate,
+      jurisdiction,
     });
   } catch (err) {
     console.error('Payment intent error:', err);
@@ -104,4 +123,16 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+// Extract city from a free-text address string (best effort)
+function extractCity(address?: string): string | null {
+  if (!address) return null;
+  // Try to match "City, ST ZIP" or "City, State" pattern
+  const parts = address.split(',').map(s => s.trim());
+  if (parts.length >= 2) {
+    // Second-to-last part before state/zip is usually the city
+    return parts[parts.length - 2] || parts[0];
+  }
+  return parts[0] || null;
 }

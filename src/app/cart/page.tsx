@@ -16,7 +16,7 @@ function fallbackEmoji(category: string | null) {
 export default function CartPage() {
   const { items, removeItem, updateQty, subtotal, itemCount } = useCart();
 
-  const taxRate = 0.10; // Alabama + local ~10%
+  const taxRate = 0.10; // Estimated — final rate calculated at checkout based on delivery destination
   const estimatedTax = subtotal * taxRate;
   const total = subtotal + estimatedTax;
 
