@@ -66,7 +66,11 @@ export async function POST(req: Request) {
     const total = subtotal + tax + delivery_fee;
     const amountCents = Math.round(total * 100);
 
-    // Create the order in DeliverDesk backend
+    // Create the order in DeliverDesk backend. The backend flows this through
+    // the real invoice pipeline (inventory commits, vendor cart accumulation,
+    // custom orders kanban sync). Pass tax_rate + delivery_fee so it can use
+    // the same numbers we just computed for the PaymentIntent — otherwise
+    // the backend would fall back to 10% and the amounts could drift.
     const orderRes = await fetch(`${API_BASE}/store/order`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -81,8 +85,8 @@ export async function POST(req: Request) {
         })),
         fulfillment,
         tax_rate: taxRate,
-        tax_jurisdiction: jurisdiction,
-        notes: `Online order — payment pending via Stripe`,
+        delivery_fee,
+        notes: `Online order — payment pending via Stripe. Jurisdiction: ${jurisdiction}`,
       }),
     });
 
