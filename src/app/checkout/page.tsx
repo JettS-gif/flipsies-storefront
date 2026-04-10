@@ -149,24 +149,20 @@ export default function CheckoutPage() {
     const stored = loadStoredSlot();
     if (stored) {
       setAddress(stored.address);
-      setSelectedSlot({
-        date:            stored.date,
-        time_label:      stored.time_label,
-        time_mins:       stored.time_mins,
-        price:           stored.price,
-        proximity_label: stored.proximity_label,
-      });
+      const rehydrated: AvailableSlot = {
+        date:               stored.date,
+        time_label:         stored.time_label,
+        time_mins:          stored.time_mins,
+        price:              stored.price,
+        proximity_label:    stored.proximity_label,
+        saturday_surcharge: stored.saturday_surcharge || 0,
+      };
+      setSelectedSlot(rehydrated);
       // Synthesize an availability response so the slot picker UI has
       // something to render. The list contains just the saved slot so
       // the customer can confirm it or click "Check Availability" again
       // to refresh.
-      setAvailability({ status: 'in_range', slots: [{
-        date:            stored.date,
-        time_label:      stored.time_label,
-        time_mins:       stored.time_mins,
-        price:           stored.price,
-        proximity_label: stored.proximity_label,
-      }], lead_hours: 48 });
+      setAvailability({ status: 'in_range', slots: [rehydrated], lead_hours: 48 });
     }
   }, []);
 
@@ -253,12 +249,13 @@ export default function CheckoutPage() {
   function handleSlotPick(slot: AvailableSlot) {
     setSelectedSlot(slot);
     saveStoredSlot({
-      address:         address.trim(),
-      date:            slot.date,
-      time_label:      slot.time_label,
-      time_mins:       slot.time_mins,
-      price:           slot.price,
-      proximity_label: slot.proximity_label,
+      address:            address.trim(),
+      date:               slot.date,
+      time_label:         slot.time_label,
+      time_mins:          slot.time_mins,
+      price:              slot.price,
+      proximity_label:    slot.proximity_label,
+      saturday_surcharge: slot.saturday_surcharge || 0,
     });
   }
 
@@ -616,6 +613,23 @@ export default function CheckoutPage() {
               <span className="text-brand-charcoal-light">Subtotal</span>
               <span>${subtotal.toFixed(2)}</span>
             </div>
+            {/* Delivery fee line only when a slot is actually picked on
+                the delivery path. Pickup and empty-slot orders omit it. */}
+            {selectedSlot && fulfillmentType === 'delivery' && (
+              <>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-brand-charcoal-light">
+                    Delivery — {formatDayLabel(selectedSlot.date)} @ {selectedSlot.time_label}
+                  </span>
+                  <span>${selectedSlot.price.toFixed(2)}</span>
+                </div>
+                {selectedSlot.saturday_surcharge && selectedSlot.saturday_surcharge > 0 && (
+                  <div className="flex justify-between text-xs text-brand-charcoal-light mb-1 pl-3">
+                    <span>↳ includes ${selectedSlot.saturday_surcharge} weekend fee</span>
+                  </div>
+                )}
+              </>
+            )}
             <div className="flex justify-between text-sm mb-1">
               <span className="text-brand-charcoal-light">Tax</span>
               <span>${estimatedTax.toFixed(2)}</span>

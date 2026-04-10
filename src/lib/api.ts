@@ -129,9 +129,11 @@ export interface AvailableSlot {
   date: string;             // YYYY-MM-DD
   time_label: string;       // "10:00 AM"
   time_mins: number;        // 600 for 10:00 AM
-  price: number;            // delivery fee for this slot
+  price: number;            // delivery fee for this slot (base + surcharges)
   proximity_label: string;  // "Within 15 min" | "Open day" | etc.
   driver_name?: string;
+  /** Saturday convenience fee already baked into `price`. 0 on weekdays. */
+  saturday_surcharge?: number;
 }
 
 export type CheckAvailabilityResponse =

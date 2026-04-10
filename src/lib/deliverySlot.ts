@@ -30,6 +30,8 @@ export interface StoredSlot {
   price: number;
   /** "Within 15 min" / "Open day" / etc. — for display */
   proximity_label: string;
+  /** Saturday convenience fee already baked into `price`. 0 on weekdays. */
+  saturday_surcharge?: number;
   /** ISO timestamp when the slot was saved — used for TTL comparison */
   savedAt: string;
 }
