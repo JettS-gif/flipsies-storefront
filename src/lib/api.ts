@@ -105,4 +105,37 @@ export const api = {
     request<{ rate: number; jurisdiction: string }>('GET', `/storefront/tax-rate${city ? '?city=' + encodeURIComponent(city) : ''}`, undefined, {
       cache: 'no-store',
     }),
+
+  /**
+   * Check delivery availability for an address. Wraps the DeliverDesk
+   * scheduling engine's driver-capacity-aware slot generator with the
+   * storefront-specific 48h lead time and 50mi gate already applied.
+   * Never caches — real-time driver capacity matters.
+   */
+  checkAvailability: (address: string) =>
+    request<CheckAvailabilityResponse>(
+      'GET',
+      `/storefront/check-availability?address=${encodeURIComponent(address)}`,
+      undefined,
+      { cache: 'no-store' },
+    ),
 };
+
+// ── Check Availability response shapes ─────────────────────────────────
+// The backend returns one of four discriminated variants. Frontend code
+// should switch on `status` before reading variant-specific fields.
+
+export interface AvailableSlot {
+  date: string;             // YYYY-MM-DD
+  time_label: string;       // "10:00 AM"
+  time_mins: number;        // 600 for 10:00 AM
+  price: number;            // delivery fee for this slot
+  proximity_label: string;  // "Within 15 min" | "Open day" | etc.
+  driver_name?: string;
+}
+
+export type CheckAvailabilityResponse =
+  | { status: 'in_range'; slots: AvailableSlot[]; lead_hours: number }
+  | { status: 'out_of_range'; distance_miles: number; store_phone: string; message: string }
+  | { status: 'geocode_failed'; message: string }
+  | { status: 'unavailable'; message: string; store_phone?: string };

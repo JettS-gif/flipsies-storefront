@@ -5,7 +5,20 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { getStripe } from '@/lib/stripe';
+import { api, type AvailableSlot, type CheckAvailabilityResponse } from '@/lib/api';
+import { loadStoredSlot, saveStoredSlot, clearStoredSlot } from '@/lib/deliverySlot';
 import Link from 'next/link';
+
+// Format a YYYY-MM-DD date as "Mon, Apr 13" etc. without pulling in a date
+// library. Explicitly uses noon so DST shifts don't trip the day boundary.
+function formatDayLabel(dateStr: string): string {
+  const d = new Date(`${dateStr}T12:00:00`);
+  return d.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month:   'short',
+    day:     'numeric',
+  });
+}
 
 // ── Step indicators ──────────────────────────────────────────────
 
@@ -119,6 +132,44 @@ export default function CheckoutPage() {
   const [fulfillmentType, setFulfillmentType] = useState<'delivery' | 'pickup'>('delivery');
   const [address, setAddress] = useState('');
 
+  // Availability check state — tracks the /storefront/check-availability
+  // roundtrip + the slot the customer picked. Response mirrors the backend
+  // discriminated union so the JSX can switch on `availability?.status`.
+  const [checkingAvail, setCheckingAvail]   = useState(false);
+  const [availability, setAvailability]     = useState<CheckAvailabilityResponse | null>(null);
+  const [selectedSlot, setSelectedSlot]     = useState<AvailableSlot | null>(null);
+  const [availError, setAvailError]         = useState<string | null>(null);
+
+  // Rehydrate a previously-picked slot from localStorage on mount. The
+  // helper enforces both the 24h TTL and the 48h lead window, so by the
+  // time we get a truthy result it's guaranteed still valid. Pre-fills
+  // the address input + selectedSlot so the customer doesn't have to
+  // re-pick if they already chose one on the product page or home widget.
+  useEffect(() => {
+    const stored = loadStoredSlot();
+    if (stored) {
+      setAddress(stored.address);
+      setSelectedSlot({
+        date:            stored.date,
+        time_label:      stored.time_label,
+        time_mins:       stored.time_mins,
+        price:           stored.price,
+        proximity_label: stored.proximity_label,
+      });
+      // Synthesize an availability response so the slot picker UI has
+      // something to render. The list contains just the saved slot so
+      // the customer can confirm it or click "Check Availability" again
+      // to refresh.
+      setAvailability({ status: 'in_range', slots: [{
+        date:            stored.date,
+        time_label:      stored.time_label,
+        time_mins:       stored.time_mins,
+        price:           stored.price,
+        proximity_label: stored.proximity_label,
+      }], lead_hours: 48 });
+    }
+  }, []);
+
   // Payment
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -131,6 +182,7 @@ export default function CheckoutPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('status') === 'success') {
       clearCart();
+      clearStoredSlot();
       setInvoiceNumber(params.get('invoice') || '');
       setStep(3);
       // Clean URL
@@ -156,13 +208,65 @@ export default function CheckoutPage() {
     setStep(1);
   }
 
-  // Step 2: Fulfillment
+  // Step 2: Fulfillment — "Continue to Payment" button handler.
   function handleFulfillmentSubmit(e: FormEvent) {
     e.preventDefault();
+    // Guard against accidental skips: delivery needs a confirmed slot
+    // before we'll create a payment intent. Pickup doesn't need a slot
+    // yet (Phase 2.B will add pickup date selection).
+    if (fulfillmentType === 'delivery' && !selectedSlot) {
+      setAvailError('Please check availability and pick a delivery slot before continuing.');
+      return;
+    }
+    setAvailError(null);
     createPaymentIntent();
   }
 
-  // Create payment intent when moving to payment step
+  // Hit /storefront/check-availability with the entered address. Updates
+  // the availability state with one of the four discriminated shapes; the
+  // JSX in step 1 branches on status to render the right layout.
+  async function runAvailabilityCheck() {
+    const trimmed = address.trim();
+    if (trimmed.length < 10) {
+      setAvailError('Please enter a full street address (number, street, city, state, ZIP).');
+      return;
+    }
+    setCheckingAvail(true);
+    setAvailError(null);
+    setSelectedSlot(null);
+    clearStoredSlot();
+    try {
+      const resp = await api.checkAvailability(trimmed);
+      setAvailability(resp);
+    } catch (err) {
+      console.error('[checkout] check-availability failed:', err);
+      setAvailability(null);
+      setAvailError('Unable to check availability right now. Please try again in a moment.');
+    } finally {
+      setCheckingAvail(false);
+    }
+  }
+
+  // Called when the customer taps a specific slot chip. Persists to
+  // localStorage with a 24h TTL so subsequent navigation (back to cart,
+  // product page, etc.) remembers the choice.
+  function handleSlotPick(slot: AvailableSlot) {
+    setSelectedSlot(slot);
+    saveStoredSlot({
+      address:         address.trim(),
+      date:            slot.date,
+      time_label:      slot.time_label,
+      time_mins:       slot.time_mins,
+      price:           slot.price,
+      proximity_label: slot.proximity_label,
+    });
+  }
+
+  // Create payment intent when moving to payment step. Forwards the
+  // selected delivery slot (date + time window + fee) so the backend
+  // /store/order handler can create the invoice with the right delivery
+  // metadata and the Stripe webhook can auto-create the delivery order
+  // on successful payment.
   async function createPaymentIntent() {
     setCreatingIntent(true);
     setPaymentError(null);
@@ -182,8 +286,17 @@ export default function CheckoutPage() {
           customer: { name, email, phone: phone || undefined },
           fulfillment: {
             type: fulfillmentType,
-            address: fulfillmentType === 'delivery' ? address : undefined,
+            address: fulfillmentType === 'delivery' ? address.trim() : undefined,
+            // Only include date/time when a slot is actually picked —
+            // pickup path leaves these undefined for now (Phase 2.B).
+            ...(selectedSlot && fulfillmentType === 'delivery' ? {
+              date:        selectedSlot.date,
+              time_window: selectedSlot.time_label,
+            } : {}),
           },
+          // Delivery fee comes from the picked slot for delivery orders,
+          // zero for pickup.
+          delivery_fee: fulfillmentType === 'delivery' && selectedSlot ? selectedSlot.price : 0,
         }),
       });
 
@@ -206,6 +319,7 @@ export default function CheckoutPage() {
 
   function handlePaymentSuccess() {
     clearCart();
+    clearStoredSlot();
     setStep(3);
   }
 
@@ -304,19 +418,150 @@ export default function CheckoutPage() {
           </div>
 
           {fulfillmentType === 'delivery' && (
-            <div>
-              <label className="block text-sm font-medium text-brand-charcoal mb-1">Delivery Address *</label>
-              <input
-                type="text"
-                required
-                value={address}
-                onChange={e => setAddress(e.target.value)}
-                className="w-full border border-brand-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow"
-                placeholder="123 Main St, Birmingham, AL 35201"
-              />
-              <p className="text-xs text-brand-charcoal-light mt-1">
-                Delivery available within 50 miles of our Irondale location. Exact delivery fee calculated based on distance.
-              </p>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-brand-charcoal mb-1">Delivery Address *</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={address}
+                    onChange={e => {
+                      setAddress(e.target.value);
+                      // Invalidate any previous check when the address
+                      // changes — prevents a stale slot from being
+                      // submitted with a new address.
+                      if (availability || selectedSlot) {
+                        setAvailability(null);
+                        setSelectedSlot(null);
+                        clearStoredSlot();
+                      }
+                    }}
+                    className="flex-1 border border-brand-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+                    placeholder="123 Main St, Birmingham, AL 35201"
+                  />
+                  <button
+                    type="button"
+                    onClick={runAvailabilityCheck}
+                    disabled={checkingAvail || address.trim().length < 10}
+                    className="btn-brand px-4 py-2.5 text-sm whitespace-nowrap disabled:opacity-50"
+                  >
+                    {checkingAvail ? 'Checking…' : 'Check Availability'}
+                  </button>
+                </div>
+                <p className="text-xs text-brand-charcoal-light mt-1">
+                  We need at least 48 hours notice. Delivery is limited to addresses within 50 miles of Irondale.
+                </p>
+              </div>
+
+              {availError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {availError}
+                </div>
+              )}
+
+              {/* ── in_range: slot picker ───────────────────────────── */}
+              {availability?.status === 'in_range' && availability.slots.length > 0 && (() => {
+                // Group slots by date for a two-level layout: day header,
+                // then a horizontal strip of time chips under it. Each
+                // chip shows the time + the slot's quoted price so the
+                // customer can shop across different days based on the
+                // drive-time-tier pricing.
+                const byDate = availability.slots.reduce<Record<string, AvailableSlot[]>>((acc, s) => {
+                  (acc[s.date] ||= []).push(s);
+                  return acc;
+                }, {});
+                const sortedDates = Object.keys(byDate).sort();
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium text-brand-charcoal">
+                        Pick a delivery window
+                      </p>
+                      {selectedSlot && (
+                        <p className="text-xs text-brand-green font-medium">
+                          ✓ {formatDayLabel(selectedSlot.date)} @ {selectedSlot.time_label} — ${selectedSlot.price.toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                    <div className="max-h-96 overflow-y-auto rounded-lg border border-brand-border divide-y divide-brand-border">
+                      {sortedDates.map(dateStr => (
+                        <div key={dateStr} className="p-3">
+                          <div className="text-xs font-semibold text-brand-charcoal mb-2">
+                            {formatDayLabel(dateStr)}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {byDate[dateStr].map(slot => {
+                              const isPicked =
+                                selectedSlot?.date === slot.date &&
+                                selectedSlot?.time_mins === slot.time_mins;
+                              return (
+                                <button
+                                  key={`${slot.date}-${slot.time_mins}`}
+                                  type="button"
+                                  onClick={() => handleSlotPick(slot)}
+                                  className={`rounded-md border px-3 py-2 text-xs text-left transition-colors ${
+                                    isPicked
+                                      ? 'border-brand-yellow bg-brand-yellow-light font-semibold'
+                                      : 'border-brand-border hover:border-brand-charcoal-light bg-white'
+                                  }`}
+                                >
+                                  <div className="text-brand-charcoal">{slot.time_label}</div>
+                                  <div className="text-brand-charcoal-light mt-0.5">
+                                    ${slot.price.toFixed(2)}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ── out_of_range: call us dead end ──────────────────── */}
+              {availability?.status === 'out_of_range' && (
+                <div className="rounded-lg border-2 border-brand-yellow bg-brand-yellow-light px-4 py-5 text-sm">
+                  <p className="font-semibold text-brand-charcoal mb-2">
+                    Outside our standard delivery range
+                  </p>
+                  <p className="text-brand-charcoal-light mb-3">
+                    Your address is approximately {availability.distance_miles} miles from our Irondale store, which is outside our in-house delivery range.
+                    We&apos;d love to help — please give us a call so we can discuss options.
+                  </p>
+                  <a
+                    href={`tel:${availability.store_phone.replace(/\D/g, '')}`}
+                    className="inline-block btn-brand text-base px-6 py-2.5"
+                  >
+                    📞 {availability.store_phone}
+                  </a>
+                </div>
+              )}
+
+              {/* ── geocode_failed: retry ───────────────────────────── */}
+              {availability?.status === 'geocode_failed' && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  {availability.message}
+                </div>
+              )}
+
+              {/* ── unavailable: no slots in window ─────────────────── */}
+              {availability?.status === 'unavailable' && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm">
+                  <p className="font-semibold text-red-800 mb-1">No available delivery windows</p>
+                  <p className="text-red-700 mb-2">{availability.message}</p>
+                  {availability.store_phone && (
+                    <a
+                      href={`tel:${availability.store_phone.replace(/\D/g, '')}`}
+                      className="text-red-800 underline font-semibold"
+                    >
+                      Call {availability.store_phone}
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -337,7 +582,14 @@ export default function CheckoutPage() {
             <button type="button" onClick={() => setStep(0)} className="btn-outline flex-1 py-3">
               Back
             </button>
-            <button type="submit" disabled={creatingIntent} className="btn-brand flex-1 py-3 disabled:opacity-50">
+            <button
+              type="submit"
+              disabled={
+                creatingIntent ||
+                (fulfillmentType === 'delivery' && !selectedSlot)
+              }
+              className="btn-brand flex-1 py-3 disabled:opacity-50"
+            >
               {creatingIntent ? 'Creating Order...' : 'Continue to Payment'}
             </button>
           </div>
