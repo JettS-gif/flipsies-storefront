@@ -14,8 +14,11 @@ export default function ProductCard({ product }: { product: Product }) {
       className="group block bg-white rounded-xl border border-brand-border overflow-hidden
         hover:shadow-lg hover:border-brand-yellow transition-all duration-200"
     >
-      {/* Image placeholder */}
-      <div className="aspect-square bg-brand-warm-gray flex items-center justify-center relative overflow-hidden">
+      {/* Image placeholder. Using a 4:3 container because most furniture
+          is photographed in landscape — forcing aspect-square was cropping
+          the sides off couches, beds, and dining tables. 4:3 gives cards
+          a uniform height while preserving more of the product. */}
+      <div className="aspect-[4/3] bg-brand-warm-gray flex items-center justify-center relative overflow-hidden">
         {p.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img

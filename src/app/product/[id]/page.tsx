@@ -67,11 +67,15 @@ export default async function ProductPage({ params }: Props) {
       </nav>
 
       <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">
-        {/* Image */}
-        <div className="aspect-square bg-brand-warm-gray rounded-2xl flex items-center justify-center overflow-hidden">
+        {/* Product hero image. object-contain + aspect-[4/3] so the full
+            image is visible regardless of source orientation — this is
+            the most important image on the site and cropping pieces off
+            loses the whole point of the detail view. The warm-gray
+            background fills the letterbox area without looking harsh. */}
+        <div className="aspect-[4/3] bg-brand-warm-gray rounded-2xl flex items-center justify-center overflow-hidden p-4">
           {p.image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.image_url} alt={displayName} className="w-full h-full object-cover" />
+            <img src={p.image_url} alt={displayName} className="max-w-full max-h-full object-contain" />
           ) : (
             <div className="text-center">
               <div className="text-7xl mb-4 opacity-20">🛋</div>

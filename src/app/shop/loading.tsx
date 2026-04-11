@@ -8,7 +8,7 @@ export default function ShopLoading() {
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="rounded-xl border border-brand-border overflow-hidden">
-            <div className="aspect-square bg-brand-warm-gray animate-pulse" />
+            <div className="aspect-[4/3] bg-brand-warm-gray animate-pulse" />
             <div className="p-4 space-y-2">
               <div className="h-3 w-16 bg-brand-warm-gray rounded animate-pulse" />
               <div className="h-4 w-full bg-brand-warm-gray rounded animate-pulse" />
