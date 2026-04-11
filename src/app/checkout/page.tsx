@@ -132,6 +132,27 @@ export default function CheckoutPage() {
   const [fulfillmentType, setFulfillmentType] = useState<'delivery' | 'pickup'>('delivery');
   const [address, setAddress] = useState('');
 
+  // Pickup state (Phase 2.B). Store defaults to Hoover because it's the
+  // higher-traffic showroom; customers can switch to Irondale. The date
+  // picker enforces a 2-calendar-day minimum via the HTML `min` attribute
+  // so warehouse staff have at least 48 hours to stage the pick list
+  // (same lead time rule the delivery path enforces for different
+  // reasons). Time is a loose preset — "Any time" covers most customers,
+  // specific windows help warehouse sequence the day.
+  const [pickupStore, setPickupStore] = useState<'Hoover' | 'Irondale'>('Hoover');
+  const [pickupDate,  setPickupDate]  = useState('');
+  const [pickupTime,  setPickupTime]  = useState('Any time during business hours');
+
+  // Minimum pickup date = today + 2 calendar days, in YYYY-MM-DD. Mirrors
+  // the 48h rule from the storefront delivery path. Computed once per
+  // render; cheap enough not to memoize.
+  function computeMinPickupDate(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + 2);
+    return d.toISOString().slice(0, 10);
+  }
+  const minPickupDate = computeMinPickupDate();
+
   // Availability check state — tracks the /storefront/check-availability
   // roundtrip + the slot the customer picked. Response mirrors the backend
   // discriminated union so the JSX can switch on `availability?.status`.
@@ -207,12 +228,28 @@ export default function CheckoutPage() {
   // Step 2: Fulfillment — "Continue to Payment" button handler.
   function handleFulfillmentSubmit(e: FormEvent) {
     e.preventDefault();
-    // Guard against accidental skips: delivery needs a confirmed slot
-    // before we'll create a payment intent. Pickup doesn't need a slot
-    // yet (Phase 2.B will add pickup date selection).
+    // Guard against accidental skips: each fulfillment mode has its own
+    // required fields before we'll create a payment intent.
     if (fulfillmentType === 'delivery' && !selectedSlot) {
       setAvailError('Please check availability and pick a delivery slot before continuing.');
       return;
+    }
+    if (fulfillmentType === 'pickup') {
+      if (!pickupStore) {
+        setAvailError('Please pick a store location (Hoover or Irondale).');
+        return;
+      }
+      if (!pickupDate) {
+        setAvailError('Please select a pickup date.');
+        return;
+      }
+      // Extra belt-and-suspenders on the 48h lead rule — the HTML min
+      // attribute handles it in the date picker, but a tampered client
+      // could still submit an invalid date. The backend re-checks too.
+      if (pickupDate < minPickupDate) {
+        setAvailError('Pickup must be scheduled at least 48 hours in advance.');
+        return;
+      }
     }
     setAvailError(null);
     createPaymentIntent();
@@ -283,12 +320,25 @@ export default function CheckoutPage() {
           customer: { name, email, phone: phone || undefined },
           fulfillment: {
             type: fulfillmentType,
-            address: fulfillmentType === 'delivery' ? address.trim() : undefined,
-            // Only include date/time when a slot is actually picked —
-            // pickup path leaves these undefined for now (Phase 2.B).
+            // Delivery path sends the typed address. Pickup path sends
+            // the selected store's address so the invoice detail view
+            // in DeliverDesk shows a meaningful location instead of
+            // a blank line.
+            address: fulfillmentType === 'delivery'
+              ? address.trim()
+              : (pickupStore === 'Hoover'
+                  ? '2929 John Hawkins Pkwy, Hoover, AL 35244 (in-store pickup)'
+                  : '1811 Crestwood Blvd, Irondale, AL 35210 (in-store pickup)'),
+            // Delivery path uses the slot's date + time_window.
+            // Pickup path uses the picker + preset time preference.
             ...(selectedSlot && fulfillmentType === 'delivery' ? {
               date:        selectedSlot.date,
               time_window: selectedSlot.time_label,
+            } : {}),
+            ...(fulfillmentType === 'pickup' && pickupDate ? {
+              date:        pickupDate,
+              time_window: pickupTime,
+              store:       pickupStore,
             } : {}),
           },
           // Delivery fee comes from the picked slot for delivery orders,
@@ -409,8 +459,8 @@ export default function CheckoutPage() {
               }`}
             >
               <span className="text-lg">🏬</span>
-              <p className="font-semibold text-brand-charcoal mt-1">Warehouse Pickup</p>
-              <p className="text-xs text-brand-charcoal-light">Free — schedule a time</p>
+              <p className="font-semibold text-brand-charcoal mt-1">In-Store Pickup</p>
+              <p className="text-xs text-brand-charcoal-light">Free — Hoover or Irondale</p>
             </button>
           </div>
 
@@ -563,11 +613,85 @@ export default function CheckoutPage() {
           )}
 
           {fulfillmentType === 'pickup' && (
-            <div className="bg-brand-warm-gray rounded-lg p-4 text-sm text-brand-charcoal-light">
-              <p className="font-semibold text-brand-charcoal mb-1">Pickup Location</p>
-              <p>Flipsies Furniture — Irondale</p>
-              <p>1811 Crestwood Blvd, Irondale, AL 35210</p>
-              <p className="mt-2">We&apos;ll contact you to schedule a pickup time once your order is confirmed.</p>
+            <div className="space-y-4">
+              {/* Store selector — 2 showrooms, defaulted to Hoover */}
+              <div>
+                <label className="block text-sm font-medium text-brand-charcoal mb-2">
+                  Pick up from
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPickupStore('Hoover')}
+                    className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                      pickupStore === 'Hoover'
+                        ? 'border-brand-yellow bg-brand-yellow-light'
+                        : 'border-brand-border hover:border-brand-charcoal-light'
+                    }`}
+                  >
+                    <p className="font-semibold text-brand-charcoal">Hoover Showroom</p>
+                    <p className="text-xs text-brand-charcoal-light mt-1">
+                      2929 John Hawkins Pkwy<br />Hoover, AL 35244
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPickupStore('Irondale')}
+                    className={`p-4 rounded-lg border-2 text-left transition-colors ${
+                      pickupStore === 'Irondale'
+                        ? 'border-brand-yellow bg-brand-yellow-light'
+                        : 'border-brand-border hover:border-brand-charcoal-light'
+                    }`}
+                  >
+                    <p className="font-semibold text-brand-charcoal">Irondale Showroom</p>
+                    <p className="text-xs text-brand-charcoal-light mt-1">
+                      1811 Crestwood Blvd<br />Irondale, AL 35210
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Date picker — enforces 48h lead via min attribute */}
+              <div>
+                <label className="block text-sm font-medium text-brand-charcoal mb-1">
+                  Pickup date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={pickupDate}
+                  min={minPickupDate}
+                  onChange={e => setPickupDate(e.target.value)}
+                  className="w-full sm:w-64 border border-brand-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+                />
+                <p className="text-xs text-brand-charcoal-light mt-1">
+                  We need at least 48 hours to prep your order for pickup.
+                </p>
+              </div>
+
+              {/* Time preference — preset windows, defaults to "Any time" */}
+              <div>
+                <label className="block text-sm font-medium text-brand-charcoal mb-1">
+                  Pickup time preference
+                </label>
+                <select
+                  value={pickupTime}
+                  onChange={e => setPickupTime(e.target.value)}
+                  className="w-full sm:w-80 border border-brand-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+                >
+                  <option>Any time during business hours</option>
+                  <option>Morning (10:00 AM - 12:00 PM)</option>
+                  <option>Early afternoon (12:00 PM - 2:00 PM)</option>
+                  <option>Late afternoon (2:00 PM - 5:00 PM)</option>
+                </select>
+                <p className="text-xs text-brand-charcoal-light mt-1">
+                  Our warehouse team will have your order staged and ready during your preferred window.
+                </p>
+              </div>
+
+              {/* Free callout */}
+              <div className="bg-brand-green-light border border-brand-green rounded-lg px-4 py-3 text-sm text-brand-green">
+                <strong>Free</strong> — no delivery charge on in-store pickup. Bring a truck or SUV for larger pieces.
+              </div>
             </div>
           )}
 
@@ -583,7 +707,8 @@ export default function CheckoutPage() {
               type="submit"
               disabled={
                 creatingIntent ||
-                (fulfillmentType === 'delivery' && !selectedSlot)
+                (fulfillmentType === 'delivery' && !selectedSlot) ||
+                (fulfillmentType === 'pickup'   && (!pickupStore || !pickupDate))
               }
               className="btn-brand flex-1 py-3 disabled:opacity-50"
             >
