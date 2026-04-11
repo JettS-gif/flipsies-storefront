@@ -1,4 +1,5 @@
 import Link from "next/link";
+import CheckDelivery from "@/components/CheckDelivery";
 
 const CATEGORIES = [
   { name: "Living Room", slug: "living-room", icon: "🛋", description: "Sofas, loveseats, recliners & accent chairs" },
@@ -40,6 +41,17 @@ export default function Home() {
               </Link>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Check Delivery widget — Phase 2.A.2 lead-capture tool.
+          Sits between the hero and the categories grid to catch shoppers
+          who want to know "will you deliver to me?" before committing
+          to browsing. Captures name + contact so the office can follow
+          up on out-of-range inquiries manually. */}
+      <section className="bg-gradient-to-b from-brand-warm-gray to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+          <CheckDelivery />
         </div>
       </section>
 

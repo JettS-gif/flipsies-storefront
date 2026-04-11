@@ -119,6 +119,28 @@ export const api = {
       undefined,
       { cache: 'no-store' },
     ),
+
+  /**
+   * Capture a storefront lead AND run availability in a single call.
+   * Used by the home-page "Check Delivery" widget. The backend persists
+   * the lead for office follow-up (even out-of-range ones, so the team
+   * can arrange white-glove delivery) and returns the same availability
+   * shape as checkAvailability plus the new lead_id for the frontend
+   * to echo in success messaging.
+   */
+  createLead: (payload: {
+    name:    string;
+    email?:  string;
+    phone?:  string;
+    address: string;
+    source?: string;
+  }) =>
+    request<LeadCaptureResponse>(
+      'POST',
+      '/storefront/leads',
+      payload,
+      { cache: 'no-store' },
+    ),
 };
 
 // ── Check Availability response shapes ─────────────────────────────────
@@ -141,3 +163,11 @@ export type CheckAvailabilityResponse =
   | { status: 'out_of_range'; distance_miles: number; store_phone: string; message: string }
   | { status: 'geocode_failed'; message: string }
   | { status: 'unavailable'; message: string; store_phone?: string };
+
+// Response shape from POST /storefront/leads. The backend returns the
+// newly-created lead id plus the same four-way availability union so
+// the widget only needs one roundtrip to show the result.
+export interface LeadCaptureResponse {
+  lead_id: string | null;  // null if the insert failed but availability still computed
+  availability: CheckAvailabilityResponse;
+}
