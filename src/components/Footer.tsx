@@ -70,9 +70,11 @@ export default function Footer() {
 
         <div className="border-t border-gray-700 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-xs text-gray-500">&copy; {new Date().getFullYear()} Flipsies Furniture. All rights reserved.</p>
-          <div className="flex gap-6">
+          <div className="flex flex-wrap justify-center gap-6">
             <Link href="/privacy" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">Privacy</Link>
             <Link href="/terms" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">Terms</Link>
+            <Link href="/staff-login" className="text-xs text-gray-500 hover:text-brand-yellow transition-colors">Staff</Link>
+            <Link href="/vendor/login" className="text-xs text-gray-500 hover:text-brand-yellow transition-colors">Vendor Portal</Link>
           </div>
         </div>
       </div>
