@@ -102,6 +102,21 @@ export default async function ProductPage({ params }: Props) {
             </span>
           )}
 
+          {/* "Build your own sectional" CTA — only shown on sectional
+              pieces. Deep-links to the /sectionals wizard with the
+              family (and color, if the product has one) pre-seeded so
+              the shopper doesn't have to re-pick. Phase 3.A.1. */}
+          {p.sectional_piece_type && p.sectional_family && (
+            <Link
+              href={`/sectionals?family=${encodeURIComponent(p.sectional_family)}${p.color ? `&color=${encodeURIComponent(p.color)}` : ''}`}
+              className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-brand-yellow-dark hover:text-brand-charcoal transition-colors"
+            >
+              <span className="text-base">🛋</span>
+              Build a complete {p.sectional_family} sectional
+              <span aria-hidden>→</span>
+            </Link>
+          )}
+
           {/* Price */}
           <div className="mt-6 flex items-baseline gap-3">
             <span className="text-3xl font-bold text-brand-charcoal">
