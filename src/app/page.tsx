@@ -20,31 +20,42 @@ const VALUE_PROPS = [
 export default function Home() {
   return (
     <>
-      {/* Hero */}
+      {/* Hero — image-first layout. The headline, subhead, promo badge,
+          and tagline are all baked into the image itself (hero-home.jpg),
+          so the landing page just renders the image full-width and puts
+          the three CTA buttons in a clean strip below it. Changing the
+          hero seasonally only requires dropping a new JPG into
+          public/images/hero-home.jpg — no code edit, no text re-typing. */}
       <section className="bg-brand-warm-gray">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
-          <div className="max-w-2xl">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-brand-charcoal leading-tight">
-              Furniture that feels
-              <span className="text-brand-yellow-dark"> like home.</span>
-            </h1>
-            <p className="mt-6 text-lg text-brand-charcoal-light leading-relaxed">
-              Quality sofas, sectionals, bedroom sets and more at honest prices.
-              Visit our Alabama showrooms or shop online.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Link href="/shop" className="btn-brand">
-                Shop Now
-              </Link>
-              <Link href="/sectionals" className="btn-outline">
-                Build a Sectional
-              </Link>
-              {/* Opens the Phase 2.A.2 "Can we deliver to you?" form in a
-                  modal. Lives in the hero row so the landing page stays
-                  uncluttered but the lead-capture surface is still one
-                  click away for anyone checking range before shopping. */}
-              <CheckDeliveryButton />
-            </div>
+        <div className="max-w-7xl mx-auto">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/hero-home.jpg"
+            alt="Quality furniture at Flipsies Furniture — visit our Alabama showrooms"
+            className="w-full h-auto block"
+            // The image is baked at a fixed aspect ratio so the browser
+            // can reserve the layout space before the JPG decodes.
+            // Matches the source image dimensions to prevent layout shift.
+            width={1408}
+            height={760}
+          />
+        </div>
+        {/* CTA button strip — stays below the image, centered on all
+            screen sizes. Wraps naturally on mobile since CheckDeliveryButton
+            opens a modal and doesn't need hover state. */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 lg:pb-16 pt-8">
+          <div className="flex flex-wrap gap-4 justify-center">
+            <Link href="/shop" className="btn-brand">
+              Shop Now
+            </Link>
+            <Link href="/sectionals" className="btn-outline">
+              Build a Sectional
+            </Link>
+            {/* Opens the Phase 2.A.2 "Can we deliver to you?" form in a
+                modal. Stays in the hero row so the landing page is
+                uncluttered but the lead-capture surface is still one
+                click away for anyone checking range before shopping. */}
+            <CheckDeliveryButton />
           </div>
         </div>
       </section>
