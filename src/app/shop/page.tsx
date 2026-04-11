@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 
 const CATEGORY_MAP: Record<string, { label: string; icon: string }> = {
   'Sofa':           { label: 'Sofas', icon: '🛋' },
-  'Sectional Piece':{ label: 'Sectionals', icon: '🔲' },
-  'Sectional Part': { label: 'Sectionals', icon: '🔲' },
+  // Single canonical sectional category after migrations/consolidate_sectional_categories.sql
+  // collapsed the legacy "Sectional Piece" and "Sectional Part" buckets into "Sectional".
   'Sectional':      { label: 'Sectionals', icon: '🔲' },
   'Loveseat':       { label: 'Loveseats', icon: '🛋' },
   'Recliner':       { label: 'Recliners', icon: '💺' },
