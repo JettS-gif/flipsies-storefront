@@ -17,7 +17,16 @@
 import { useState, useEffect } from 'react';
 import CheckDelivery from './CheckDelivery';
 
-export default function CheckDeliveryButton() {
+interface Props {
+  /**
+   * Extra classes applied to the trigger button. Lets parents size the
+   * button to match sibling CTAs (e.g., flex-1 + larger padding in the
+   * home hero) without having to restyle the whole component.
+   */
+  className?: string;
+}
+
+export default function CheckDeliveryButton({ className = '' }: Props) {
   const [open, setOpen] = useState(false);
 
   // Close on Esc. Also lock body scroll while open so the modal doesn't
@@ -41,7 +50,7 @@ export default function CheckDeliveryButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="btn-outline"
+        className={`btn-outline ${className}`}
         aria-haspopup="dialog"
         aria-expanded={open}
       >

@@ -40,22 +40,36 @@ export default function Home() {
             height={760}
           />
         </div>
-        {/* CTA button strip — stays below the image, centered on all
-            screen sizes. Wraps naturally on mobile since CheckDeliveryButton
-            opens a modal and doesn't need hover state. */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 lg:pb-16 pt-8">
-          <div className="flex flex-wrap gap-4 justify-center">
-            <Link href="/shop" className="btn-brand">
+        {/* CTA button strip — three equally-sized buttons spanning ~75%
+            of the hero image width on desktop. Each button uses flex-1
+            so they distribute evenly regardless of label length, and the
+            max-w-[960px] container keeps the combined width proportional
+            to the 1408-wide hero image (960 / 1280 = 75% of the max-w-7xl
+            page width). On mobile (sm-), they stack vertically and go
+            full-width for touch-friendly tap targets. The !-prefixed
+            Tailwind utilities force override the base .btn-brand /
+            .btn-outline class padding + text-size from globals.css so
+            the hero buttons read bigger than their default appearances
+            elsewhere on the site. */}
+        <div className="max-w-[960px] mx-auto px-4 sm:px-6 lg:px-8 pb-12 lg:pb-16 pt-8">
+          <div className="flex flex-col sm:flex-row gap-4 items-stretch">
+            <Link
+              href="/shop"
+              className="btn-brand flex-1 !py-5 !text-lg"
+            >
               Shop Now
             </Link>
-            <Link href="/sectionals" className="btn-outline">
+            <Link
+              href="/sectionals"
+              className="btn-outline flex-1 !py-5 !text-lg"
+            >
               Build a Sectional
             </Link>
             {/* Opens the Phase 2.A.2 "Can we deliver to you?" form in a
                 modal. Stays in the hero row so the landing page is
                 uncluttered but the lead-capture surface is still one
                 click away for anyone checking range before shopping. */}
-            <CheckDeliveryButton />
+            <CheckDeliveryButton className="flex-1 !py-5 !text-lg" />
           </div>
         </div>
       </section>
