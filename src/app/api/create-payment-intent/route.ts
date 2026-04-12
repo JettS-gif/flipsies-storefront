@@ -60,9 +60,14 @@ export async function POST(req: Request) {
       }
     } catch { /* use default rate */ }
 
-    // Calculate total server-side to prevent client-side tampering
+    // Calculate total server-side to prevent client-side tampering.
+    // Tax is charged on the delivery fee as well (Alabama sales tax on
+    // delivery in AL is taxable when the seller is arranging delivery),
+    // so the taxable base is subtotal + delivery_fee. This must stay in
+    // lockstep with routes/invoices.js and routes/store.js on the
+    // backend — all five total formulas follow the same rule.
     const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
-    const tax = Math.round(subtotal * taxRate * 100) / 100;
+    const tax = Math.round((subtotal + delivery_fee) * taxRate * 100) / 100;
     const total = subtotal + tax + delivery_fee;
     const amountCents = Math.round(total * 100);
 
