@@ -96,6 +96,39 @@ export const api = {
     return hydrateProduct(p);
   },
 
+  /**
+   * Anonymous QR scan tracking. Fires from server components (the
+   * /scan/[sku] page right before redirecting to the product detail).
+   * Forwards the original user-agent and x-forwarded-for so the
+   * backend can record the actual scanner's IP, not the Next.js
+   * server's IP. Backend rate-limits to 5 / 15min / IP.
+   *
+   * Customer hint fields (name/phone/email) are null on first scan
+   * and may be backfilled later if the same scanner identifies
+   * themselves on a checkout / lead form. The DeliverDesk office can
+   * then join scan_events on customer_phone / customer_email to
+   * reconstruct the scanner's interest history.
+   */
+  logScanEvent: (
+    payload: {
+      sku: string;
+      product_id?: string | null;
+      mode?: string | null;
+      customer_name?: string | null;
+      customer_phone?: string | null;
+      customer_email?: string | null;
+      payload?: Record<string, unknown> | null;
+    },
+    forwardHeaders?: { userAgent?: string | null; ip?: string | null },
+  ) =>
+    request<{ ok: boolean }>('POST', '/scan-events', { ...payload, source: 'storefront' }, {
+      cache: 'no-store',
+      headers: {
+        ...(forwardHeaders?.userAgent ? { 'user-agent': forwardHeaders.userAgent } : {}),
+        ...(forwardHeaders?.ip        ? { 'x-forwarded-for': forwardHeaders.ip }   : {}),
+      },
+    }),
+
   getCategories: () =>
     request<CategoriesResponse>('GET', '/storefront/categories', undefined, {
       next: { revalidate: 300 },
