@@ -33,15 +33,29 @@ export async function POST(req: Request) {
 
     if (invoice_id) {
       try {
-        // Record payment in DeliverDesk backend
+        // Idempotency: pass Stripe's unique event.id alongside the
+        // payment_intent.id. The backend already dedupes on
+        // reference_number (= pi.id), but two distinct events for
+        // the same PI (e.g. succeeded then succeeded-after-capture)
+        // have the same pi.id and would otherwise get collapsed. The
+        // event_id is unique per Stripe delivery attempt; the backend
+        // can use it to distinguish "same payment, retried webhook"
+        // (safe to no-op) from "same payment, second event" (logic
+        // may differ).
         const res = await fetch(`${API_BASE}/store/record-payment`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            // Forward as an idempotency hint; backend can read either
+            // the header or the body field.
+            'X-Stripe-Event-Id': event.id,
+          },
           body: JSON.stringify({
             invoice_id,
             amount: pi.amount / 100,
             method: 'stripe',
             reference_number: pi.id,
+            stripe_event_id: event.id,
             customer_email,
             customer_name,
           }),
