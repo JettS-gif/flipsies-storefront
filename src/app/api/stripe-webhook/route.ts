@@ -28,50 +28,34 @@ export async function POST(req: Request) {
   }
 
   if (event.type === 'payment_intent.succeeded') {
-    const pi = event.data.object as Stripe.PaymentIntent;
-    const { invoice_id, customer_email, customer_name } = pi.metadata;
+    try {
+      // Forward the RAW event body + the stripe-signature header so the
+      // backend independently re-verifies the signature and derives
+      // invoice_id/amount from the VERIFIED event — it does not trust
+      // any digested JSON we send. This closes the hole where a forged
+      // direct POST to /store/record-payment could flip an invoice to
+      // paid; the Next-side constructEvent above is now just an
+      // early-reject fast path. `body` must be the exact bytes Stripe
+      // signed — never re-serialize it.
+      const res = await fetch(`${API_BASE}/store/record-payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'stripe-signature': sig,
+        },
+        body,
+      });
 
-    if (invoice_id) {
-      try {
-        // Idempotency: pass Stripe's unique event.id alongside the
-        // payment_intent.id. The backend already dedupes on
-        // reference_number (= pi.id), but two distinct events for
-        // the same PI (e.g. succeeded then succeeded-after-capture)
-        // have the same pi.id and would otherwise get collapsed. The
-        // event_id is unique per Stripe delivery attempt; the backend
-        // can use it to distinguish "same payment, retried webhook"
-        // (safe to no-op) from "same payment, second event" (logic
-        // may differ).
-        const res = await fetch(`${API_BASE}/store/record-payment`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            // Forward as an idempotency hint; backend can read either
-            // the header or the body field.
-            'X-Stripe-Event-Id': event.id,
-          },
-          body: JSON.stringify({
-            invoice_id,
-            amount: pi.amount / 100,
-            method: 'stripe',
-            reference_number: pi.id,
-            stripe_event_id: event.id,
-            customer_email,
-            customer_name,
-          }),
-        });
-
-        if (!res.ok) {
-          const errBody = await res.text();
-          console.error('Payment recording failed:', res.status, errBody);
-          // Return 500 so Stripe retries the webhook
-          return NextResponse.json({ error: 'Payment recording failed' }, { status: 500 });
-        }
-      } catch (err) {
-        console.error('Failed to record payment:', err);
+      if (!res.ok) {
+        const errBody = await res.text();
+        console.error('Payment recording failed:', res.status, errBody);
         // Return 500 so Stripe retries the webhook
-        return NextResponse.json({ error: 'Payment recording error' }, { status: 500 });
+        return NextResponse.json({ error: 'Payment recording failed' }, { status: 500 });
       }
+    } catch (err) {
+      console.error('Failed to record payment:', err);
+      // Return 500 so Stripe retries the webhook
+      return NextResponse.json({ error: 'Payment recording error' }, { status: 500 });
     }
   }
 

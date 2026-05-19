@@ -44,38 +44,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Determine tax rate based on delivery destination or pickup location
-    let taxRate = 0.10; // default fallback
-    let jurisdiction = 'Default';
-    try {
-      // For delivery: use customer's city from address; for pickup: use Irondale
-      const taxCity = fulfillment.type === 'pickup' ? 'Irondale' : extractCity(fulfillment.address);
-      if (taxCity) {
-        const taxRes = await fetch(`${API_BASE}/storefront/tax-rate?city=${encodeURIComponent(taxCity)}`);
-        if (taxRes.ok) {
-          const taxData = await taxRes.json();
-          taxRate = Number(taxData.rate) || 0.10;
-          jurisdiction = taxData.jurisdiction || 'Default';
-        }
-      }
-    } catch { /* use default rate */ }
-
-    // Calculate total server-side to prevent client-side tampering.
-    // Tax is charged on the delivery fee as well (Alabama sales tax on
-    // delivery in AL is taxable when the seller is arranging delivery),
-    // so the taxable base is subtotal + delivery_fee. This must stay in
-    // lockstep with routes/invoices.js and routes/store.js on the
-    // backend — all five total formulas follow the same rule.
-    const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
-    const tax = Math.round((subtotal + delivery_fee) * taxRate * 100) / 100;
-    const total = subtotal + tax + delivery_fee;
-    const amountCents = Math.round(total * 100);
-
-    // Create the order in DeliverDesk backend. The backend flows this through
-    // the real invoice pipeline (inventory commits, vendor cart accumulation,
-    // custom orders kanban sync). Pass tax_rate + delivery_fee so it can use
-    // the same numbers we just computed for the PaymentIntent — otherwise
-    // the backend would fall back to 10% and the amounts could drift.
+    // Create the order in DeliverDesk backend FIRST. The backend is the
+    // single source of truth for money: it re-fetches each product's
+    // authoritative retail_price, re-derives the tax rate from the
+    // jurisdiction, and bounds the delivery fee — ignoring any client
+    // `price`/`tax_rate` we send. We then charge EXACTLY the total it
+    // returns, so a tampered client can no longer self-discount the cart
+    // or under-charge the card. (Client `price` is sent only as a hint
+    // for logging; the backend overwrites it.)
     const orderRes = await fetch(`${API_BASE}/store/order`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -89,9 +65,8 @@ export async function POST(req: Request) {
           price: i.price,
         })),
         fulfillment,
-        tax_rate: taxRate,
         delivery_fee,
-        notes: `Online order — payment pending via Stripe. Jurisdiction: ${jurisdiction}`,
+        notes: 'Online order — payment pending via Stripe.',
       }),
     });
 
@@ -101,8 +76,14 @@ export async function POST(req: Request) {
     }
 
     const order = await orderRes.json();
+    const total = Number(order.total);
+    if (!(total > 0)) {
+      console.error('Backend returned non-positive total:', order);
+      return NextResponse.json({ error: 'Order total invalid' }, { status: 500 });
+    }
+    const amountCents = Math.round(total * 100);
 
-    // Create Stripe PaymentIntent
+    // Create Stripe PaymentIntent for the backend-authoritative amount.
     const paymentIntent = await getStripeServer().paymentIntents.create({
       amount: amountCents,
       currency: 'usd',
@@ -122,8 +103,8 @@ export async function POST(req: Request) {
       invoice_number: order.invoice_number,
       invoice_id: order.invoice_id,
       total,
-      taxRate,
-      jurisdiction,
+      taxRate: order.tax_rate,
+      jurisdiction: order.tax_jurisdiction,
     });
   } catch (err) {
     console.error('Payment intent error:', err);
@@ -132,16 +113,4 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-}
-
-// Extract city from a free-text address string (best effort)
-function extractCity(address?: string): string | null {
-  if (!address) return null;
-  // Try to match "City, ST ZIP" or "City, State" pattern
-  const parts = address.split(',').map(s => s.trim());
-  if (parts.length >= 2) {
-    // Second-to-last part before state/zip is usually the city
-    return parts[parts.length - 2] || parts[0];
-  }
-  return parts[0] || null;
 }
