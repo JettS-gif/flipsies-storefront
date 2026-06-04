@@ -46,12 +46,6 @@ export default function Navbar() {
           <div className="flex items-center gap-2">
             <SearchBar />
             <CartButton />
-            <Link
-              href="/login"
-              className="hidden sm:inline-flex text-sm font-medium text-brand-charcoal-light hover:text-brand-charcoal transition-colors"
-            >
-              Sign in
-            </Link>
 
             {/* Mobile hamburger */}
             <button
@@ -87,13 +81,6 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <Link
-              href="/login"
-              className="block px-3 py-2.5 text-sm font-medium text-brand-charcoal-light hover:bg-brand-warm-gray rounded-lg"
-              onClick={() => setMenuOpen(false)}
-            >
-              Sign in
-            </Link>
           </div>
         )}
       </nav>

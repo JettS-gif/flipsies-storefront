@@ -193,6 +193,16 @@ export default function CheckoutPage() {
   const [total, setTotal] = useState(0);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [creatingIntent, setCreatingIntent] = useState(false);
+  // 409 item_oversold response from /store/order. Surfaced as a
+  // dedicated block so the customer can see exactly which SKUs sold
+  // out and head back to the cart to drop them — never silently
+  // converted to a 6-8 week backorder.
+  const [oversoldItems, setOversoldItems] = useState<Array<{
+    product_id: string;
+    sku: string;
+    requested: number;
+    qty_available: number;
+  }> | null>(null);
 
   // Handle return from Stripe redirect
   useEffect(() => {
@@ -304,6 +314,7 @@ export default function CheckoutPage() {
   async function createPaymentIntent() {
     setCreatingIntent(true);
     setPaymentError(null);
+    setOversoldItems(null);
 
     try {
       const res = await fetch('/api/create-payment-intent', {
@@ -349,6 +360,10 @@ export default function CheckoutPage() {
 
       if (!res.ok) {
         const err = await res.json();
+        if (res.status === 409 && err.error === 'item_oversold' && Array.isArray(err.items)) {
+          setOversoldItems(err.items);
+          return;
+        }
         throw new Error(err.error || 'Failed to create order');
       }
 
@@ -699,6 +714,27 @@ export default function CheckoutPage() {
             <p className="text-sm text-red-500">{paymentError}</p>
           )}
 
+          {oversoldItems && oversoldItems.length > 0 && (
+            <div className="rounded-lg border-2 border-red-300 bg-red-50 px-4 py-4 text-sm">
+              <p className="font-semibold text-red-800 mb-2">
+                Some items just sold out
+              </p>
+              <p className="text-red-700 mb-3">
+                The following {oversoldItems.length === 1 ? 'item' : 'items'} were available when you added {oversoldItems.length === 1 ? 'it' : 'them'} to your cart but a parallel order took the last {oversoldItems.length === 1 ? 'unit' : 'units'}. Please head back to your cart to remove or adjust.
+              </p>
+              <ul className="list-disc list-inside text-red-700 mb-3 font-mono text-xs">
+                {oversoldItems.map(it => (
+                  <li key={it.product_id}>
+                    {it.sku} — requested {it.requested}, {it.qty_available} left
+                  </li>
+                ))}
+              </ul>
+              <Link href="/cart" className="btn-brand inline-block text-sm px-4 py-2">
+                Back to Cart
+              </Link>
+            </div>
+          )}
+
           <div className="flex gap-3 mt-6">
             <button type="button" onClick={() => setStep(0)} className="btn-outline flex-1 py-3">
               Back
@@ -799,9 +835,19 @@ export default function CheckoutPage() {
             Thank you for your order! We&apos;ve sent a confirmation to your email.
             Our team will reach out to schedule your {fulfillmentType === 'delivery' ? 'delivery' : 'pickup'}.
           </p>
-          <Link href="/shop" className="btn-brand text-base px-8 py-3">
-            Continue Shopping
-          </Link>
+          <div className="flex flex-wrap gap-3 justify-center">
+            {invoiceNumber && email && (
+              <Link
+                href={`/track-order?invoice=${encodeURIComponent(invoiceNumber)}&email=${encodeURIComponent(email)}`}
+                className="btn-brand text-base px-8 py-3"
+              >
+                Track Your Order
+              </Link>
+            )}
+            <Link href="/shop" className="btn-outline text-base px-8 py-3">
+              Continue Shopping
+            </Link>
+          </div>
         </div>
       )}
     </div>

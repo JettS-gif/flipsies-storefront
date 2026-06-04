@@ -6,7 +6,7 @@ export default function ProductCard({ product }: { product: Product }) {
   const displayName = [p.collection, p.color].filter(Boolean).join(' — ') || p.name;
   const subtitle = [p.type, p.category].filter(Boolean).join(' · ');
   const hasDiscount = p.compare_at_price && p.compare_at_price > p.retail_price;
-  const inStock = p.qty_on_hand > 0;
+  const inStock = p.in_stock;
 
   return (
     <Link

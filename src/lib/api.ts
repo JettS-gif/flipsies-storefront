@@ -42,8 +42,7 @@ export interface Product {
   room: string | null;
   retail_price: number;
   compare_at_price: number | null;
-  qty_on_hand: number;
-  inventory_status: string;
+  in_stock: boolean;
   vendor?: { name: string };
   attributes?: string | null;
   sectional_piece_type: string | null;
@@ -174,7 +173,40 @@ export const api = {
       payload,
       { cache: 'no-store' },
     ),
+
+  /**
+   * Self-service order tracking. Returns 404 on either an unknown
+   * invoice_number OR an email mismatch — the storefront page treats
+   * both as the same "couldn't find your order" UX.
+   */
+  trackOrder: (invoice: string, email: string) =>
+    request<TrackOrderResponse>(
+      'GET',
+      `/storefront/track-order?invoice=${encodeURIComponent(invoice)}&email=${encodeURIComponent(email)}`,
+      undefined,
+      { cache: 'no-store' },
+    ),
 };
+
+export interface TrackOrderItem {
+  sku:                string;
+  name:               string;
+  qty:                number;
+  fulfillment_status: string;
+  needs_po:           boolean;
+}
+
+export interface TrackOrderResponse {
+  invoice_number: string;
+  status:         string;
+  customer_name:  string;
+  delivery_mode:  string | null;
+  delivery_date:  string | null;
+  delivery_time:  string | null;
+  total:          number;
+  amount_paid:    number;
+  items:          TrackOrderItem[];
+}
 
 // ── Check Availability response shapes ─────────────────────────────────
 // The backend returns one of four discriminated variants. Frontend code

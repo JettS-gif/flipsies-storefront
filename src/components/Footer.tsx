@@ -39,7 +39,7 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider mb-4 text-gray-300">Company</h3>
             <ul className="space-y-2.5">
-              {['About Us', 'Locations', 'Financing', 'Delivery', 'Contact'].map(item => (
+              {['About Us', 'Locations', 'Financing', 'Delivery', 'Contact', 'Track Order'].map(item => (
                 <li key={item}>
                   <Link href={`/${item.toLowerCase().replace(/\s+/g, '-')}`}
                     className="text-sm text-gray-400 hover:text-brand-yellow transition-colors">

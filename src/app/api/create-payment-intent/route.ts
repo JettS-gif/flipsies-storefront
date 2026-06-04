@@ -72,7 +72,12 @@ export async function POST(req: Request) {
 
     if (!orderRes.ok) {
       const err = await orderRes.json().catch(() => ({ error: 'Order creation failed' }));
-      return NextResponse.json({ error: err.error || 'Order creation failed' }, { status: 500 });
+      // Forward the backend status + full body so the checkout UI can
+      // act on structured errors (e.g. 409 item_oversold needs the
+      // items[] list to tell the customer which cart lines to remove).
+      // Without this, 4xx race / validation errors looked identical to
+      // 5xx server failures.
+      return NextResponse.json(err, { status: orderRes.status });
     }
 
     const order = await orderRes.json();
