@@ -153,6 +153,14 @@ export default function CheckoutPage() {
   }
   const minPickupDate = computeMinPickupDate();
 
+  // Pickups run only Tuesday / Thursday / Saturday. Noon-anchor the date-only
+  // string so a TZ boundary can't shift the weekday. getDay(): 0=Sun … 6=Sat.
+  function isPickupDay(ds: string): boolean {
+    if (!ds || !/^\d{4}-\d{2}-\d{2}$/.test(ds)) return false;
+    const d = new Date(`${ds}T12:00:00`);
+    return !isNaN(d.getTime()) && [2, 4, 6].includes(d.getDay());
+  }
+
   // Availability check state — tracks the /storefront/check-availability
   // roundtrip + the slot the customer picked. Response mirrors the backend
   // discriminated union so the JSX can switch on `availability?.status`.
@@ -258,6 +266,12 @@ export default function CheckoutPage() {
       // could still submit an invalid date. The backend re-checks too.
       if (pickupDate < minPickupDate) {
         setAvailError('Pickup must be scheduled at least 48 hours in advance.');
+        return;
+      }
+      // Pickups run only Tue / Thu / Sat. The backend re-checks (422), this is
+      // the friendly client-side guard.
+      if (!isPickupDay(pickupDate)) {
+        setAvailError('Pickups are only available on Tuesday, Thursday, and Saturday.');
         return;
       }
     }
@@ -675,11 +689,20 @@ export default function CheckoutPage() {
                   type="date"
                   value={pickupDate}
                   min={minPickupDate}
-                  onChange={e => setPickupDate(e.target.value)}
-                  className="w-full sm:w-64 border border-brand-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+                  onChange={e => {
+                    setPickupDate(e.target.value);
+                    setAvailError(
+                      e.target.value && !isPickupDay(e.target.value)
+                        ? 'Pickups are only available on Tuesday, Thursday, and Saturday.'
+                        : null,
+                    );
+                  }}
+                  className={`w-full sm:w-64 border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow ${
+                    pickupDate && !isPickupDay(pickupDate) ? 'border-red-500' : 'border-brand-border'
+                  }`}
                 />
                 <p className="text-xs text-brand-charcoal-light mt-1">
-                  We need at least 48 hours to prep your order for pickup.
+                  Pickups are available Tuesday, Thursday, and Saturday — at least 48 hours out.
                 </p>
               </div>
 
