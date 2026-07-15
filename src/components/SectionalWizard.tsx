@@ -298,10 +298,20 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
                       key={piece_type}
                       className={`flex items-center justify-between gap-3 p-3 rounded-lg border ${qty > 0 ? 'border-brand-yellow bg-brand-yellow-light' : 'border-brand-border'}`}
                     >
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-brand-charcoal">{meta.label}</p>
-                        {meta.hint && <p className="text-xs text-brand-charcoal-light mt-0.5">{meta.hint}</p>}
-                        <p className="text-xs font-semibold text-brand-charcoal mt-0.5">${product.price.toFixed(2)}</p>
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {product.image_url && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={product.image_url}
+                            alt={meta.label}
+                            className="shrink-0 w-14 h-14 rounded-md object-contain bg-brand-warm-gray border border-brand-border p-0.5"
+                          />
+                        )}
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-brand-charcoal">{meta.label}</p>
+                          {meta.hint && <p className="text-xs text-brand-charcoal-light mt-0.5">{meta.hint}</p>}
+                          <p className="text-xs font-semibold text-brand-charcoal mt-0.5">${product.price.toFixed(2)}</p>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button type="button" onClick={() => decrement(piece_type)} disabled={qty === 0} aria-label={`Remove one ${meta.label}`}

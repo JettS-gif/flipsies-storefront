@@ -1,8 +1,10 @@
 import { api } from '@/lib/api';
 import type { Product } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
+import SectionalFamilyCards from '@/components/SectionalFamilyCards';
 import Link from 'next/link';
 import { pageMetadata } from '@/lib/site';
+import { fetchSectionalFamilies, type SectionalFamily } from '@/lib/sectional';
 
 export const metadata = pageMetadata({
   title: 'Shop All Furniture',
@@ -37,21 +39,34 @@ export default async function ShopPage({ searchParams }: Props) {
 
   let products: Product[] = [];
   let categories: string[] = [];
+  let families: SectionalFamily[] = [];
   let count = 0;
 
   try {
-    const params: Record<string, string | number> = { limit: 48 };
+    const params: Record<string, string | number> = { limit: 48, exclude_sectionals: 1 };
     if (search) params.search = search;
-    const [prodRes, catRes] = await Promise.all([
+    const [prodRes, catRes, famList] = await Promise.all([
       api.getProducts(params),
       api.getCategories(),
+      fetchSectionalFamilies().catch(() => []),
     ]);
     products = prodRes.data || [];
     count = prodRes.count || 0;
     categories = catRes.categories || [];
+    families = famList || [];
   } catch (e) {
     console.error('Failed to load products:', e);
   }
+
+  // When searching, only surface the family cards that match the query.
+  const shownFamilies = search
+    ? families.filter(
+        (f) =>
+          f.family.toLowerCase().includes(search.toLowerCase()) ||
+          f.colors.some((c) => c.toLowerCase().includes(search.toLowerCase())),
+      )
+    : families;
+  const catHref = (c: string) => (c === 'Sectional' ? '/sectionals' : `/shop/${encodeURIComponent(c)}`);
 
   const title = search ? `Results for "${search}"` : 'Shop All';
 
@@ -87,7 +102,7 @@ export default async function ShopPage({ searchParams }: Props) {
                 return (
                   <Link
                     key={cat}
-                    href={`/shop/${encodeURIComponent(cat)}`}
+                    href={catHref(cat)}
                     className="block px-3 py-2 text-sm text-brand-charcoal-light hover:text-brand-charcoal
                       hover:bg-brand-warm-gray rounded-lg transition-colors"
                   >
@@ -118,7 +133,16 @@ export default async function ShopPage({ searchParams }: Props) {
             </div>
           )}
 
-          {products.length === 0 ? (
+          {/* Sectionals as family cards (built via the wizard), not piece tiles */}
+          <SectionalFamilyCards families={shownFamilies} />
+
+          {products.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+              {products.map(p => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          ) : shownFamilies.length === 0 ? (
             <div className="text-center py-20 text-brand-charcoal-light">
               <div className="text-4xl mb-4">📦</div>
               <p>{search ? `No products match "${search}".` : 'No products found. Check back soon!'}</p>
@@ -128,13 +152,7 @@ export default async function ShopPage({ searchParams }: Props) {
                 </Link>
               )}
             </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {products.map(p => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

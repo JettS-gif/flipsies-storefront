@@ -1,6 +1,7 @@
 import { api } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import JsonLd from '@/components/JsonLd';
 import { SITE_URL } from '@/lib/site';
@@ -27,6 +28,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CategoryPage({ params }: Props) {
   const { category } = await params;
   const decoded = decodeURIComponent(category);
+
+  // Sectionals aren't browsed as individual-piece tiles — send to the builder.
+  if (decoded === 'Sectional') redirect('/sectionals');
+
+  const catHref = (c: string) => (c === 'Sectional' ? '/sectionals' : `/shop/${encodeURIComponent(c)}`);
 
   let products: import('@/lib/api').Product[] = [];
   let categories: string[] = [];
@@ -81,7 +87,7 @@ export default async function CategoryPage({ params }: Props) {
               All Products
             </Link>
             {categories.map(cat => (
-              <Link key={cat} href={`/shop/${encodeURIComponent(cat)}`}
+              <Link key={cat} href={catHref(cat)}
                 className={`block px-3 py-2 text-sm rounded-lg transition-colors ${
                   cat === decoded
                     ? 'font-medium text-brand-charcoal bg-brand-warm-gray'
@@ -103,7 +109,7 @@ export default async function CategoryPage({ params }: Props) {
               All
             </Link>
             {categories.map(cat => (
-              <Link key={cat} href={`/shop/${encodeURIComponent(cat)}`}
+              <Link key={cat} href={catHref(cat)}
                 className={`shrink-0 px-4 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
                   cat === decoded
                     ? 'bg-brand-charcoal text-white'
