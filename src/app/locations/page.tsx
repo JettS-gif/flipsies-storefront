@@ -120,6 +120,12 @@ export default function LocationsPage() {
                   Directions
                 </a>
               </div>
+              <Link
+                href={`/locations/${loc.name.toLowerCase().includes('hoover') ? 'hoover' : 'irondale'}`}
+                className="block text-center text-sm text-brand-green font-semibold hover:underline mt-3"
+              >
+                View details &amp; map →
+              </Link>
             </div>
           </div>
         ))}

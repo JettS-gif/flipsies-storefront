@@ -33,12 +33,14 @@ export const BRAND = {
 
 export interface Showroom {
   name: string;
+  slug: string;        // URL segment for /locations/<slug>
   street: string;
   city: string;
   state: string;
   zip: string;
   phone: string;
   mapUrl: string;
+  features: string[];
 }
 
 // Source of truth mirrors locations/page.tsx LOCATIONS. Kept here so the
@@ -46,23 +48,37 @@ export interface Showroom {
 export const SHOWROOMS: Showroom[] = [
   {
     name: 'Flipsies Furniture — Hoover',
+    slug: 'hoover',
     street: '1709 Montgomery Hwy S',
     city: 'Hoover',
     state: 'AL',
     zip: '35244',
     phone: '(205) 238-5076',
     mapUrl: 'https://maps.google.com/?q=1709+Montgomery+Hwy+S+Hoover+AL+35244',
+    features: ['Full showroom', 'Mattress gallery', 'Financing available', 'Delivery scheduling'],
   },
   {
     name: 'Flipsies Furniture — Irondale',
+    slug: 'irondale',
     street: '1811 Crestwood Blvd',
     city: 'Irondale',
     state: 'AL',
     zip: '35210',
     phone: '(205) 957-4001',
     mapUrl: 'https://maps.google.com/?q=1811+Crestwood+Blvd+Irondale+AL+35210',
+    features: ['Full showroom', 'Warehouse pickup', 'Financing available', 'Same-day pickup available'],
   },
 ];
+
+/** Human-readable hours (single display source; OPENING_HOURS is the schema.org form). */
+export const HOURS_DISPLAY = [
+  { days: 'Monday – Saturday', time: '10:00 AM – 7:00 PM' },
+  { days: 'Sunday', time: '11:00 AM – 6:00 PM' },
+];
+
+export function showroomBySlug(slug: string): Showroom | null {
+  return SHOWROOMS.find((s) => s.slug === slug) || null;
+}
 
 // schema.org openingHours — both showrooms keep the same hours.
 export const OPENING_HOURS = ['Mo-Sa 10:00-19:00', 'Su 11:00-18:00'];

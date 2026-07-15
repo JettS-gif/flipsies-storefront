@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { api } from '@/lib/api';
-import { SITE_URL } from '@/lib/site';
+import { SITE_URL, SHOWROOMS } from '@/lib/site';
 
 // Cached route handler — refresh daily. The catalog moves, but a day-stale
 // sitemap is harmless and keeps us off the backend on every crawl.
@@ -31,6 +31,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: s.changeFrequency,
     priority: s.priority,
   }));
+
+  // Per-showroom location pages (/locations/[slug]).
+  for (const sr of SHOWROOMS) {
+    entries.push({
+      url: `${SITE_URL}/locations/${sr.slug}`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.7,
+    });
+  }
 
   // Category landing pages (/shop/[category]).
   try {
