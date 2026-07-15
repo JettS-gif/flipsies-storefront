@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import JsonLd from '@/components/JsonLd';
 import CheckDeliveryButton from '@/components/CheckDeliveryButton';
+import SocialLinks from '@/components/SocialLinks';
 import {
   SITE_URL,
   SITE_NAME,
@@ -70,6 +71,7 @@ export default async function ShowroomPage({ params }: Props) {
     },
     areaServed: 'Birmingham metro, Alabama',
     openingHours: OPENING_HOURS,
+    sameAs: [sr.facebook, sr.instagram].filter(Boolean),
     hasMap: sr.mapUrl,
   };
 
@@ -141,6 +143,11 @@ export default async function ShowroomPage({ params }: Props) {
           <div className="mt-8 flex flex-col sm:flex-row gap-3 max-w-md">
             <Link href="/shop" className="btn-brand flex-1 text-center text-sm py-3">Shop In-Stock</Link>
             <CheckDeliveryButton className="flex-1 text-sm !py-3" />
+          </div>
+
+          <div className="mt-6 flex items-center gap-3 text-brand-charcoal-light">
+            <span className="text-sm font-medium">Follow this showroom:</span>
+            <SocialLinks facebook={sr.facebook} instagram={sr.instagram} label={`${sr.city} showroom`} />
           </div>
         </div>
 

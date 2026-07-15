@@ -41,6 +41,8 @@ export interface Showroom {
   phone: string;
   mapUrl: string;
   features: string[];
+  facebook: string;
+  instagram: string;
 }
 
 // Source of truth mirrors locations/page.tsx LOCATIONS. Kept here so the
@@ -56,6 +58,8 @@ export const SHOWROOMS: Showroom[] = [
     phone: '(205) 238-5076',
     mapUrl: 'https://maps.google.com/?q=1709+Montgomery+Hwy+S+Hoover+AL+35244',
     features: ['Full showroom', 'Mattress gallery', 'Financing available', 'Delivery scheduling'],
+    facebook: 'https://www.facebook.com/profile.php?id=61588037572879',
+    instagram: 'https://www.instagram.com/flipsies_furniture_hoover/',
   },
   {
     name: 'Flipsies Furniture — Irondale',
@@ -67,6 +71,8 @@ export const SHOWROOMS: Showroom[] = [
     phone: '(205) 957-4001',
     mapUrl: 'https://maps.google.com/?q=1811+Crestwood+Blvd+Irondale+AL+35210',
     features: ['Full showroom', 'Warehouse pickup', 'Financing available', 'Same-day pickup available'],
+    facebook: 'https://www.facebook.com/flipsiesfurniture/',
+    instagram: 'https://www.instagram.com/flipsies_furniture_irondale/',
   },
 ];
 
@@ -83,10 +89,12 @@ export function showroomBySlug(slug: string): Showroom | null {
 // schema.org openingHours — both showrooms keep the same hours.
 export const OPENING_HOURS = ['Mo-Sa 10:00-19:00', 'Su 11:00-18:00'];
 
-// Public social profiles for Organization.sameAs. Empty until the handles
-// are confirmed; an empty array is omitted from the JSON-LD so we never
-// emit a dead sameAs.
-export const SOCIAL_PROFILES: string[] = [];
+// Organization.sameAs — every showroom's public profiles, so Google links the
+// brand entity to all of them. Socials are per-location (no single brand
+// account), so this flattens both showrooms' Facebook + Instagram.
+export const SOCIAL_PROFILES: string[] = SHOWROOMS
+  .flatMap((s) => [s.facebook, s.instagram])
+  .filter(Boolean);
 
 // Per-page metadata helper. Canonical + openGraph.url are RELATIVE — the
 // root layout's metadataBase resolves them to absolute URLs. siteName,

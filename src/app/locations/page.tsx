@@ -31,6 +31,7 @@ const LOCATIONS_JSONLD = SHOWROOMS.map((s) => ({
   },
   areaServed: 'Birmingham metro, Alabama',
   openingHours: OPENING_HOURS,
+  sameAs: [s.facebook, s.instagram].filter(Boolean),
 }));
 
 const LOCATIONS = [

@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import SocialLinks from '@/components/SocialLinks';
+import { SHOWROOMS } from '@/lib/site';
 
 export default function Footer() {
   return (
@@ -54,16 +56,21 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold uppercase tracking-wider mb-4 text-gray-300">Locations</h3>
             <div className="space-y-4">
-              <div>
-                <p className="text-sm font-medium text-gray-200">Hoover Showroom</p>
-                <p className="text-sm text-gray-400">Mon–Sat 10am–7pm</p>
-                <p className="text-sm text-gray-400">Sun 11am–6pm</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-gray-200">Irondale Showroom</p>
-                <p className="text-sm text-gray-400">Mon–Sat 10am–7pm</p>
-                <p className="text-sm text-gray-400">Sun 11am–6pm</p>
-              </div>
+              {SHOWROOMS.map((sr) => (
+                <div key={sr.slug}>
+                  <Link href={`/locations/${sr.slug}`} className="text-sm font-medium text-gray-200 hover:text-brand-yellow transition-colors">
+                    {sr.city} Showroom
+                  </Link>
+                  <p className="text-sm text-gray-400">Mon–Sat 10am–7pm</p>
+                  <p className="text-sm text-gray-400">Sun 11am–6pm</p>
+                  <SocialLinks
+                    facebook={sr.facebook}
+                    instagram={sr.instagram}
+                    label={`Flipsies Furniture ${sr.city}`}
+                    className="mt-2 text-gray-400"
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </div>
