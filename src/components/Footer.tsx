@@ -57,12 +57,12 @@ export default function Footer() {
               <div>
                 <p className="text-sm font-medium text-gray-200">Hoover Showroom</p>
                 <p className="text-sm text-gray-400">Mon–Sat 10am–7pm</p>
-                <p className="text-sm text-gray-400">Sun 12pm–5pm</p>
+                <p className="text-sm text-gray-400">Sun 11am–6pm</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-gray-200">Irondale Showroom</p>
                 <p className="text-sm text-gray-400">Mon–Sat 10am–7pm</p>
-                <p className="text-sm text-gray-400">Sun 12pm–5pm</p>
+                <p className="text-sm text-gray-400">Sun 11am–6pm</p>
               </div>
             </div>
           </div>
