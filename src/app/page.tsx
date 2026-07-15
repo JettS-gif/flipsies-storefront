@@ -1,5 +1,6 @@
 import Link from "next/link";
 import CheckDeliveryButton from "@/components/CheckDeliveryButton";
+import ProductCarousel from "@/components/ProductCarousel";
 import { SHOWROOMS, OPENING_HOURS } from "@/lib/site";
 
 const CATEGORIES = [
@@ -54,34 +55,49 @@ export default function Home() {
         <span className="text-brand-yellow">In stock — take it home today</span>
       </div>
 
-      {/* Hero — coded EDLP headline + CTAs (no baked-in promo image; edit the
-          copy/offers here in code, not in Photoshop). A real hero photo can be
-          layered in later as a background without changing this structure. */}
-      <section className="bg-brand-warm-gray border-b border-brand-border">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 text-center">
-          <p className="text-sm font-semibold uppercase tracking-wider text-brand-yellow-dark mb-4">
-            Hoover · Irondale · serving the Birmingham metro
-          </p>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-brand-charcoal leading-tight text-balance">
-            In stock now.{" "}
-            <span className="text-brand-yellow-dark">Take it home today.</span>
-          </h1>
-          <p className="mt-5 text-lg text-brand-charcoal-light max-w-2xl mx-auto leading-relaxed">
-            Quality furniture at honest, everyday low prices — no haggling, and no
-            waiting weeks for a special order. See it, sit on it, and load it up the
-            same day.
-          </p>
-          <div className="mt-8 flex flex-col sm:flex-row gap-4 items-stretch max-w-3xl mx-auto">
-            <Link href="/shop" className="btn-brand flex-1 !py-5 !text-lg">
-              Shop In-Stock Now
-            </Link>
-            <Link href="/sectionals" className="btn-outline flex-1 !py-5 !text-lg">
-              Build a Sectional
-            </Link>
-            <CheckDeliveryButton className="flex-1 !py-5 !text-lg" />
+      {/* Hero — furniture background photo (swap public/images/hero-bg.jpg) under
+          a left scrim so the copy stays readable. Delivery-forward: most orders
+          are delivered, so the promise leads with fast local delivery, pairing
+          with the Check-Delivery CTA. */}
+      <section className="relative bg-brand-warm-gray border-b border-brand-border overflow-hidden">
+        <div className="absolute inset-0" aria-hidden="true">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/hero-bg.jpg"
+            alt=""
+            className="w-full h-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-brand-warm-gray via-brand-warm-gray/90 to-brand-warm-gray/40" />
+        </div>
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold uppercase tracking-wider text-brand-yellow-dark mb-4">
+              Hoover · Irondale · serving the Birmingham metro
+            </p>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-brand-charcoal leading-tight text-balance">
+              In stock now.{" "}
+              <span className="text-brand-yellow-dark">Delivered fast.</span>
+            </h1>
+            <p className="mt-5 text-lg text-brand-charcoal-light leading-relaxed">
+              Quality furniture at honest, everyday low prices — with fast local
+              delivery across the Birmingham metro, in days, not weeks. Check your
+              address to see the next available dates.
+            </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-4 items-stretch">
+              <Link href="/shop" className="btn-brand flex-1 !py-5 !text-lg">
+                Shop In-Stock Now
+              </Link>
+              <Link href="/sectionals" className="btn-outline flex-1 !py-5 !text-lg">
+                Build a Sectional
+              </Link>
+              <CheckDeliveryButton className="flex-1 !py-5 !text-lg" />
+            </div>
           </div>
         </div>
       </section>
+
+      {/* Best-sellers carousel — real top sellers from sales data */}
+      <ProductCarousel />
 
       {/* Showroom quick-info — real addresses + tap-to-call phones, high on the
           page so "visit us" is actionable, not a vague CTA. Full details (hours,
