@@ -1,6 +1,7 @@
 import { api, type Product } from "@/lib/api";
 import ProductCard from "@/components/ProductCard";
 import { BEST_SELLER_IDS } from "@/lib/bestSellers";
+import { FEATURED_IDS } from "@/lib/featured";
 import Link from "next/link";
 
 // Best-sellers spotlight — a swipeable rail of the top-selling in-stock pieces,
@@ -9,8 +10,11 @@ import Link from "next/link";
 // and drops any that have since sold out / lost their photo. Fails quietly so a
 // backend hiccup never breaks the homepage.
 export default async function ProductCarousel() {
+  // Curated features first, then sales-ranked best-sellers; dedupe by id so a
+  // featured product that's also a best-seller only appears once.
+  const ids = [...new Set([...FEATURED_IDS, ...BEST_SELLER_IDS])];
   const results = await Promise.all(
-    BEST_SELLER_IDS.map((id) => api.getProduct(id).catch(() => null)),
+    ids.map((id) => api.getProduct(id).catch(() => null)),
   );
   const items = results
     .filter((p): p is Product => !!p && !!p.image_url && !!p.in_stock)
