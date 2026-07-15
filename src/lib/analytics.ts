@@ -1,11 +1,19 @@
 // GA4 + Meta Pixel wiring. GA4 defaults to the live Flipsies Measurement ID;
-// the Meta Pixel is off until NEXT_PUBLIC_META_PIXEL_ID (or a baked default) is
-// set. Env overrides win, so a preview/staging deploy can repoint or disable
-// either. Analytics IDs are public (they ship in page HTML), so hardcoding a
-// default is safe. Every helper is a no-op when its ID is empty or the tag
-// script hasn't loaded.
+// Meta fires to every configured pixel. Env overrides win, so a preview/staging
+// deploy can repoint or disable either (set the env to an empty string to turn
+// a channel off). Analytics IDs are public (they ship in page HTML), so
+// hardcoding defaults is safe. Every helper is a no-op when its ID list is
+// empty or the tag script hasn't loaded.
 export const GA_ID = process.env.NEXT_PUBLIC_GA_ID || 'G-YPDRKDY8VM';
-export const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID || '';
+
+// Two active pixels (two ad accounts). fbq('track') fires to EVERY initialized
+// pixel, so both receive the same events. Comma-separated env override wins.
+export const META_PIXEL_IDS = (
+  process.env.NEXT_PUBLIC_META_PIXEL_ID || '566032973955511,1503664690977139'
+)
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 type GtagParams = Record<string, unknown>;
 
@@ -26,13 +34,13 @@ const META_EVENT: Record<string, string> = {
   add_to_cart: 'AddToCart',
 };
 
-// Fires a pageview to both GA4 and Meta on client-side (SPA) route changes. GA4
+// Fires a pageview to GA4 and Meta on client-side (SPA) route changes. GA4
 // auto-captures utm_* off the landing URL, so channel attribution needs nothing
 // extra — this just covers in-app navigations the base snippets won't see.
 export function pageview(path: string): void {
   if (typeof window === 'undefined') return;
   if (GA_ID && window.gtag) window.gtag('event', 'page_view', { page_path: path });
-  if (META_PIXEL_ID && window.fbq) window.fbq('track', 'PageView');
+  if (META_PIXEL_IDS.length && window.fbq) window.fbq('track', 'PageView');
 }
 
 // Fires a conversion/event to GA4 (raw name) and, for mapped conversions, Meta.
@@ -43,7 +51,7 @@ export function trackEvent(name: string, params: GtagParams = {}): void {
   if (GA_ID && window.gtag) window.gtag('event', name, params);
 
   const metaName = META_EVENT[name];
-  if (META_PIXEL_ID && window.fbq && metaName) {
+  if (META_PIXEL_IDS.length && window.fbq && metaName) {
     window.fbq('track', metaName, {
       ...(typeof params.value === 'number' ? { value: params.value } : {}),
       ...(typeof params.currency === 'string' ? { currency: params.currency } : {}),
