@@ -7,7 +7,7 @@ export const metadata = pageMetadata({
 });
 
 const LAST_UPDATED = 'June 4, 2026';
-const STORE_EMAIL  = 'info@flipsiesfurniture.com';
+const STORE_EMAIL  = 'jett@flipsiesfurniture.com';
 const STORE_PHONE  = '(205) 238-5076';
 const STORE_ADDR   = '1811 Crestwood Blvd, Irondale, AL 35210';
 

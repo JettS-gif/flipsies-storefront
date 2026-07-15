@@ -37,10 +37,10 @@ const LOCATIONS = [
   {
     name: 'Hoover Showroom',
     address: '1709 Montgomery Hwy S, Hoover, AL 35244',
-    phone: '(205) 988-3551',
+    phone: '(205) 238-5076',
     hours: [
       { days: 'Monday – Saturday', time: '10:00 AM – 7:00 PM' },
-      { days: 'Sunday', time: '12:00 PM – 5:00 PM' },
+      { days: 'Sunday', time: '11:00 AM – 6:00 PM' },
     ],
     mapUrl: 'https://maps.google.com/?q=1709+Montgomery+Hwy+S+Hoover+AL+35244',
     features: ['Full showroom', 'Mattress gallery', 'Financing available', 'Delivery scheduling'],
@@ -48,10 +48,10 @@ const LOCATIONS = [
   {
     name: 'Irondale Showroom',
     address: '1811 Crestwood Blvd, Irondale, AL 35210',
-    phone: '(205) 956-0600',
+    phone: '(205) 957-4001',
     hours: [
       { days: 'Monday – Saturday', time: '10:00 AM – 7:00 PM' },
-      { days: 'Sunday', time: '12:00 PM – 5:00 PM' },
+      { days: 'Sunday', time: '11:00 AM – 6:00 PM' },
     ],
     mapUrl: 'https://maps.google.com/?q=1811+Crestwood+Blvd+Irondale+AL+35210',
     features: ['Full showroom', 'Warehouse pickup', 'Financing available', 'Same-day pickup available'],

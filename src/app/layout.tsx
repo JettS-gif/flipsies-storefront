@@ -3,6 +3,9 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
+import Script from "next/script";
+import Analytics from "@/components/Analytics";
+import { GA_ID } from "@/lib/analytics";
 import { CartProvider } from "@/context/CartContext";
 import {
   SITE_URL,
@@ -109,6 +112,23 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <JsonLd data={[ORG_JSONLD, WEBSITE_JSONLD]} />
+        {GA_ID && (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga4-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${GA_ID}');
+              `}
+            </Script>
+            <Analytics />
+          </>
+        )}
         <CartProvider>
           <Navbar />
           <main className="flex-1">{children}</main>

@@ -16,7 +16,7 @@ export const SITE_TAGLINE = 'Quality Furniture at Honest Prices';
 export const SITE_DESCRIPTION =
   'Shop sofas, sectionals, bedroom sets, dining furniture and more at Flipsies Furniture. Visit our showrooms in Hoover and Irondale, Alabama.';
 
-export const STORE_EMAIL = 'info@flipsiesfurniture.com';
+export const STORE_EMAIL = 'jett@flipsiesfurniture.com';
 
 // Brand palette — mirrors globals.css :root. The next/og ImageResponse
 // routes run outside the DOM and can't resolve CSS custom properties, so
@@ -50,7 +50,7 @@ export const SHOWROOMS: Showroom[] = [
     city: 'Hoover',
     state: 'AL',
     zip: '35244',
-    phone: '(205) 988-3551',
+    phone: '(205) 238-5076',
     mapUrl: 'https://maps.google.com/?q=1709+Montgomery+Hwy+S+Hoover+AL+35244',
   },
   {
@@ -59,13 +59,13 @@ export const SHOWROOMS: Showroom[] = [
     city: 'Irondale',
     state: 'AL',
     zip: '35210',
-    phone: '(205) 956-0600',
+    phone: '(205) 957-4001',
     mapUrl: 'https://maps.google.com/?q=1811+Crestwood+Blvd+Irondale+AL+35210',
   },
 ];
 
 // schema.org openingHours — both showrooms keep the same hours.
-export const OPENING_HOURS = ['Mo-Sa 10:00-19:00', 'Su 12:00-17:00'];
+export const OPENING_HOURS = ['Mo-Sa 10:00-19:00', 'Su 11:00-18:00'];
 
 // Public social profiles for Organization.sameAs. Empty until the handles
 // are confirmed; an empty array is omitted from the JSON-LD so we never

@@ -31,13 +31,13 @@ export default function ContactPage() {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-lg shrink-0">📞</span>
-              <a href="tel:2059883551" className="font-medium text-brand-charcoal hover:text-brand-yellow-dark">(205) 988-3551</a>
+              <a href="tel:2052385076" className="font-medium text-brand-charcoal hover:text-brand-yellow-dark">(205) 238-5076</a>
             </div>
             <div className="flex items-start gap-3">
               <span className="text-lg shrink-0">🕐</span>
               <div>
                 <p className="text-brand-charcoal">Mon–Sat: 10am – 7pm</p>
-                <p className="text-brand-charcoal-light">Sun: 12pm – 5pm</p>
+                <p className="text-brand-charcoal-light">Sun: 11am – 6pm</p>
               </div>
             </div>
           </div>
@@ -56,13 +56,13 @@ export default function ContactPage() {
             </div>
             <div className="flex items-center gap-3">
               <span className="text-lg shrink-0">📞</span>
-              <a href="tel:2059560600" className="font-medium text-brand-charcoal hover:text-brand-yellow-dark">(205) 956-0600</a>
+              <a href="tel:2059574001" className="font-medium text-brand-charcoal hover:text-brand-yellow-dark">(205) 957-4001</a>
             </div>
             <div className="flex items-start gap-3">
               <span className="text-lg shrink-0">🕐</span>
               <div>
                 <p className="text-brand-charcoal">Mon–Sat: 10am – 7pm</p>
-                <p className="text-brand-charcoal-light">Sun: 12pm – 5pm</p>
+                <p className="text-brand-charcoal-light">Sun: 11am – 6pm</p>
               </div>
             </div>
           </div>

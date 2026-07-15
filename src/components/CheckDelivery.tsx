@@ -20,6 +20,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { api, type LeadCaptureResponse, type AvailableSlot } from '@/lib/api';
+import { trackEvent } from '@/lib/analytics';
 import Link from 'next/link';
 
 function formatDayLabel(dateStr: string): string {
@@ -78,6 +79,12 @@ export default function CheckDelivery() {
         source:  'home_widget',
       });
       setResult(resp);
+      // GA4 conversion — the live-at-launch lead funnel. availability status
+      // lets us segment in-range vs out-of-range leads by channel/campaign.
+      trackEvent('generate_lead', {
+        source: 'home_widget',
+        availability: resp.availability.status,
+      });
     } catch (err) {
       console.error('[CheckDelivery] createLead failed:', err);
       const e = err as { error?: string; message?: string };
