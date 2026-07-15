@@ -1,9 +1,9 @@
-// GA4 wiring. The Measurement ID comes from NEXT_PUBLIC_GA_ID so nothing is
-// hardcoded and a preview/staging deploy can point at a separate property (or
-// omit it entirely). Every helper below is a no-op when the ID is unset or
-// gtag hasn't loaded, so the site behaves identically with or without
-// analytics configured — set NEXT_PUBLIC_GA_ID in the host env to turn it on.
-export const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
+// GA4 wiring. Defaults to the live Flipsies Measurement ID; an env override
+// (NEXT_PUBLIC_GA_ID) still wins, so a preview/staging deploy can point at a
+// separate property or disable it. Every helper below is a no-op when the ID
+// is empty or gtag hasn't loaded. GA IDs are public (they ship in page HTML),
+// so hardcoding the default is safe.
+export const GA_ID = process.env.NEXT_PUBLIC_GA_ID || 'G-YPDRKDY8VM';
 
 type GtagParams = Record<string, unknown>;
 
