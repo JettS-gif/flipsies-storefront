@@ -43,6 +43,7 @@ export interface Showroom {
   features: string[];
   facebook: string;
   instagram: string;
+  placeId: string;     // Google Place ID (for live reviews via Places API)
 }
 
 // Source of truth mirrors locations/page.tsx LOCATIONS. Kept here so the
@@ -60,6 +61,7 @@ export const SHOWROOMS: Showroom[] = [
     features: ['Full showroom', 'Mattress gallery', 'Financing available', 'Delivery scheduling'],
     facebook: 'https://www.facebook.com/profile.php?id=61588037572879',
     instagram: 'https://www.instagram.com/flipsies_furniture_hoover/',
+    placeId: 'ChIJWUoEX4kjiYgRgwbX6-dbcRY',
   },
   {
     name: 'Flipsies Furniture — Irondale',
@@ -73,6 +75,7 @@ export const SHOWROOMS: Showroom[] = [
     features: ['Full showroom', 'Warehouse pickup', 'Financing available', 'Same-day pickup available'],
     facebook: 'https://www.facebook.com/flipsiesfurniture/',
     instagram: 'https://www.instagram.com/flipsies_furniture_irondale/',
+    placeId: 'ChIJfTugpW4jiYgRVYvbfQjE4w4',
   },
 ];
 

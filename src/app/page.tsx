@@ -1,6 +1,7 @@
 import Link from "next/link";
 import CheckDeliveryButton from "@/components/CheckDeliveryButton";
 import ProductCarousel from "@/components/ProductCarousel";
+import Reviews from "@/components/Reviews";
 import { SHOWROOMS, OPENING_HOURS } from "@/lib/site";
 
 const CATEGORIES = [
@@ -190,6 +191,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Social proof — live Google rating + reviews (hidden until Places API key set) */}
+      <Reviews />
 
       {/* Showrooms — both locations, real data from site.ts */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
