@@ -216,7 +216,7 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
               <div className="aspect-[4/3] bg-brand-warm-gray flex items-center justify-center overflow-hidden">
                 {f.sample_image ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={f.sample_image} alt={f.family} className="w-full h-full object-cover" />
+                  <img src={f.sample_image} alt={f.family} className="w-full h-full object-contain p-2" />
                 ) : (
                   <span className="text-5xl opacity-30">🛋</span>
                 )}
