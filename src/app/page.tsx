@@ -54,21 +54,24 @@ export default function Home() {
         <span className="text-brand-yellow">In stock — take it home today</span>
       </div>
 
-      {/* Hero — image-first. Headline/promo/tagline are baked into
-          hero-home.jpg; swap the JPG to reskin seasonally, no code edit. */}
-      <section className="bg-brand-warm-gray">
-        <div className="max-w-7xl mx-auto">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/images/hero-home.jpg"
-            alt="Quality furniture at honest everyday prices — Flipsies Furniture, Hoover & Irondale AL"
-            className="w-full h-auto block"
-            width={1408}
-            height={760}
-          />
-        </div>
-        <div className="max-w-[960px] mx-auto px-4 sm:px-6 lg:px-8 pb-12 lg:pb-16 pt-8">
-          <div className="flex flex-col sm:flex-row gap-4 items-stretch">
+      {/* Hero — coded EDLP headline + CTAs (no baked-in promo image; edit the
+          copy/offers here in code, not in Photoshop). A real hero photo can be
+          layered in later as a background without changing this structure. */}
+      <section className="bg-brand-warm-gray border-b border-brand-border">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 text-center">
+          <p className="text-sm font-semibold uppercase tracking-wider text-brand-yellow-dark mb-4">
+            Hoover · Irondale · serving the Birmingham metro
+          </p>
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-brand-charcoal leading-tight text-balance">
+            In stock now.{" "}
+            <span className="text-brand-yellow-dark">Take it home today.</span>
+          </h1>
+          <p className="mt-5 text-lg text-brand-charcoal-light max-w-2xl mx-auto leading-relaxed">
+            Quality furniture at honest, everyday low prices — no haggling, and no
+            waiting weeks for a special order. See it, sit on it, and load it up the
+            same day.
+          </p>
+          <div className="mt-8 flex flex-col sm:flex-row gap-4 items-stretch max-w-3xl mx-auto">
             <Link href="/shop" className="btn-brand flex-1 !py-5 !text-lg">
               Shop In-Stock Now
             </Link>
@@ -77,6 +80,33 @@ export default function Home() {
             </Link>
             <CheckDeliveryButton className="flex-1 !py-5 !text-lg" />
           </div>
+        </div>
+      </section>
+
+      {/* Showroom quick-info — real addresses + tap-to-call phones, high on the
+          page so "visit us" is actionable, not a vague CTA. Full details (hours,
+          directions) live in the Showrooms section below. */}
+      <section className="bg-white border-b border-brand-border">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5 grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-4">
+          {SHOWROOMS.map((sr) => (
+            <div
+              key={sr.name}
+              className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-sm"
+            >
+              <span className="font-semibold text-brand-charcoal">
+                {sr.city} Showroom
+              </span>
+              <a
+                href={`tel:${sr.phone.replace(/[^0-9]/g, "")}`}
+                className="text-brand-green font-semibold hover:underline whitespace-nowrap"
+              >
+                {sr.phone}
+              </a>
+              <span className="w-full text-brand-charcoal-light">
+                {sr.street}, {sr.city}, {sr.state} {sr.zip}
+              </span>
+            </div>
+          ))}
         </div>
       </section>
 
