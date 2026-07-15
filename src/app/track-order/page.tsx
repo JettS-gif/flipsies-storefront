@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { Suspense, useState, useEffect, type FormEvent } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { api, type TrackOrderResponse } from '@/lib/api';
@@ -48,7 +48,7 @@ function fmtDate(ds: string | null): string {
   });
 }
 
-export default function TrackOrderPage() {
+function TrackOrderContent() {
   const searchParams = useSearchParams();
   const [invoice, setInvoice] = useState(searchParams.get('invoice') || '');
   const [email,   setEmail]   = useState(searchParams.get('email')   || '');
@@ -224,5 +224,22 @@ export default function TrackOrderPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// useSearchParams() reads request-time state, so Next requires it inside a
+// Suspense boundary — without one the whole page fails static prerender at
+// build time. The fallback is the same page shell the content renders into.
+export default function TrackOrderPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <h1 className="text-3xl font-bold text-brand-charcoal">Track Your Order</h1>
+        </div>
+      }
+    >
+      <TrackOrderContent />
+    </Suspense>
   );
 }

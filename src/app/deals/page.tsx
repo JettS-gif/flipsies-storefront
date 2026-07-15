@@ -1,12 +1,13 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
+import { pageMetadata } from '@/lib/site';
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: 'Deals',
   description: 'Current sale items and promotional pricing at Flipsies Furniture.',
-};
+  path: '/deals',
+});
 
 // On-sale products — anything with compare_at_price > retail_price. The
 // catalog endpoint doesn't expose a sale filter today, so we pull a

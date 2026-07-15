@@ -1,10 +1,11 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
+import { pageMetadata } from '@/lib/site';
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: 'Contact Us',
   description: 'Get in touch with Flipsies Furniture. Call, visit, or send us a message.',
-};
+  path: '/contact',
+});
 
 export default function ContactPage() {
   return (
@@ -24,7 +25,7 @@ export default function ContactPage() {
             <div className="flex items-start gap-3">
               <span className="text-lg shrink-0">📍</span>
               <div>
-                <p className="font-medium text-brand-charcoal">1651 Montgomery Hwy S</p>
+                <p className="font-medium text-brand-charcoal">1709 Montgomery Hwy S</p>
                 <p className="text-brand-charcoal-light">Hoover, AL 35244</p>
               </div>
             </div>
@@ -49,7 +50,7 @@ export default function ContactPage() {
             <div className="flex items-start gap-3">
               <span className="text-lg shrink-0">📍</span>
               <div>
-                <p className="font-medium text-brand-charcoal">7516 Crestwood Blvd</p>
+                <p className="font-medium text-brand-charcoal">1811 Crestwood Blvd</p>
                 <p className="text-brand-charcoal-light">Irondale, AL 35210</p>
               </div>
             </div>

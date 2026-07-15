@@ -2,12 +2,13 @@ import { api } from '@/lib/api';
 import type { Product } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
 import Link from 'next/link';
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/site';
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: 'Shop All Furniture',
   description: 'Browse our full collection of sofas, sectionals, bedroom sets, dining furniture, and more at Flipsies Furniture.',
-};
+  path: '/shop',
+});
 
 const CATEGORY_MAP: Record<string, { label: string; icon: string }> = {
   'Sofa':           { label: 'Sofas', icon: '🛋' },

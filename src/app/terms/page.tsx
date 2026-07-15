@@ -1,9 +1,10 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/site';
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: 'Terms of Service',
   description: 'Flipsies Furniture terms of service — what you can expect when shopping with us and what we ask of you.',
-};
+  path: '/terms',
+});
 
 const LAST_UPDATED = 'June 4, 2026';
 const STORE_EMAIL  = 'info@flipsiesfurniture.com';

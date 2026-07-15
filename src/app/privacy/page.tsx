@@ -1,9 +1,10 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/site';
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: 'Privacy Policy',
   description: 'Flipsies Furniture privacy policy — what we collect, how we use it, and your rights.',
-};
+  path: '/privacy',
+});
 
 const LAST_UPDATED = 'June 4, 2026';
 const STORE_EMAIL  = 'info@flipsiesfurniture.com';

@@ -1,24 +1,37 @@
+import { cache } from 'react';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import AddToCartButton from '@/components/AddToCartButton';
+import JsonLd from '@/components/JsonLd';
+import { SITE_URL, SITE_NAME } from '@/lib/site';
 
 interface Props {
   params: Promise<{ id: string }>;
 }
 
+// Memoize so generateMetadata and the page component share one fetch per
+// request instead of hitting the backend twice.
+const getProduct = cache((id: string) => api.getProduct(id));
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   try {
-    const product = await api.getProduct(id);
+    const product = await getProduct(id);
     const name = [product.collection, product.color].filter(Boolean).join(' — ') || product.name;
+    const description =
+      `${name} — $${Number(product.retail_price).toFixed(2)} at ${SITE_NAME}. ${product.description || ''}`.trim();
+    const path = `/product/${id}`;
     return {
       title: name,
-      description: `${name} — $${Number(product.retail_price).toFixed(2)} at Flipsies Furniture. ${product.description || ''}`.trim(),
+      description,
+      alternates: { canonical: path },
+      openGraph: { type: 'website', url: path, title: name, description },
+      twitter: { title: name, description },
     };
   } catch {
-    return { title: 'Product Not Found' };
+    return { title: 'Product Not Found', robots: { index: false, follow: false } };
   }
 }
 
@@ -27,7 +40,7 @@ export default async function ProductPage({ params }: Props) {
 
   let product;
   try {
-    product = await api.getProduct(id);
+    product = await getProduct(id);
   } catch {
     notFound();
   }
@@ -49,8 +62,48 @@ export default async function ProductPage({ params }: Props) {
     p.sku && { label: 'SKU', value: p.sku },
   ].filter(Boolean) as { label: string; value: string }[];
 
+  const productUrl = `${SITE_URL}/product/${p.id}`;
+  const absImage = p.image_url
+    ? p.image_url.startsWith('http') ? p.image_url : `${SITE_URL}${p.image_url}`
+    : null;
+
+  const productLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    '@id': `${productUrl}#product`,
+    name: displayName,
+    ...(p.sku ? { sku: p.sku } : {}),
+    ...(absImage ? { image: [absImage] } : {}),
+    ...(p.description ? { description: p.description } : {}),
+    ...(p.vendor?.name ? { brand: { '@type': 'Brand', name: p.vendor.name } } : {}),
+    ...(p.material ? { material: p.material } : {}),
+    ...(p.category ? { category: p.category } : {}),
+    offers: {
+      '@type': 'Offer',
+      url: productUrl,
+      priceCurrency: 'USD',
+      price: Number(p.retail_price).toFixed(2),
+      availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/PreOrder',
+      itemCondition: 'https://schema.org/NewCondition',
+      seller: { '@id': `${SITE_URL}/#organization` },
+    },
+  };
+
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Shop', item: `${SITE_URL}/shop` },
+      ...(p.category
+        ? [{ '@type': 'ListItem', position: 2, name: p.category, item: `${SITE_URL}/shop/${encodeURIComponent(p.category)}` }]
+        : []),
+      { '@type': 'ListItem', position: p.category ? 3 : 2, name: displayName, item: productUrl },
+    ],
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <JsonLd data={[productLd, breadcrumbLd]} />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-brand-charcoal-light mb-8">
         <Link href="/shop" className="hover:text-brand-charcoal transition-colors">Shop</Link>

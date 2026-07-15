@@ -1,12 +1,13 @@
-import type { Metadata } from 'next';
 import SectionalWizard from '@/components/SectionalWizard';
 import Link from 'next/link';
+import { pageMetadata } from '@/lib/site';
 
-export const metadata: Metadata = {
-  title: 'Build Your Sectional — Flipsies Furniture',
+export const metadata = pageMetadata({
+  title: 'Build Your Sectional',
   description:
     'Design your custom sectional layout with Flipsies Furniture. Pick a collection, choose your color, and select the exact pieces you need — chairs, loveseats, sofas, chaises, corners, and ottomans. Free delivery within 50 miles of Birmingham, AL.',
-};
+  path: '/sectionals',
+});
 
 // Phase 3.A.1 — dedicated /sectionals page. Mounts the list-based
 // SectionalWizard. When a shopper arrives from a product-detail

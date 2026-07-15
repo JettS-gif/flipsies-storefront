@@ -1,10 +1,11 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
+import { pageMetadata } from '@/lib/site';
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: 'Financing Options',
   description: 'Flexible financing options at Flipsies Furniture. Synchrony, Progressive Leasing, and 1st Franklin available.',
-};
+  path: '/financing',
+});
 
 const OPTIONS = [
   {

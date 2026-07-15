@@ -1,10 +1,11 @@
-import type { Metadata } from 'next';
+import { pageMetadata } from '@/lib/site';
 import Link from 'next/link';
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: 'About Us',
   description: 'Flipsies Furniture — quality furniture at honest prices. Serving the Birmingham, Alabama metro area.',
-};
+  path: '/about-us',
+});
 
 export default function AboutPage() {
   return (

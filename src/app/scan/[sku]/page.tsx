@@ -9,7 +9,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { sku } = await params;
-  return { title: `Scanning ${decodeURIComponent(sku)}...` };
+  return { title: `Scanning ${decodeURIComponent(sku)}...`, robots: { index: false, follow: false } };
 }
 
 export default async function ScanPage({ params }: Props) {

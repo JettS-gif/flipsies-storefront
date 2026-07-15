@@ -1,32 +1,59 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
+import JsonLd from '@/components/JsonLd';
+import { pageMetadata, SITE_URL, SHOWROOMS, OPENING_HOURS } from '@/lib/site';
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: 'Locations',
   description: 'Visit Flipsies Furniture showrooms in Hoover and Irondale, Alabama. Find directions, hours, and contact info.',
-};
+  path: '/locations',
+});
+
+// One LocalBusiness node per showroom, each linked to the site-wide
+// Organization (@id in the root layout) so Google ties the storefront and
+// the physical stores into one knowledge entity.
+const LOCATIONS_JSONLD = SHOWROOMS.map((s) => ({
+  '@context': 'https://schema.org',
+  '@type': 'FurnitureStore',
+  '@id': `${SITE_URL}/locations#${s.city.toLowerCase()}`,
+  name: s.name,
+  parentOrganization: { '@id': `${SITE_URL}/#organization` },
+  url: `${SITE_URL}/locations`,
+  image: `${SITE_URL}/icon`,
+  telephone: s.phone,
+  priceRange: '$$',
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: s.street,
+    addressLocality: s.city,
+    addressRegion: s.state,
+    postalCode: s.zip,
+    addressCountry: 'US',
+  },
+  areaServed: 'Birmingham metro, Alabama',
+  openingHours: OPENING_HOURS,
+}));
 
 const LOCATIONS = [
   {
     name: 'Hoover Showroom',
-    address: '1651 Montgomery Hwy S, Hoover, AL 35244',
+    address: '1709 Montgomery Hwy S, Hoover, AL 35244',
     phone: '(205) 988-3551',
     hours: [
       { days: 'Monday – Saturday', time: '10:00 AM – 7:00 PM' },
       { days: 'Sunday', time: '12:00 PM – 5:00 PM' },
     ],
-    mapUrl: 'https://maps.google.com/?q=1651+Montgomery+Hwy+S+Hoover+AL+35244',
+    mapUrl: 'https://maps.google.com/?q=1709+Montgomery+Hwy+S+Hoover+AL+35244',
     features: ['Full showroom', 'Mattress gallery', 'Financing available', 'Delivery scheduling'],
   },
   {
     name: 'Irondale Showroom',
-    address: '7516 Crestwood Blvd, Irondale, AL 35210',
+    address: '1811 Crestwood Blvd, Irondale, AL 35210',
     phone: '(205) 956-0600',
     hours: [
       { days: 'Monday – Saturday', time: '10:00 AM – 7:00 PM' },
       { days: 'Sunday', time: '12:00 PM – 5:00 PM' },
     ],
-    mapUrl: 'https://maps.google.com/?q=7516+Crestwood+Blvd+Irondale+AL+35210',
+    mapUrl: 'https://maps.google.com/?q=1811+Crestwood+Blvd+Irondale+AL+35210',
     features: ['Full showroom', 'Warehouse pickup', 'Financing available', 'Same-day pickup available'],
   },
 ];
@@ -34,6 +61,7 @@ const LOCATIONS = [
 export default function LocationsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <JsonLd data={LOCATIONS_JSONLD} />
       <div className="text-center mb-12">
         <h1 className="text-3xl sm:text-4xl font-bold text-brand-charcoal">Our Showrooms</h1>
         <p className="text-brand-charcoal-light mt-3 max-w-lg mx-auto">

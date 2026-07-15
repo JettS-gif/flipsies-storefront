@@ -1,10 +1,11 @@
-import type { Metadata } from 'next';
 import Link from 'next/link';
+import { pageMetadata } from '@/lib/site';
 
-export const metadata: Metadata = {
+export const metadata = pageMetadata({
   title: 'Delivery Information',
   description: 'Professional in-home furniture delivery across the Birmingham metro. Learn about delivery options, pricing, and scheduling.',
-};
+  path: '/delivery',
+});
 
 export default function DeliveryPage() {
   return (
@@ -72,7 +73,7 @@ export default function DeliveryPage() {
           <div className="bg-brand-warm-gray rounded-lg p-4">
             <p className="text-sm text-brand-charcoal">
               <span className="font-semibold">Pickup location:</span> Irondale Warehouse<br />
-              <span className="text-brand-charcoal-light">7516 Crestwood Blvd, Irondale, AL 35210</span>
+              <span className="text-brand-charcoal-light">1811 Crestwood Blvd, Irondale, AL 35210</span>
             </p>
           </div>
         </div>

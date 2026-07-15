@@ -2,6 +2,8 @@ import { api } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import JsonLd from '@/components/JsonLd';
+import { SITE_URL } from '@/lib/site';
 
 interface Props {
   params: Promise<{ category: string }>;
@@ -10,9 +12,15 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { category } = await params;
   const decoded = decodeURIComponent(category);
+  const title = `${decoded} — Shop`;
+  const description = `Browse ${decoded} at Flipsies Furniture. Quality furniture at honest prices.`;
+  const path = `/shop/${encodeURIComponent(decoded)}`;
   return {
-    title: `${decoded} — Shop`,
-    description: `Browse ${decoded} at Flipsies Furniture. Quality furniture at honest prices.`,
+    title,
+    description,
+    alternates: { canonical: path },
+    openGraph: { type: 'website', url: path, title, description },
+    twitter: { title, description },
   };
 }
 
@@ -36,8 +44,18 @@ export default async function CategoryPage({ params }: Props) {
     console.error('Failed to load products:', e);
   }
 
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Shop', item: `${SITE_URL}/shop` },
+      { '@type': 'ListItem', position: 2, name: decoded, item: `${SITE_URL}/shop/${encodeURIComponent(decoded)}` },
+    ],
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <JsonLd data={breadcrumbLd} />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-brand-charcoal-light mb-6">
         <Link href="/shop" className="hover:text-brand-charcoal transition-colors">Shop</Link>
