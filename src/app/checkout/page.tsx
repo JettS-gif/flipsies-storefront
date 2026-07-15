@@ -1,13 +1,39 @@
 'use client';
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { useCart } from '@/context/CartContext';
+import { useCart, type CartItem } from '@/context/CartContext';
+import { trackEvent } from '@/lib/analytics';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { getStripe } from '@/lib/stripe';
 import { api, type AvailableSlot, type CheckAvailabilityResponse } from '@/lib/api';
 import { loadStoredSlot, saveStoredSlot, clearStoredSlot } from '@/lib/deliverySlot';
 import Link from 'next/link';
+
+// GA4 purchase must survive the Stripe redirect-return, which reloads the
+// page and clears cart + component state. So we stash the payload at
+// intent-creation (cart still populated) and fire once from whichever
+// success path runs — removed-before-fire guarantees exactly one event.
+const PENDING_PURCHASE_KEY = 'flipsies_pending_purchase';
+
+function toGaItems(items: CartItem[]) {
+  return items.map((i) => ({
+    item_id:       i.sku || i.product_id,
+    item_name:     i.name,
+    price:         i.price,
+    quantity:      i.qty,
+    item_category: i.category || undefined,
+  }));
+}
+
+function firePurchase() {
+  try {
+    const raw = sessionStorage.getItem(PENDING_PURCHASE_KEY);
+    if (!raw) return;
+    sessionStorage.removeItem(PENDING_PURCHASE_KEY); // fire exactly once
+    trackEvent('purchase', JSON.parse(raw));
+  } catch { /* sessionStorage/JSON unavailable — skip */ }
+}
 
 // Format a YYYY-MM-DD date as "Mon, Apr 13" etc. without pulling in a date
 // library. Explicitly uses noon so DST shifts don't trip the day boundary.
@@ -216,6 +242,7 @@ export default function CheckoutPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('status') === 'success') {
+      firePurchase();
       clearCart();
       clearStoredSlot();
       setInvoiceNumber(params.get('invoice') || '');
@@ -224,6 +251,21 @@ export default function CheckoutPage() {
       window.history.replaceState({}, '', '/checkout');
     }
   }, [clearCart]);
+
+  // Fire GA4 begin_checkout once, the moment the cart has hydrated with
+  // items (itemCount is 0 pre-hydration, so the ref-guard emits a single
+  // event when items are first present rather than on every re-render).
+  const beganCheckout = useRef(false);
+  useEffect(() => {
+    if (!beganCheckout.current && itemCount > 0) {
+      beganCheckout.current = true;
+      trackEvent('begin_checkout', {
+        currency: 'USD',
+        value:    subtotal,
+        items:    toGaItems(items),
+      });
+    }
+  }, [itemCount, subtotal, items]);
 
   // Redirect if cart is empty and not on confirmation
   if (itemCount === 0 && step < 3) {
@@ -385,6 +427,17 @@ export default function CheckoutPage() {
       setClientSecret(data.clientSecret);
       setInvoiceNumber(data.invoice_number);
       setTotal(data.total);
+      // Stash the GA4 purchase payload now, while the cart is still
+      // populated and we hold the authoritative backend total — it must
+      // outlive the Stripe redirect-return that clears cart + page state.
+      try {
+        sessionStorage.setItem(PENDING_PURCHASE_KEY, JSON.stringify({
+          transaction_id: data.invoice_number,
+          value:          data.total,
+          currency:       'USD',
+          items:          toGaItems(items),
+        }));
+      } catch { /* sessionStorage unavailable — purchase event just won't fire */ }
       setStep(2);
     } catch (err) {
       setPaymentError(err instanceof Error ? err.message : 'Something went wrong');
@@ -394,6 +447,7 @@ export default function CheckoutPage() {
   }
 
   function handlePaymentSuccess() {
+    firePurchase();
     clearCart();
     clearStoredSlot();
     setStep(3);
