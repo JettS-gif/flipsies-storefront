@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import AddToCartButton from '@/components/AddToCartButton';
+import ProductGallery from '@/components/ProductGallery';
 import RelatedProducts from '@/components/RelatedProducts';
 import JsonLd from '@/components/JsonLd';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
@@ -64,9 +65,8 @@ export default async function ProductPage({ params }: Props) {
   ].filter(Boolean) as { label: string; value: string }[];
 
   const productUrl = `${SITE_URL}/product/${p.id}`;
-  const absImage = p.image_url
-    ? p.image_url.startsWith('http') ? p.image_url : `${SITE_URL}${p.image_url}`
-    : null;
+  const galleryImages = p.images ?? [];
+  const absImages = galleryImages.map((u) => (u.startsWith('http') ? u : `${SITE_URL}${u}`));
 
   const productLd = {
     '@context': 'https://schema.org',
@@ -74,7 +74,7 @@ export default async function ProductPage({ params }: Props) {
     '@id': `${productUrl}#product`,
     name: displayName,
     ...(p.sku ? { sku: p.sku } : {}),
-    ...(absImage ? { image: [absImage] } : {}),
+    ...(absImages.length ? { image: absImages } : {}),
     ...(p.description ? { description: p.description } : {}),
     ...(p.vendor?.name ? { brand: { '@type': 'Brand', name: p.vendor.name } } : {}),
     ...(p.material ? { material: p.material } : {}),
@@ -121,22 +121,8 @@ export default async function ProductPage({ params }: Props) {
       </nav>
 
       <div className="grid lg:grid-cols-2 gap-10 lg:gap-16">
-        {/* Product hero image. object-contain + aspect-[4/3] so the full
-            image is visible regardless of source orientation — this is
-            the most important image on the site and cropping pieces off
-            loses the whole point of the detail view. The warm-gray
-            background fills the letterbox area without looking harsh. */}
-        <div className="aspect-[4/3] bg-brand-warm-gray rounded-2xl flex items-center justify-center overflow-hidden p-4">
-          {p.image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.image_url} alt={displayName} className="max-w-full max-h-full object-contain" />
-          ) : (
-            <div className="text-center">
-              <div className="text-7xl mb-4 opacity-20">🛋</div>
-              <p className="text-sm text-brand-charcoal-light opacity-40">Image coming soon</p>
-            </div>
-          )}
-        </div>
+        {/* Full image gallery — main + thumbnails from product.images[]. */}
+        <ProductGallery images={galleryImages} alt={displayName} />
 
         {/* Product info */}
         <div>
