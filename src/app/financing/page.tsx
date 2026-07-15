@@ -3,23 +3,23 @@ import { pageMetadata } from '@/lib/site';
 
 export const metadata = pageMetadata({
   title: 'Financing Options',
-  description: 'Flexible financing options at Flipsies Furniture. Synchrony, Progressive Leasing, and 1st Franklin available.',
+  description: '12-month special financing — 0% interest if paid in full — with Synchrony, plus no-credit-needed lease-to-own with Progressive Leasing.',
   path: '/financing',
 });
 
 const OPTIONS = [
   {
-    name: 'Synchrony',
+    name: 'Synchrony — 12 Months Same as Cash',
     icon: '💳',
-    description: 'Traditional credit financing with promotional offers. Apply in-store for instant approval.',
-    features: ['6-12 month promotional financing', 'No interest if paid in full', 'Easy monthly payments', 'Quick in-store application'],
-    best_for: 'Customers with good credit looking for 0% promotional periods.',
+    description: 'Our everyday program: 0% interest when you pay in full within 12 months. Quick approval, in-store or online.',
+    features: ['0% interest for 12 months', 'No interest if paid in full in 12 months', 'Simple monthly payments', 'Fast, easy approval'],
+    best_for: 'Most customers — spread your purchase across a full year at no extra cost.',
   },
   {
     name: 'Progressive Leasing',
     icon: '📋',
-    description: 'Lease-to-own option with no credit needed. Get approved regardless of credit history.',
-    features: ['No credit needed', 'Flexible payment schedule', 'Early buyout options available', '90-day same-as-cash option'],
+    description: 'Lease-to-own with no credit needed — get approved regardless of credit history.',
+    features: ['No credit needed', 'Flexible payment schedule', '90-day purchase option', 'Early buyout available'],
     best_for: 'Customers who want flexibility without a credit check.',
   },
   {
@@ -38,6 +38,17 @@ export default function FinancingPage() {
         <h1 className="text-3xl sm:text-4xl font-bold text-brand-charcoal">Financing Options</h1>
         <p className="text-brand-charcoal-light mt-3 max-w-lg mx-auto">
           We believe great furniture should be accessible to everyone. Choose the payment plan that works best for you.
+        </p>
+      </div>
+
+      {/* Flagship everyday offer — the 12-month 0% program. Larger terms are
+          available in-store on qualifying purchases; kept as a soft mention to
+          steer customers to the everyday program. */}
+      <div className="bg-brand-yellow-light border border-brand-border rounded-2xl p-6 sm:p-8 max-w-4xl mx-auto mb-12 text-center">
+        <p className="text-xs font-semibold uppercase tracking-wider text-brand-yellow-dark mb-2">Everyday offer</p>
+        <h2 className="text-2xl sm:text-3xl font-bold text-brand-charcoal">12 Months Special Financing</h2>
+        <p className="text-brand-charcoal-light mt-2 max-w-xl mx-auto">
+          0% interest if paid in full within 12 months, with Synchrony. Ask an associate about options for larger purchases.
         </p>
       </div>
 

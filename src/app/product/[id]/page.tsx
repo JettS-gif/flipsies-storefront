@@ -174,6 +174,14 @@ export default async function ProductPage({ params }: Props) {
             )}
           </div>
 
+          {/* 12-month 0% monthly estimate — the Synchrony everyday program. */}
+          <p className="mt-2 text-sm text-brand-charcoal-light">
+            or about{" "}
+            <span className="font-semibold text-brand-charcoal">${Math.ceil(Number(p.retail_price) / 12)}/mo</span>{" "}
+            for 12 months —{" "}
+            <Link href="/financing" className="text-brand-yellow-dark hover:underline">0% financing</Link>
+          </p>
+
           {/* Availability */}
           <div className="mt-4">
             {inStock ? (
