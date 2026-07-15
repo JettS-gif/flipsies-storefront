@@ -1,80 +1,56 @@
 'use client';
 
-// ── SectionalWizard ───────────────────────────────────────────────────────
-// List-based sectional configurator for the storefront. Three-step flow:
-//
-//   1. Pick a family (e.g. Tori, Kimpton)
-//   2. Pick a color if the family has multiple
-//   3. Pick piece counts → add the resolved SKUs to the cart as a
-//      single "configured sectional" group
-//
-// Uses the same SKU matching rules as the DeliverDesk admin canvas
-// configurator (src/lib/sectional.ts → matchPieceToProduct) so both
-// apps resolve identical SKUs for identical family + color + piece
-// triples. A future Phase 3.A.2 will add the full canvas configurator
-// back in from the ported source at DeliverDeskFrontEnd/src/sectional/
-// builder.js; this wizard stays as the simple mobile-friendly path.
+// ── SectionalWizard (data-driven) ─────────────────────────────────────────
+// Pick a family → color → the pieces THAT FAMILY ACTUALLY CARRIES (only those,
+// with real prices + a merchandising gallery of the full sectional) → cart.
+// Pieces/prices/SKUs come pre-resolved from GET /storefront/sectional-families
+// and /:family, so there's no client-side SKU guessing.
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import {
-  SECTIONAL_PIECES,
   fetchSectionalFamilies,
-  matchConfiguration,
-  configurationTotal,
+  fetchSectionalFamily,
+  PIECE_META,
+  GROUP_ORDER,
   type SectionalFamily,
-  type SelectedPiece,
-  type SectionalGroup,
+  type SectionalFamilyDetail,
 } from '@/lib/sectional';
 import { useCart } from '@/context/CartContext';
 import Link from 'next/link';
 
 interface Props {
-  /** Optional pre-seeded family from the product-page "Build your own" CTA */
   seedFamily?: string;
-  /** Optional pre-seeded color from the product-page "Build your own" CTA */
-  seedColor?:  string;
+  seedColor?: string;
 }
 
-// Step 1 is only rendered when we're NOT pre-seeded from a product page.
 type Step = 'pick-family' | 'pick-color' | 'pick-pieces' | 'review' | 'done';
-
-const GROUP_ORDER: SectionalGroup[] = ['Sofas', 'Chaises', 'Loveseats', 'Chairs', 'Ottomans'];
 
 export default function SectionalWizard({ seedFamily, seedColor }: Props) {
   const { addItem } = useCart();
 
-  // Master data from the API
-  const [families,  setFamilies]  = useState<SectionalFamily[]>([]);
-  const [loading,   setLoading]   = useState(true);
+  const [families, setFamilies] = useState<SectionalFamily[]>([]);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Wizard state
-  const initialStep: Step = seedFamily
-    ? (seedColor ? 'pick-pieces' : 'pick-color')
-    : 'pick-family';
-  const [step, setStep] = useState<Step>(initialStep);
   const [family, setFamily] = useState<string>(seedFamily || '');
-  const [color,  setColor]  = useState<string>(seedColor  || '');
-
-  // Counters per piece id. { 'armless-chair': 2, 'corner': 1, ... }
+  const [color, setColor] = useState<string>(seedColor || '');
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [step, setStep] = useState<Step>(seedFamily ? 'pick-color' : 'pick-family');
 
-  // Review stage state — resolved selection + totals
-  const [resolving, setResolving] = useState(false);
-  const [resolved,  setResolved]  = useState<SelectedPiece[]>([]);
-  const [resolveError, setResolveError] = useState<string | null>(null);
+  const [detail, setDetail] = useState<SectionalFamilyDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
+  // Family list (for the pick-family grid).
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const list = await fetchSectionalFamilies();
-        if (cancelled) return;
-        setFamilies(list);
+        if (!cancelled) setFamilies(list);
       } catch (err) {
-        if (cancelled) return;
-        setLoadError('Failed to load our sectional collections. Please refresh the page or give us a call.');
-        console.error('[SectionalWizard] load failed:', err);
+        if (!cancelled) setLoadError('Failed to load our sectional collections. Please refresh or give us a call.');
+        console.error('[SectionalWizard] families load failed:', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -82,135 +58,139 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
     return () => { cancelled = true; };
   }, []);
 
-  // Derived: the family record for the currently-picked family, if any
-  const familyRecord = useMemo(
-    () => families.find(f => f.family === family) || null,
-    [families, family]
+  // Family detail (colors, gallery, available pieces) whenever the family changes.
+  useEffect(() => {
+    if (!family) { setDetail(null); return; }
+    let cancelled = false;
+    setDetailLoading(true);
+    setDetailError(null);
+    fetchSectionalFamily(family)
+      .then((d) => {
+        if (cancelled) return;
+        setDetail(d);
+        if (!d) { setDetailError('This collection isn’t available right now.'); return; }
+        if (d.colors.length > 1) {
+          if (seedColor && family === seedFamily && d.colors.includes(seedColor)) {
+            setColor(seedColor);
+            setStep('pick-pieces');
+          } else {
+            setStep('pick-color');
+          }
+        } else {
+          setColor(d.colors[0] || '');
+          setStep('pick-pieces');
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setDetailError('Failed to load this collection. Please try again.');
+        console.error('[SectionalWizard] detail load failed:', err);
+      })
+      .finally(() => { if (!cancelled) setDetailLoading(false); });
+    return () => { cancelled = true; };
+  }, [family, seedFamily, seedColor]);
+
+  // Pieces this family carries in the chosen color, with the resolved product.
+  const availablePieces = useMemo(() => {
+    if (!detail) return [];
+    return detail.pieces
+      .map((pt) => {
+        const meta = PIECE_META[pt.piece_type];
+        const product = color
+          ? pt.products.find((pr) => pr.color === color) || null
+          : pt.products[0] || null;
+        return meta && product ? { piece_type: pt.piece_type, meta, product } : null;
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort(
+        (a, b) =>
+          GROUP_ORDER.indexOf(a.meta.group) - GROUP_ORDER.indexOf(b.meta.group) ||
+          a.meta.order - b.meta.order,
+      );
+  }, [detail, color]);
+
+  const grouped = useMemo(
+    () =>
+      GROUP_ORDER.map((g) => ({ group: g, items: availablePieces.filter((x) => x.meta.group === g) })).filter(
+        (g) => g.items.length > 0,
+      ),
+    [availablePieces],
   );
 
-  function increment(pieceId: string) {
-    setCounts(c => ({ ...c, [pieceId]: (c[pieceId] || 0) + 1 }));
+  const resolved = availablePieces
+    .filter((x) => (counts[x.piece_type] || 0) > 0)
+    .map((x) => ({ ...x, qty: counts[x.piece_type] }));
+  const totalPieces = resolved.reduce((s, r) => s + r.qty, 0);
+  const total = resolved.reduce((s, r) => s + r.product.price * r.qty, 0);
+
+  function selectFamily(fam: string) {
+    setCounts({});
+    setColor('');
+    setFamily(fam); // detail effect drives the next step
   }
-  function decrement(pieceId: string) {
-    setCounts(c => {
-      const next = Math.max(0, (c[pieceId] || 0) - 1);
+  function increment(id: string) {
+    setCounts((c) => ({ ...c, [id]: (c[id] || 0) + 1 }));
+  }
+  function decrement(id: string) {
+    setCounts((c) => {
+      const next = Math.max(0, (c[id] || 0) - 1);
       const copy = { ...c };
-      if (next === 0) delete copy[pieceId];
-      else copy[pieceId] = next;
+      if (next === 0) delete copy[id]; else copy[id] = next;
       return copy;
     });
   }
-
-  const totalSelected = useMemo(
-    () => Object.values(counts).reduce((s, n) => s + n, 0),
-    [counts]
-  );
-
-  // Transition to the review step: run the SKU matcher and populate
-  // `resolved` with the pieces + their matched products.
-  async function goToReview() {
-    setResolving(true);
-    setResolveError(null);
-    try {
-      const selections: SelectedPiece[] = Object.entries(counts).map(
-        ([pieceId, qty]) => ({ pieceId, qty, matched: null })
-      );
-      const matched = await matchConfiguration(selections, family, color);
-      setResolved(matched);
-      setStep('review');
-    } catch (err) {
-      console.error('[SectionalWizard] match failed:', err);
-      setResolveError("We couldn't look up your selections right now. Please try again or give us a call.");
-    } finally {
-      setResolving(false);
-    }
-  }
-
-  // Add every successfully-matched piece to the cart. Each piece becomes
-  // its own cart line item (with a shared sectional_config tag so the
-  // cart page can group them visually — we leave the tag empty for now
-  // and rely on category/naming to group).
-  function addConfigurationToCart() {
+  function addToCart() {
     const signature = `${family}::${color || 'default'}::${Date.now()}`;
-    for (const s of resolved) {
-      if (!s.matched || s.qty <= 0) continue;
+    for (const r of resolved) {
       addItem({
-        product_id:       s.matched.id,
-        sku:              s.matched.sku,
-        name:             s.matched.name,
-        price:            Number(s.matched.retail_price),
-        image_url:        s.matched.image_url || null,
-        category:         s.matched.category || 'Sectional',
-        qty:              s.qty,
+        product_id: r.product.id,
+        sku: r.product.sku,
+        name: r.product.name,
+        price: r.product.price,
+        image_url: r.product.image_url,
+        category: 'Sectional',
+        qty: r.qty,
         sectional_config: signature,
       });
     }
     setStep('done');
   }
-
   function resetForNewBuild() {
-    setFamily(seedFamily || '');
-    setColor(seedColor || '');
     setCounts({});
-    setResolved([]);
-    setStep(seedFamily ? (seedColor ? 'pick-pieces' : 'pick-color') : 'pick-family');
+    if (seedFamily) { setStep(seedColor ? 'pick-pieces' : 'pick-color'); }
+    else { setFamily(''); setColor(''); setDetail(null); setStep('pick-family'); }
   }
 
   // ── Render ─────────────────────────────────────────────────────────
 
   if (loading) {
-    return (
-      <div className="bg-white rounded-2xl border border-brand-border p-8 text-center">
-        <p className="text-brand-charcoal-light">Loading sectional collections…</p>
-      </div>
-    );
+    return <Shell><p className="text-brand-charcoal-light">Loading sectional collections…</p></Shell>;
   }
-
   if (loadError) {
-    return (
-      <div className="bg-white rounded-2xl border border-red-200 p-6 text-center">
-        <p className="text-red-700">{loadError}</p>
-      </div>
-    );
+    return <Shell tone="error"><p className="text-red-700">{loadError}</p></Shell>;
   }
-
   if (families.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-brand-border p-8 text-center">
+      <Shell>
         <div className="text-4xl mb-3 opacity-30">🛋</div>
-        <h2 className="text-lg font-semibold text-brand-charcoal mb-2">
-          No sectionals available right now
-        </h2>
-        <p className="text-sm text-brand-charcoal-light mb-4">
-          Our sectional collections are out of stock at the moment. Give us a call to ask about custom orders.
-        </p>
-        <a href="tel:+12052385076" className="btn-brand inline-block">
-          Call (205) 238-5076
-        </a>
-      </div>
+        <h2 className="text-lg font-semibold text-brand-charcoal mb-2">No sectionals available right now</h2>
+        <p className="text-sm text-brand-charcoal-light mb-4">Give us a call to ask about custom orders.</p>
+        <a href="tel:+12052385076" className="btn-brand inline-block">Call (205) 238-5076</a>
+      </Shell>
     );
   }
 
-  // ── STEP: pick-family ─────────────────────────────────────────────
+  // STEP: pick-family
   if (step === 'pick-family') {
     return (
       <div className="bg-white rounded-2xl border border-brand-border p-6 sm:p-8 max-w-4xl mx-auto">
-        <h2 className="text-2xl font-bold text-brand-charcoal mb-2">
-          Build your sectional
-        </h2>
-        <p className="text-sm text-brand-charcoal-light mb-6">
-          Pick a collection to start. Each collection has its own styling and finish options.
-        </p>
+        <h2 className="text-2xl font-bold text-brand-charcoal mb-2">Build your sectional</h2>
+        <p className="text-sm text-brand-charcoal-light mb-6">Pick a collection to start.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {families.map(f => (
+          {families.map((f) => (
             <button
               key={f.family}
               type="button"
-              onClick={() => {
-                setFamily(f.family);
-                setStep(f.colors.length > 1 ? 'pick-color' : 'pick-pieces');
-                if (f.colors.length === 1) setColor(f.colors[0]);
-              }}
+              onClick={() => selectFamily(f.family)}
               className="text-left rounded-xl border border-brand-border overflow-hidden hover:border-brand-yellow hover:shadow-md transition-all"
             >
               <div className="aspect-[4/3] bg-brand-warm-gray flex items-center justify-center overflow-hidden">
@@ -235,24 +215,32 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
     );
   }
 
-  // ── STEP: pick-color ──────────────────────────────────────────────
-  if (step === 'pick-color' && familyRecord) {
+  // A family is selected but detail is still loading / errored.
+  if (detailLoading || (!detail && !detailError)) {
+    return <Shell><p className="text-brand-charcoal-light">Loading the {family} collection…</p></Shell>;
+  }
+  if (detailError || !detail) {
+    return (
+      <Shell tone="error">
+        <p className="text-red-700 mb-3">{detailError}</p>
+        <button type="button" onClick={() => { setFamily(''); setStep('pick-family'); }} className="btn-outline text-sm px-4 py-2">
+          ← Back to collections
+        </button>
+      </Shell>
+    );
+  }
+
+  // STEP: pick-color
+  if (step === 'pick-color') {
     return (
       <div className="bg-white rounded-2xl border border-brand-border p-6 sm:p-8 max-w-2xl mx-auto">
-        <WizardBreadcrumb
-          family={family}
-          color={null}
-          onBack={() => { setFamily(''); setStep('pick-family'); }}
-          showBack={!seedFamily}
-        />
-        <h2 className="text-2xl font-bold text-brand-charcoal mb-2">
-          Choose your color
-        </h2>
+        <Breadcrumb family={family} color={null} onBack={() => { setFamily(''); setStep('pick-family'); }} showBack={!seedFamily} />
+        <h2 className="text-2xl font-bold text-brand-charcoal mb-2">Choose your color</h2>
         <p className="text-sm text-brand-charcoal-light mb-6">
-          The <strong>{family}</strong> collection comes in {familyRecord.colors.length} colors. Pick one to continue — this determines which pieces we match to your configuration.
+          The <strong>{family}</strong> collection comes in {detail.colors.length} colors.
         </p>
         <div className="grid grid-cols-2 gap-3">
-          {familyRecord.colors.map(c => (
+          {detail.colors.map((c) => (
             <button
               key={c}
               type="button"
@@ -267,193 +255,119 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
     );
   }
 
-  // ── STEP: pick-pieces ─────────────────────────────────────────────
+  // STEP: pick-pieces
   if (step === 'pick-pieces') {
     return (
       <div className="bg-white rounded-2xl border border-brand-border p-6 sm:p-8 max-w-3xl mx-auto">
-        <WizardBreadcrumb
+        <Breadcrumb
           family={family}
           color={color}
-          onBack={() => {
-            if (familyRecord && familyRecord.colors.length > 1) {
-              setStep('pick-color');
-            } else if (!seedFamily) {
-              setStep('pick-family');
-            }
-          }}
-          showBack={!seedFamily || (familyRecord?.colors.length ?? 0) > 1}
+          onBack={() => { if (detail.colors.length > 1) setStep('pick-color'); else if (!seedFamily) { setFamily(''); setStep('pick-family'); } }}
+          showBack={!seedFamily || detail.colors.length > 1}
         />
-        <h2 className="text-2xl font-bold text-brand-charcoal mb-2">
-          Pick your pieces
-        </h2>
+
+        {/* Merchandising — the full sectional, not just piece cutouts */}
+        {detail.images.length > 0 && (
+          <div className="flex gap-3 overflow-x-auto pb-3 mb-6 -mx-1 px-1">
+            {detail.images.map((src, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={i}
+                src={src}
+                alt={`${family} sectional`}
+                className="shrink-0 h-40 sm:h-48 w-auto rounded-lg border border-brand-border bg-brand-warm-gray object-contain p-1"
+              />
+            ))}
+          </div>
+        )}
+
+        <h2 className="text-2xl font-bold text-brand-charcoal mb-2">Pick your pieces</h2>
         <p className="text-sm text-brand-charcoal-light mb-6">
-          Tap + to add pieces to your sectional. Most customers start with a sofa or loveseat anchor, then add armless chairs, a corner, or a chaise to reach their target shape.
+          These are the pieces the <strong>{family}</strong>{color && <> in <strong>{color}</strong></>} collection is built from. Tap + to add the exact pieces you need.
         </p>
 
         <div className="space-y-6 mb-6">
-          {GROUP_ORDER.map(group => {
-            const groupPieces = SECTIONAL_PIECES.filter(p => p.group === group);
-            if (groupPieces.length === 0) return null;
-            return (
-              <div key={group}>
-                <h3 className="text-xs font-semibold text-brand-charcoal uppercase tracking-wider mb-2">
-                  {group}
-                </h3>
-                <div className="space-y-2">
-                  {groupPieces.map(piece => {
-                    const qty = counts[piece.id] || 0;
-                    return (
-                      <div
-                        key={piece.id}
-                        className={`flex items-center justify-between gap-3 p-3 rounded-lg border ${
-                          qty > 0 ? 'border-brand-yellow bg-brand-yellow-light' : 'border-brand-border'
-                        }`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-brand-charcoal">{piece.label}</p>
-                          {piece.hint && (
-                            <p className="text-xs text-brand-charcoal-light mt-0.5">{piece.hint}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => decrement(piece.id)}
-                            disabled={qty === 0}
-                            aria-label={`Remove one ${piece.label}`}
-                            className="w-8 h-8 rounded-full border border-brand-border text-brand-charcoal hover:border-brand-yellow-dark disabled:opacity-30 disabled:cursor-not-allowed text-lg leading-none"
-                          >
-                            −
-                          </button>
-                          <span className="w-6 text-center font-semibold text-brand-charcoal">{qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => increment(piece.id)}
-                            aria-label={`Add one ${piece.label}`}
-                            className="w-8 h-8 rounded-full border border-brand-border text-brand-charcoal hover:border-brand-yellow-dark text-lg leading-none"
-                          >
-                            +
-                          </button>
-                        </div>
+          {grouped.map(({ group, items }) => (
+            <div key={group}>
+              <h3 className="text-xs font-semibold text-brand-charcoal uppercase tracking-wider mb-2">{group}</h3>
+              <div className="space-y-2">
+                {items.map(({ piece_type, meta, product }) => {
+                  const qty = counts[piece_type] || 0;
+                  return (
+                    <div
+                      key={piece_type}
+                      className={`flex items-center justify-between gap-3 p-3 rounded-lg border ${qty > 0 ? 'border-brand-yellow bg-brand-yellow-light' : 'border-brand-border'}`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-brand-charcoal">{meta.label}</p>
+                        {meta.hint && <p className="text-xs text-brand-charcoal-light mt-0.5">{meta.hint}</p>}
+                        <p className="text-xs font-semibold text-brand-charcoal mt-0.5">${product.price.toFixed(2)}</p>
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button type="button" onClick={() => decrement(piece_type)} disabled={qty === 0} aria-label={`Remove one ${meta.label}`}
+                          className="w-8 h-8 rounded-full border border-brand-border text-brand-charcoal hover:border-brand-yellow-dark disabled:opacity-30 disabled:cursor-not-allowed text-lg leading-none">−</button>
+                        <span className="w-6 text-center font-semibold text-brand-charcoal">{qty}</span>
+                        <button type="button" onClick={() => increment(piece_type)} aria-label={`Add one ${meta.label}`}
+                          className="w-8 h-8 rounded-full border border-brand-border text-brand-charcoal hover:border-brand-yellow-dark text-lg leading-none">+</button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
-
-        {resolveError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 mb-4">
-            {resolveError}
-          </div>
-        )}
 
         <div className="flex items-center justify-between pt-5 border-t border-brand-border">
           <p className="text-sm text-brand-charcoal-light">
-            {totalSelected} piece{totalSelected === 1 ? '' : 's'} selected
+            {totalPieces} piece{totalPieces === 1 ? '' : 's'} · <span className="font-semibold text-brand-charcoal">${total.toFixed(2)}</span>
           </p>
-          <button
-            type="button"
-            onClick={goToReview}
-            disabled={totalSelected === 0 || resolving}
-            className="btn-brand px-6 py-3 disabled:opacity-50"
-          >
-            {resolving ? 'Matching pieces…' : 'Review configuration'}
+          <button type="button" onClick={() => setStep('review')} disabled={totalPieces === 0} className="btn-brand px-6 py-3 disabled:opacity-50">
+            Review configuration
           </button>
         </div>
       </div>
     );
   }
 
-  // ── STEP: review ──────────────────────────────────────────────────
+  // STEP: review
   if (step === 'review') {
-    const total   = configurationTotal(resolved);
-    const anyFail = resolved.some(s => !s.matched);
-    const okRows  = resolved.filter(s => s.matched);
-
     return (
       <div className="bg-white rounded-2xl border border-brand-border p-6 sm:p-8 max-w-3xl mx-auto">
-        <WizardBreadcrumb
-          family={family}
-          color={color}
-          onBack={() => setStep('pick-pieces')}
-          showBack
-        />
-        <h2 className="text-2xl font-bold text-brand-charcoal mb-2">
-          Review your sectional
-        </h2>
-        <p className="text-sm text-brand-charcoal-light mb-6">
-          Here&apos;s what we&apos;re adding to your cart. You&apos;ll be able to check delivery availability on the next page.
-        </p>
+        <Breadcrumb family={family} color={color} onBack={() => setStep('pick-pieces')} showBack />
+        <h2 className="text-2xl font-bold text-brand-charcoal mb-2">Review your sectional</h2>
+        <p className="text-sm text-brand-charcoal-light mb-6">Here’s what we’re adding to your cart — every piece is a real in-stock SKU.</p>
 
         <div className="rounded-lg border border-brand-border divide-y divide-brand-border mb-4">
-          {resolved.map((s, i) => {
-            const def = SECTIONAL_PIECES.find(p => p.id === s.pieceId);
-            return (
-              <div key={i} className="flex items-start justify-between gap-3 p-4">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-brand-charcoal">
-                    {def?.label || s.pieceId} <span className="text-brand-charcoal-light font-normal">× {s.qty}</span>
-                  </p>
-                  {s.matched ? (
-                    <p className="text-xs text-brand-charcoal-light mt-1 truncate">
-                      {s.matched.name} <span className="font-mono">· {s.matched.sku}</span>
-                    </p>
-                  ) : (
-                    <p className="text-xs text-red-600 mt-1">{s.error}</p>
-                  )}
-                </div>
-                <div className="text-right flex-shrink-0">
-                  {s.matched ? (
-                    <p className="text-sm font-semibold text-brand-charcoal">
-                      ${(Number(s.matched.retail_price) * s.qty).toFixed(2)}
-                    </p>
-                  ) : (
-                    <span className="text-xs text-red-600">Unavailable</span>
-                  )}
-                </div>
+          {resolved.map((r) => (
+            <div key={r.piece_type} className="flex items-start justify-between gap-3 p-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-brand-charcoal">
+                  {r.meta.label} <span className="text-brand-charcoal-light font-normal">× {r.qty}</span>
+                </p>
+                <p className="text-xs text-brand-charcoal-light mt-1 truncate">{r.product.name} <span className="font-mono">· {r.product.sku}</span></p>
               </div>
-            );
-          })}
+              <p className="text-sm font-semibold text-brand-charcoal flex-shrink-0">${(r.product.price * r.qty).toFixed(2)}</p>
+            </div>
+          ))}
         </div>
 
         <div className="flex items-center justify-between bg-brand-warm-gray rounded-lg px-4 py-3 mb-5">
-          <p className="text-sm text-brand-charcoal-light">
-            Total ({okRows.reduce((s, r) => s + r.qty, 0)} {okRows.reduce((s, r) => s + r.qty, 0) === 1 ? 'piece' : 'pieces'})
-          </p>
+          <p className="text-sm text-brand-charcoal-light">Total ({totalPieces} {totalPieces === 1 ? 'piece' : 'pieces'})</p>
           <p className="text-xl font-bold text-brand-charcoal">${total.toFixed(2)}</p>
         </div>
 
-        {anyFail && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 mb-4">
-            Some pieces couldn&apos;t be matched in your chosen color. You can go back to pick different options, or add the available pieces to your cart and call us to arrange the rest.
-          </div>
-        )}
-
         <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            type="button"
-            onClick={() => setStep('pick-pieces')}
-            className="btn-outline flex-1 py-3"
-          >
-            Back to pieces
-          </button>
-          <button
-            type="button"
-            onClick={addConfigurationToCart}
-            disabled={okRows.length === 0}
-            className="btn-brand flex-1 py-3 disabled:opacity-50"
-          >
-            Add {okRows.reduce((s, r) => s + r.qty, 0)} piece{okRows.reduce((s, r) => s + r.qty, 0) === 1 ? '' : 's'} to cart
+          <button type="button" onClick={() => setStep('pick-pieces')} className="btn-outline flex-1 py-3">Back to pieces</button>
+          <button type="button" onClick={addToCart} disabled={resolved.length === 0} className="btn-brand flex-1 py-3 disabled:opacity-50">
+            Add {totalPieces} piece{totalPieces === 1 ? '' : 's'} to cart
           </button>
         </div>
       </div>
     );
   }
 
-  // ── STEP: done ────────────────────────────────────────────────────
+  // STEP: done
   return (
     <div className="bg-white rounded-2xl border border-brand-border p-8 text-center max-w-2xl mx-auto">
       <div className="w-14 h-14 mx-auto rounded-full bg-brand-green-light flex items-center justify-center text-brand-green mb-4">
@@ -461,53 +375,35 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
           <polyline points="20 6 9 17 4 12" />
         </svg>
       </div>
-      <h2 className="text-2xl font-bold text-brand-charcoal mb-2">
-        Sectional added to your cart
-      </h2>
+      <h2 className="text-2xl font-bold text-brand-charcoal mb-2">Sectional added to your cart</h2>
       <p className="text-sm text-brand-charcoal-light mb-6">
-        Your <strong>{family}</strong>{color && <> in <strong>{color}</strong></>} configuration is ready to check out. You can add more items or head straight to checkout.
+        Your <strong>{family}</strong>{color && <> in <strong>{color}</strong></>} configuration is ready to check out.
       </p>
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
-        <Link href="/cart" className="btn-brand px-6 py-3">
-          Go to cart
-        </Link>
-        <button type="button" onClick={resetForNewBuild} className="btn-outline px-6 py-3">
-          Build another
-        </button>
+        <Link href="/cart" className="btn-brand px-6 py-3">Go to cart</Link>
+        <button type="button" onClick={resetForNewBuild} className="btn-outline px-6 py-3">Build another</button>
       </div>
     </div>
   );
 }
 
-// ── Breadcrumb helper ────────────────────────────────────────────────
+function Shell({ children, tone }: { children: ReactNode; tone?: 'error' }) {
+  return (
+    <div className={`bg-white rounded-2xl border p-8 text-center max-w-2xl mx-auto ${tone === 'error' ? 'border-red-200' : 'border-brand-border'}`}>
+      {children}
+    </div>
+  );
+}
 
-function WizardBreadcrumb({
-  family, color, onBack, showBack,
-}: {
-  family: string;
-  color:  string | null;
-  onBack: () => void;
-  showBack: boolean;
-}) {
+function Breadcrumb({ family, color, onBack, showBack }: { family: string; color: string | null; onBack: () => void; showBack: boolean }) {
   return (
     <div className="flex items-center justify-between mb-5">
       <div className="flex items-center gap-2 text-sm text-brand-charcoal-light">
         <span className="font-semibold text-brand-charcoal">{family}</span>
-        {color && (
-          <>
-            <span>·</span>
-            <span className="font-semibold text-brand-charcoal">{color}</span>
-          </>
-        )}
+        {color && (<><span>·</span><span className="font-semibold text-brand-charcoal">{color}</span></>)}
       </div>
       {showBack && (
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-xs text-brand-charcoal-light hover:text-brand-charcoal underline"
-        >
-          ← Change
-        </button>
+        <button type="button" onClick={onBack} className="text-xs text-brand-charcoal-light hover:text-brand-charcoal underline">← Change</button>
       )}
     </div>
   );

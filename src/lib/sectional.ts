@@ -203,3 +203,61 @@ export function configurationTotal(selections: SelectedPiece[]): number {
     return sum + Number(s.matched.retail_price || 0) * s.qty;
   }, 0);
 }
+
+// ── Data-driven family detail (canonical piece types) ──────────────────────
+// The builder is now driven by GET /storefront/sectional-families/:family,
+// which returns only the piece types a family actually carries (canonical
+// sectional_piece_type values, post-normalization) with per-color products.
+// PIECE_META supplies display labels/hints/grouping keyed by canonical type.
+
+export const PIECE_META: Record<string, { label: string; hint?: string; group: string; order: number }> = {
+  'LSF Sofa':            { label: 'LSF Sofa',            group: 'Sofas',     order: 1, hint: 'Sofa with a left-facing arm' },
+  'RSF Sofa':            { label: 'RSF Sofa',            group: 'Sofas',     order: 2, hint: 'Sofa with a right-facing arm' },
+  'Armless Sofa':        { label: 'Armless Sofa',        group: 'Sofas',     order: 3, hint: 'Three seats, no arms — fills the middle' },
+  'LSF Sofa w/ Corner':  { label: 'LSF Sofa w/ Corner',  group: 'Sofas',     order: 4, hint: 'Left-arm sofa with a built-in corner' },
+  'RSF Sofa w/ Corner':  { label: 'RSF Sofa w/ Corner',  group: 'Sofas',     order: 5, hint: 'Right-arm sofa with a built-in corner' },
+  'LSF Loveseat':        { label: 'LSF Loveseat',        group: 'Loveseats', order: 1, hint: 'Two seats with a left arm' },
+  'RSF Loveseat':        { label: 'RSF Loveseat',        group: 'Loveseats', order: 2, hint: 'Two seats with a right arm' },
+  'Armless Loveseat':    { label: 'Armless Loveseat',    group: 'Loveseats', order: 3, hint: 'Two seats, no arms' },
+  'LSF Chaise':          { label: 'LSF Chaise',          group: 'Chaises',   order: 1, hint: 'Extended seat, left-arm side' },
+  'RSF Chaise':          { label: 'RSF Chaise',          group: 'Chaises',   order: 2, hint: 'Extended seat, right-arm side' },
+  'LSF Cuddler':         { label: 'LSF Cuddler',         group: 'Chaises',   order: 3, hint: 'Wide angled lounge, left-arm side' },
+  'RSF Cuddler':         { label: 'RSF Cuddler',         group: 'Chaises',   order: 4, hint: 'Wide angled lounge, right-arm side' },
+  'LSF Chair':           { label: 'LSF Chair',           group: 'Chairs',    order: 1, hint: 'Single seat with a left arm' },
+  'RSF Chair':           { label: 'RSF Chair',           group: 'Chairs',    order: 2, hint: 'Single seat with a right arm' },
+  'Armless Chair':       { label: 'Armless Chair',       group: 'Chairs',    order: 3, hint: 'Middle seat, no arms' },
+  'Armless Recliner':    { label: 'Armless Recliner',    group: 'Chairs',    order: 4, hint: 'Reclining middle seat, no arms' },
+  'Corner':              { label: 'Corner',              group: 'Corners',   order: 1, hint: '90° turn joining two runs' },
+  'Wedge':               { label: 'Wedge',               group: 'Corners',   order: 2, hint: 'Wedge-shaped corner connector' },
+  'Console':             { label: 'Console',             group: 'Consoles',  order: 1, hint: 'Storage / cupholder console' },
+  'Ottoman':             { label: 'Ottoman',             group: 'Ottomans',  order: 1, hint: 'Matching ottoman' },
+};
+
+export const GROUP_ORDER = ['Sofas', 'Loveseats', 'Chaises', 'Chairs', 'Corners', 'Consoles', 'Ottomans'];
+
+export interface SectionalPieceProduct {
+  id: string;
+  sku: string;
+  name: string;
+  color: string | null;
+  price: number;
+  image_url: string | null;
+}
+export interface SectionalFamilyDetail {
+  family: string;
+  colors: string[];
+  images: string[];
+  pieces: { piece_type: string; products: SectionalPieceProduct[] }[];
+}
+
+/** Fetch ONE family's colors, gallery, and the piece types it actually carries. */
+export async function fetchSectionalFamily(family: string): Promise<SectionalFamilyDetail | null> {
+  const res = await fetch(
+    (process.env.NEXT_PUBLIC_API_URL || 'https://deliverdesk-backend-production.up.railway.app') +
+      '/storefront/sectional-families/' + encodeURIComponent(family),
+    { next: { revalidate: 60 } },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error('Failed to load sectional family');
+  return (await res.json()) as SectionalFamilyDetail;
+}
