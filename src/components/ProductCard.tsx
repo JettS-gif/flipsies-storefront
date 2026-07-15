@@ -41,13 +41,8 @@ export default function ProductCard({ product }: { product: Product }) {
             <div className="text-xs text-brand-charcoal-light opacity-40 font-mono">{p.sku}</div>
           </div>
         )}
-        {/* Badges */}
+        {/* Badges — no SALE badge (EDLP: no Hi-Lo sale framing). */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
-          {hasDiscount && (
-            <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-              SALE
-            </span>
-          )}
           {p.sectional_piece_type && (
             <span className="bg-brand-green text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
               SECTIONAL
@@ -81,8 +76,9 @@ export default function ProductCard({ product }: { product: Product }) {
             ${Number(p.retail_price).toFixed(2)}
           </span>
           {hasDiscount && (
-            <span className="text-sm text-red-400 line-through">
-              ${Number(p.compare_at_price).toFixed(2)}
+            <span className="text-xs text-brand-charcoal-light">
+              Compare at{" "}
+              <span className="line-through">${Number(p.compare_at_price).toFixed(2)}</span>
             </span>
           )}
         </div>

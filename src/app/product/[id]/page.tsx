@@ -50,7 +50,6 @@ export default async function ProductPage({ params }: Props) {
   const p = product;
   const displayName = [p.collection, p.color].filter(Boolean).join(' — ') || p.name;
   const hasDiscount = p.compare_at_price && p.compare_at_price > p.retail_price;
-  const savings = hasDiscount ? (p.compare_at_price! - p.retail_price).toFixed(2) : null;
   const inStock = p.in_stock;
 
   const details = [
@@ -163,14 +162,10 @@ export default async function ProductPage({ params }: Props) {
               ${Number(p.retail_price).toFixed(2)}
             </span>
             {hasDiscount && (
-              <>
-                <span className="text-lg text-red-400 line-through">
-                  ${Number(p.compare_at_price).toFixed(2)}
-                </span>
-                <span className="text-sm font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded-full">
-                  Save ${savings}
-                </span>
-              </>
+              <span className="text-sm text-brand-charcoal-light">
+                Compare at{" "}
+                <span className="line-through">${Number(p.compare_at_price).toFixed(2)}</span>
+              </span>
             )}
           </div>
 
