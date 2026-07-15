@@ -54,14 +54,14 @@ export default async function SectionalsPage({ searchParams }: SectionalsPagePro
             <strong>Need help planning a layout?</strong>
           </p>
           <p className="text-sm text-brand-charcoal-light mt-1 mb-3">
-            Visit a showroom and our team will walk you through it in person.
+            Call either showroom and our team will walk you through a layout.
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
-            <Link href="/locations" className="btn-outline text-sm px-4 py-2">
-              Showroom locations
-            </Link>
-            <a href="tel:+12052385076" className="btn-outline text-sm px-4 py-2">
-              Call (205) 238-5076
+            <a href="tel:2052385076" className="btn-brand text-sm px-5 py-2.5">
+              Hoover · (205) 238-5076
+            </a>
+            <a href="tel:2059574001" className="btn-brand text-sm px-5 py-2.5">
+              Irondale · (205) 957-4001
             </a>
           </div>
         </div>

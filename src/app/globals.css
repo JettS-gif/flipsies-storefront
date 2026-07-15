@@ -81,3 +81,42 @@ html {
 .btn-outline:hover {
   border-color: var(--brand-charcoal);
 }
+
+/* "Go" — light green, used for the Check Delivery CTA */
+.btn-go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 28px;
+  background: var(--brand-green-light);
+  color: var(--brand-green);
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 2px solid var(--brand-green);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-go:hover {
+  background: var(--brand-green);
+  color: white;
+}
+
+/* Charcoal accent — a pop that isn't the primary yellow or the green "go" */
+.btn-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 28px;
+  background: var(--brand-charcoal);
+  color: white;
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 8px;
+  border: 2px solid var(--brand-charcoal);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-dark:hover {
+  background: #111;
+}

@@ -50,7 +50,7 @@ export default function CheckDeliveryButton({ className = '' }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`btn-outline ${className}`}
+        className={`btn-go ${className}`}
         aria-haspopup="dialog"
         aria-expanded={open}
       >
