@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import AddToCartButton from '@/components/AddToCartButton';
+import RelatedProducts from '@/components/RelatedProducts';
 import JsonLd from '@/components/JsonLd';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
 
@@ -247,6 +248,8 @@ export default async function ProductPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      <RelatedProducts collection={p.collection} excludeId={p.id} />
     </div>
   );
 }
