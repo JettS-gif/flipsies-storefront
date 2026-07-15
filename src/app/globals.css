@@ -102,21 +102,22 @@ html {
   color: white;
 }
 
-/* Charcoal accent — a pop that isn't the primary yellow or the green "go" */
-.btn-dark {
+/* Lavender accent — a color pop that isn't the primary yellow or the green "go" */
+.btn-lavender {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 12px 28px;
-  background: var(--brand-charcoal);
-  color: white;
+  background: #C9BCEB;
+  color: #3E2E6B;
   font-weight: 600;
   font-size: 14px;
   border-radius: 8px;
-  border: 2px solid var(--brand-charcoal);
+  border: 2px solid #C9BCEB;
   cursor: pointer;
   transition: all 0.15s ease;
 }
-.btn-dark:hover {
-  background: #111;
+.btn-lavender:hover {
+  background: #B4A2E0;
+  border-color: #B4A2E0;
 }

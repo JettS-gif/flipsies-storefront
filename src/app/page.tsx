@@ -88,7 +88,7 @@ export default function Home() {
               <Link href="/shop" className="btn-brand flex-1 !py-5 !text-lg">
                 Shop In-Stock Now
               </Link>
-              <Link href="/sectionals" className="btn-outline flex-1 !py-5 !text-lg">
+              <Link href="/sectionals" className="btn-lavender flex-1 !py-5 !text-lg">
                 Build a Sectional
               </Link>
               <CheckDeliveryButton className="flex-1 !py-5 !text-lg" />
