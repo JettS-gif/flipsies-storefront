@@ -7,6 +7,7 @@ import AddToCartButton from '@/components/AddToCartButton';
 import ProductGallery from '@/components/ProductGallery';
 import ColorSelector from '@/components/ColorSelector';
 import RelatedProducts from '@/components/RelatedProducts';
+import SimilarProducts from '@/components/SimilarProducts';
 import JsonLd from '@/components/JsonLd';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
 
@@ -244,7 +245,10 @@ export default async function ProductPage({ params }: Props) {
         </div>
       </div>
 
-      <RelatedProducts collection={p.collection} excludeId={p.id} />
+      {/* Coordinate rail: the rest of this suite in the fabric you're viewing. */}
+      <RelatedProducts collection={p.collection} color={p.color} excludeId={p.id} />
+      {/* Comparison rail: other best-selling pieces of the same category. */}
+      <SimilarProducts category={p.category} excludeCollection={p.collection} excludeId={p.id} />
     </div>
   );
 }

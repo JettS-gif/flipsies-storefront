@@ -48,33 +48,45 @@ export default function ColorSelector({
         Color
       </label>
 
-      {/* Swatches — click straight through to a colorway. */}
+      {/* Swatches — click straight through to a colorway. Each is captioned: our
+          swatches are product photos, not fabric close-ups, and many are shot on
+          white (a cream sofa on a white sweep is an unreadable 56px chip). The
+          caption carries the identity so the image doesn't have to. */}
       <ul className="flex flex-wrap gap-2 mb-3">
         {variants.map((v) => {
           const active = v.id === value;
           return (
-            <li key={v.id}>
+            <li key={v.id} className="w-16">
               <Link
                 href={`/product/${v.id}`}
                 aria-label={label(v)}
                 aria-current={active ? 'true' : undefined}
                 title={label(v)}
-                className={`relative block w-14 h-14 rounded-lg overflow-hidden border-2 transition-colors ${
-                  active
-                    ? 'border-brand-yellow ring-2 ring-brand-yellow/30'
-                    : 'border-brand-border hover:border-brand-charcoal-light'
-                }`}
+                className="group block"
               >
-                {v.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={v.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                ) : (
-                  <span className="flex items-center justify-center w-full h-full bg-brand-warm-gray text-base opacity-30">
-                    🛋
-                  </span>
-                )}
-                {/* Out-of-stock colorways stay selectable (special order) but read as muted. */}
-                {!v.in_stock && <span className="absolute inset-0 bg-white/55" aria-hidden />}
+                <span
+                  className={`relative block w-16 h-16 rounded-lg overflow-hidden border-2 bg-brand-warm-gray transition-colors ${
+                    active
+                      ? 'border-brand-yellow ring-2 ring-brand-yellow/30'
+                      : 'border-brand-border group-hover:border-brand-charcoal-light'
+                  }`}
+                >
+                  {v.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={v.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  ) : (
+                    <span className="flex items-center justify-center w-full h-full text-base opacity-30">🛋</span>
+                  )}
+                  {/* Out-of-stock colorways stay selectable (special order) but read as muted. */}
+                  {!v.in_stock && <span className="absolute inset-0 bg-white/55" aria-hidden />}
+                </span>
+                <span
+                  className={`block mt-1 text-[10px] leading-tight text-center break-words ${
+                    active ? 'text-brand-charcoal font-semibold' : 'text-brand-charcoal-light'
+                  }`}
+                >
+                  {v.color ?? 'Standard'}
+                </span>
               </Link>
             </li>
           );
