@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import AddToCartButton from '@/components/AddToCartButton';
 import ProductGallery from '@/components/ProductGallery';
+import ColorSelector from '@/components/ColorSelector';
 import RelatedProducts from '@/components/RelatedProducts';
 import JsonLd from '@/components/JsonLd';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
@@ -185,6 +186,11 @@ export default async function ProductPage({ params }: Props) {
               <span className="text-sm text-brand-yellow-dark font-medium">Special Order — Ask about lead time</span>
             )}
           </div>
+
+          {/* Color/finish variant picker — only when this product has siblings */}
+          {p.variants && p.variants.length > 1 && (
+            <ColorSelector variants={p.variants} currentId={p.id} />
+          )}
 
           {/* CTA Buttons */}
           <div className="mt-8 flex flex-col sm:flex-row gap-3">

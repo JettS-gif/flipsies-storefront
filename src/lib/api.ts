@@ -29,6 +29,13 @@ async function request<T = unknown>(method: string, path: string, body?: unknown
 
 // ── Public Storefront API (no auth required) ────────────────────
 
+export interface ProductVariant {
+  id: string;
+  color: string | null;
+  in_stock: boolean;
+  image_url: string | null;
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -52,6 +59,9 @@ export interface Product {
   image_url?: string | null;
   description?: string | null;
   dimensions?: string | null;
+  variant_group_id?: string | null;
+  /** Sibling color/finish variants (same variant_group_id), in-stock first. */
+  variants?: ProductVariant[];
 }
 
 /** Ensure product has image_url derived from images array */
