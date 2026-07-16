@@ -53,7 +53,7 @@ export default function Home() {
           promise above the hero (whose text is baked into the JPG). */}
       <div className="bg-brand-charcoal text-white text-center text-sm font-medium px-4 py-2.5">
         Everyday low prices · No haggling · Price-match guaranteed ·{" "}
-        <span className="text-brand-yellow">In stock — take it home today</span>
+        <span className="text-brand-yellow">Next Day Pick Up/Delivery available</span>
       </div>
 
       {/* Hero — furniture background photo (swap public/images/hero-bg.jpg) under
