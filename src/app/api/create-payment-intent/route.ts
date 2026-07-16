@@ -12,10 +12,13 @@ function getStripeServer() {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://deliverdesk-backend-production.up.railway.app';
 
 interface CartItem {
-  product_id: string;
-  sku: string;
-  name: string;
-  price: number;
+  /** Present on ordinary product lines; absent on a package (bundle) line. */
+  product_id?: string;
+  /** Present on a package line — the backend expands it into components. */
+  package_id?: string;
+  sku?: string;
+  name?: string;
+  price?: number;
   qty: number;
 }
 
@@ -57,13 +60,22 @@ export async function POST(req: Request) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customer,
-        items: items.map(i => ({
-          product_id: i.product_id,
-          sku: i.sku,
-          name: i.name,
-          qty: i.qty,
-          price: i.price,
-        })),
+        // A package line forwards only { package_id, qty }: the backend
+        // expands it from the packages row and allocates the bundle price
+        // across the components itself (utils/expandPackage.js). Passing a
+        // client-built component list or price would be ignored anyway — and
+        // must be, for the same reason the product price is re-derived.
+        items: items.map(i => (
+          i.package_id
+            ? { package_id: i.package_id, qty: i.qty }
+            : {
+                product_id: i.product_id,
+                sku: i.sku,
+                name: i.name,
+                qty: i.qty,
+                price: i.price,
+              }
+        )),
         fulfillment,
         delivery_fee,
         notes: 'Online order — payment pending via Stripe.',

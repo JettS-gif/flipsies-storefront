@@ -61,6 +61,13 @@ export interface Product {
   description?: string | null;
   dimensions?: string | null;
   variant_group_id?: string | null;
+  /**
+   * How many published colourways this tile stands for. Only meaningful on the
+   * collapsed browse grid, where one tile represents the whole variant group;
+   * the endpoint defaults it to 1 on search/colour-filtered paths, which
+   * already render one tile per colourway.
+   */
+  variant_count?: number;
   /** Sibling color/finish variants (same variant_group_id), in-stock first. */
   variants?: ProductVariant[];
 }

@@ -7,6 +7,9 @@ export default function ProductCard({ product }: { product: Product }) {
   const subtitle = [p.type, p.category].filter(Boolean).join(' · ');
   const hasDiscount = p.compare_at_price && p.compare_at_price > p.retail_price;
   const inStock = p.in_stock;
+  // The browse grid collapses a variant group to one tile, so without this the
+  // shopper can't tell a model comes in nine colourways until they open it.
+  const colorways = p.variant_count ?? 1;
 
   return (
     <Link
@@ -49,11 +52,20 @@ export default function ProductCard({ product }: { product: Product }) {
             </span>
           )}
         </div>
-        {!inStock && (
-          <div className="absolute top-2 right-2">
-            <span className="bg-brand-charcoal text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
-              Special Order
-            </span>
+        {/* Top-right stack — "Special Order" already lives here, so the colour
+            badge stacks under it rather than overlapping when both apply. */}
+        {(colorways > 1 || !inStock) && (
+          <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+            {!inStock && (
+              <span className="bg-brand-charcoal text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
+                Special Order
+              </span>
+            )}
+            {colorways > 1 && (
+              <span className="bg-brand-green text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm whitespace-nowrap">
+                Available in {colorways} Colors!
+              </span>
+            )}
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCart } from '@/context/CartContext';
+import { useCart, cartKey } from '@/context/CartContext';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   Sofas: '🛋', Sectionals: '🛋', Chairs: '🪑', Tables: '🪑',
@@ -62,7 +62,7 @@ export default function CartPage() {
               {/* Details */}
               <div className="flex-1 min-w-0">
                 <Link
-                  href={`/product/${item.product_id}`}
+                  href={item.package_id ? `/package/${item.package_id}` : `/product/${item.product_id}`}
                   className="font-medium text-brand-charcoal hover:text-brand-yellow-dark transition-colors line-clamp-2"
                 >
                   {item.name}
@@ -77,7 +77,7 @@ export default function CartPage() {
                 {/* Qty controls */}
                 <div className="flex items-center gap-2 mt-3">
                   <button
-                    onClick={() => updateQty(item.product_id, item.qty - 1)}
+                    onClick={() => updateQty(cartKey(item), item.qty - 1)}
                     className="w-7 h-7 flex items-center justify-center rounded border border-brand-border hover:bg-brand-warm-gray text-sm"
                     aria-label="Decrease quantity"
                   >
@@ -85,14 +85,14 @@ export default function CartPage() {
                   </button>
                   <span className="w-8 text-center text-sm font-medium">{item.qty}</span>
                   <button
-                    onClick={() => updateQty(item.product_id, item.qty + 1)}
+                    onClick={() => updateQty(cartKey(item), item.qty + 1)}
                     className="w-7 h-7 flex items-center justify-center rounded border border-brand-border hover:bg-brand-warm-gray text-sm"
                     aria-label="Increase quantity"
                   >
                     +
                   </button>
                   <button
-                    onClick={() => removeItem(item.product_id)}
+                    onClick={() => removeItem(cartKey(item))}
                     className="ml-auto text-xs text-red-500 hover:text-red-700 transition-colors"
                   >
                     Remove

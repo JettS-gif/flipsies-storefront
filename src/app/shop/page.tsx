@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { pageMetadata } from '@/lib/site';
 import { fetchSectionalFamilies, type SectionalFamily } from '@/lib/sectional';
 import { fetchFacets } from '@/lib/facets';
+import { fetchPackages, type StorefrontPackage } from '@/lib/packages';
+import PackageCards from '@/components/PackageCards';
 import { SORTS, buildHref, activeFilterCount, type ShopSearchParams } from '@/lib/shopFilters';
 
 // `path` is hardcoded, so every filtered view (/shop?color_family=Grey&…)
@@ -49,6 +51,7 @@ export default async function ShopPage({ searchParams }: Props) {
   let products: Product[] = [];
   let categories: string[] = [];
   let families: SectionalFamily[] = [];
+  let packages: StorefrontPackage[] = [];
   let facets = null;
   let count = 0;
 
@@ -57,19 +60,25 @@ export default async function ShopPage({ searchParams }: Props) {
     if (search) params.search = search;
     // Pass filters straight through — the endpoint owns the semantics (colour
     // forces the base table, availability reads the generated qty, etc).
-    for (const k of ['room', 'brand', 'color_family', 'price_min', 'price_max', 'availability', 'sort'] as const) {
+    for (const k of ['room', 'brand', 'collection', 'color_family', 'price_min', 'price_max', 'availability', 'sort'] as const) {
       if (sp[k]) params[k] = sp[k]!;
     }
-    const [prodRes, catRes, famList, facetRes] = await Promise.all([
+    const [prodRes, catRes, famList, pkgList, facetRes] = await Promise.all([
       api.getProducts(params),
       api.getCategories(),
       fetchSectionalFamilies().catch(() => []),
+      // Packages are merchandising, not a filtered result set — a shopper who
+      // narrowed to "grey, under $500" is shopping pieces, so the set cards are
+      // hidden below rather than fetched and filtered. Same call the sectional
+      // family cards make.
+      fetchPackages({ search, collection: sp.collection, room: sp.room }).catch(() => []),
       fetchFacets(),
     ]);
     products = prodRes.data || [];
     count = prodRes.count || 0;
     categories = catRes.categories || [];
     families = famList || [];
+    packages = pkgList || [];
     facets = facetRes;
   } catch (e) {
     console.error('Failed to load products:', e);
@@ -88,6 +97,12 @@ export default async function ShopPage({ searchParams }: Props) {
             f.colors.some((c) => c.toLowerCase().includes(search.toLowerCase())),
         )
       : families;
+
+  // Set cards hide the moment the shopper filters — including via a package's
+  // own "Akerson — shop pieces" badge, which sets ?collection=. That's the
+  // drill-in working as intended: the badge trades the set card for the pieces.
+  // An intent-driven query ("chest") must never be answered with a set tile.
+  const shownPackages = nActive > 0 ? [] : packages;
   const catHref = (c: string) => (c === 'Sectional' ? '/sectionals' : `/shop/${encodeURIComponent(c)}`);
 
   const title = search ? `Results for "${search}"` : 'Shop All';
@@ -213,6 +228,9 @@ export default async function ShopPage({ searchParams }: Props) {
             </div>
           )}
 
+          {/* Bundles as set cards, not five near-identical piece tiles */}
+          <PackageCards packages={shownPackages} />
+
           {/* Sectionals as family cards (built via the wizard), not piece tiles */}
           <SectionalFamilyCards families={shownFamilies} />
 
@@ -222,7 +240,7 @@ export default async function ShopPage({ searchParams }: Props) {
                 <ProductCard key={p.id} product={p} />
               ))}
             </div>
-          ) : shownFamilies.length === 0 ? (
+          ) : shownFamilies.length === 0 && shownPackages.length === 0 ? (
             <div className="text-center py-20 text-brand-charcoal-light">
               <div className="text-4xl mb-4">📦</div>
               <p>{search ? `No products match "${search}".` : 'No products found. Check back soon!'}</p>

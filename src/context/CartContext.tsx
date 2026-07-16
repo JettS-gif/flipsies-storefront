@@ -5,7 +5,15 @@ import { createContext, useContext, useReducer, useEffect, useCallback, type Rea
 // ── Types ────────────────────────────────────────────────────────
 
 export interface CartItem {
-  product_id: string;
+  /** Present on ordinary product lines. Absent on a package line. */
+  product_id?: string;
+  /**
+   * Present on a package (bundle) line. The cart holds the package as ONE
+   * line — the backend expands it into component invoice_items at checkout
+   * (POST /store/order), because a public endpoint can't trust a client-built
+   * component list or bundle price.
+   */
+  package_id?: string;
   sku: string;
   name: string;
   price: number;
@@ -16,6 +24,14 @@ export interface CartItem {
   sectional_config?: string;
 }
 
+/**
+ * Identity of a cart line. A package line has no product_id, so every
+ * add/remove/update keys off this rather than product_id directly.
+ */
+export function cartKey(i: Pick<CartItem, 'product_id' | 'package_id'>): string {
+  return i.package_id ?? i.product_id ?? '';
+}
+
 interface CartState {
   items: CartItem[];
   hydrated: boolean;
@@ -23,15 +39,16 @@ interface CartState {
 
 type CartAction =
   | { type: 'ADD_ITEM'; item: CartItem }
-  | { type: 'REMOVE_ITEM'; product_id: string }
-  | { type: 'UPDATE_QTY'; product_id: string; qty: number }
+  | { type: 'REMOVE_ITEM'; key: string }
+  | { type: 'UPDATE_QTY'; key: string; qty: number }
   | { type: 'CLEAR' }
   | { type: 'HYDRATE'; items: CartItem[] };
 
 interface CartContextValue extends CartState {
   addItem: (item: Omit<CartItem, 'qty'> & { qty?: number }) => void;
-  removeItem: (product_id: string) => void;
-  updateQty: (product_id: string, qty: number) => void;
+  /** Takes a cartKey() — a product_id for product lines, package_id for bundles. */
+  removeItem: (key: string) => void;
+  updateQty: (key: string, qty: number) => void;
   clearCart: () => void;
   itemCount: number;
   subtotal: number;
@@ -42,12 +59,13 @@ interface CartContextValue extends CartState {
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case 'ADD_ITEM': {
-      const existing = state.items.find(i => i.product_id === action.item.product_id);
+      const key = cartKey(action.item);
+      const existing = state.items.find(i => cartKey(i) === key);
       if (existing) {
         return {
           ...state,
           items: state.items.map(i =>
-            i.product_id === action.item.product_id
+            cartKey(i) === key
               ? { ...i, qty: i.qty + action.item.qty }
               : i
           ),
@@ -56,15 +74,15 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return { ...state, items: [...state.items, action.item] };
     }
     case 'REMOVE_ITEM':
-      return { ...state, items: state.items.filter(i => i.product_id !== action.product_id) };
+      return { ...state, items: state.items.filter(i => cartKey(i) !== action.key) };
     case 'UPDATE_QTY':
       if (action.qty <= 0) {
-        return { ...state, items: state.items.filter(i => i.product_id !== action.product_id) };
+        return { ...state, items: state.items.filter(i => cartKey(i) !== action.key) };
       }
       return {
         ...state,
         items: state.items.map(i =>
-          i.product_id === action.product_id ? { ...i, qty: action.qty } : i
+          cartKey(i) === action.key ? { ...i, qty: action.qty } : i
         ),
       };
     case 'CLEAR':
@@ -118,12 +136,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'ADD_ITEM', item: { ...item, qty: item.qty ?? 1 } as CartItem });
   }, []);
 
-  const removeItem = useCallback((product_id: string) => {
-    dispatch({ type: 'REMOVE_ITEM', product_id });
+  const removeItem = useCallback((key: string) => {
+    dispatch({ type: 'REMOVE_ITEM', key });
   }, []);
 
-  const updateQty = useCallback((product_id: string, qty: number) => {
-    dispatch({ type: 'UPDATE_QTY', product_id, qty });
+  const updateQty = useCallback((key: string, qty: number) => {
+    dispatch({ type: 'UPDATE_QTY', key, qty });
   }, []);
 
   const clearCart = useCallback(() => {

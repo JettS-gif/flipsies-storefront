@@ -5,6 +5,7 @@ export type ShopSearchParams = {
   search?: string;
   room?: string;
   brand?: string;
+  collection?: string;
   color_family?: string;
   price_min?: string;
   price_max?: string;
@@ -41,7 +42,7 @@ export const SORTS = [
 
 /** The params that count as "filtering" — drives the canonical + Clear all. */
 export const FILTER_KEYS: (keyof ShopSearchParams)[] = [
-  'room', 'brand', 'color_family', 'price_min', 'price_max', 'availability', 'sort',
+  'room', 'brand', 'collection', 'color_family', 'price_min', 'price_max', 'availability', 'sort',
 ];
 
 export function activeFilterCount(sp: ShopSearchParams): number {

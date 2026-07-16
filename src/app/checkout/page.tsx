@@ -377,13 +377,20 @@ export default function CheckoutPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: items.map(i => ({
-            product_id: i.product_id,
-            sku: i.sku,
-            name: i.name,
-            price: i.price,
-            qty: i.qty,
-          })),
+          // A package line posts { package_id, qty } and nothing else — the
+          // backend expands it into component lines and re-derives the price
+          // from the packages row, so anything we sent would be ignored.
+          items: items.map(i => (
+            i.package_id
+              ? { package_id: i.package_id, qty: i.qty }
+              : {
+                  product_id: i.product_id,
+                  sku: i.sku,
+                  name: i.name,
+                  price: i.price,
+                  qty: i.qty,
+                }
+          )),
           customer: { name, email, phone: phone || undefined },
           fulfillment: {
             type: fulfillmentType,
