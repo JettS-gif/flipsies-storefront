@@ -247,8 +247,13 @@ export default async function ProductPage({ params }: Props) {
 
       {/* Coordinate rail: the rest of this suite in the fabric you're viewing. */}
       <RelatedProducts collection={p.collection} color={p.color} excludeId={p.id} />
-      {/* Comparison rail: other best-selling pieces of the same category. */}
-      <SimilarProducts category={p.category} excludeCollection={p.collection} excludeId={p.id} />
+      {/* Comparison rail: top sellers of this category, then closest on price. */}
+      <SimilarProducts
+        category={p.category}
+        price={Number(p.retail_price)}
+        excludeCollection={p.collection}
+        excludeId={p.id}
+      />
     </div>
   );
 }
