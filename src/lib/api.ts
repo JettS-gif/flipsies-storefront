@@ -34,6 +34,7 @@ export interface ProductVariant {
   color: string | null;
   in_stock: boolean;
   image_url: string | null;
+  retail_price: number;
 }
 
 export interface Product {

@@ -1,13 +1,24 @@
 'use client';
 
+import { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ProductVariant } from '@/lib/api';
 
-// Color/finish selector for products that have sibling variants (same
-// variant_group_id — e.g. a cabinet offered in several colors). A dropdown of
-// colors, each labeled with its stock status; choosing one navigates to that
-// variant's product page, which renders its own gallery + price. Server already
-// dedupes by color and orders in-stock first.
+// Color/finish selector for products with sibling variants (same
+// variant_group_id). Two affordances over the same list: a swatch row you can
+// click directly, and a dropdown for long lists. Both route to the variant's
+// own product page.
+//
+// Why route instead of swapping price/gallery in client state: this page's
+// price also feeds generateMetadata + the Product JSON-LD offer. Mutating the
+// displayed price without changing the URL would leave the structured data
+// advertising the old price — a merchant-feed mismatch. Routing keeps price,
+// gallery, availability, canonical URL and JSON-LD consistent.
+//
+// The navigation still feels instant: every sibling is prefetched (Links
+// prefetch automatically in prod; the effect warms the dropdown-only ones
+// too), so the click is a client-side transition with no page reload.
 export default function ColorSelector({
   variants,
   currentId,
@@ -16,15 +27,60 @@ export default function ColorSelector({
   currentId: string;
 }) {
   const router = useRouter();
+
+  // Warm every colorway so switching is instant regardless of which
+  // affordance is used. Variant counts are small (a handful per group).
+  useEffect(() => {
+    for (const v of variants) {
+      if (v.id !== currentId) router.prefetch(`/product/${v.id}`);
+    }
+  }, [variants, currentId, router]);
+
   if (!variants || variants.length < 2) return null;
 
   const value = variants.some((v) => v.id === currentId) ? currentId : variants[0].id;
+  const label = (v: ProductVariant) =>
+    (v.color ?? 'Standard') + (v.in_stock ? ' (in stock)' : ' (needs to be ordered)');
 
   return (
     <div className="mt-5">
       <label htmlFor="color-select" className="block text-sm font-semibold text-brand-charcoal mb-2">
         Color
       </label>
+
+      {/* Swatches — click straight through to a colorway. */}
+      <ul className="flex flex-wrap gap-2 mb-3">
+        {variants.map((v) => {
+          const active = v.id === value;
+          return (
+            <li key={v.id}>
+              <Link
+                href={`/product/${v.id}`}
+                aria-label={label(v)}
+                aria-current={active ? 'true' : undefined}
+                title={label(v)}
+                className={`relative block w-14 h-14 rounded-lg overflow-hidden border-2 transition-colors ${
+                  active
+                    ? 'border-brand-yellow ring-2 ring-brand-yellow/30'
+                    : 'border-brand-border hover:border-brand-charcoal-light'
+                }`}
+              >
+                {v.image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={v.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  <span className="flex items-center justify-center w-full h-full bg-brand-warm-gray text-base opacity-30">
+                    🛋
+                  </span>
+                )}
+                {/* Out-of-stock colorways stay selectable (special order) but read as muted. */}
+                {!v.in_stock && <span className="absolute inset-0 bg-white/55" aria-hidden />}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+
       <select
         id="color-select"
         value={value}
@@ -35,7 +91,8 @@ export default function ColorSelector({
       >
         {variants.map((v) => (
           <option key={v.id} value={v.id}>
-            {(v.color ?? 'Standard') + (v.in_stock ? ' (in stock)' : ' (needs to be ordered)')}
+            {label(v)}
+            {typeof v.retail_price === 'number' ? ` — $${Number(v.retail_price).toFixed(2)}` : ''}
           </option>
         ))}
       </select>
