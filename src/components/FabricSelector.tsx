@@ -78,50 +78,53 @@ export default function FabricSelector({
         Made to order in any fabric below — pick one to see it enlarged and priced.
       </p>
 
-      {/* Selected preview + reactive price — the swatch expands in place here.
-          The preview is large and click-to-zoom (full-screen lightbox) so the
-          shopper can inspect the fabric weave. */}
-      <div className="mt-4 flex items-center gap-4 rounded-xl border border-brand-border bg-brand-warm-gray/50 p-4">
+      {/* Zoom window — clicking any swatch below expands that fabric here and
+          updates the price live. Click the window itself for a full-screen view. */}
+      <div className="mt-4 rounded-xl border border-brand-border overflow-hidden bg-brand-warm-gray/50">
         <button
           type="button"
           onClick={() => selected?.swatch_image_url && setZoomed(true)}
-          className={`w-40 h-40 shrink-0 rounded-lg overflow-hidden border border-brand-border bg-brand-warm-gray ${selected?.swatch_image_url ? 'cursor-zoom-in' : ''}`}
+          className={`relative block w-full aspect-[4/3] bg-brand-warm-gray ${selected?.swatch_image_url ? 'cursor-zoom-in' : 'cursor-default'}`}
           aria-label={selected?.swatch_image_url ? `Enlarge ${selected.name}` : undefined}
         >
           {selected?.swatch_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={selected.swatch_image_url} alt={selected.name} className="w-full h-full object-cover" />
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={selected.swatch_image_url} alt={selected.name} className="w-full h-full object-cover" />
+              <span className="absolute bottom-2 right-2 bg-black/60 text-white text-[11px] px-2 py-1 rounded-full">Tap to enlarge ⤢</span>
+            </>
           ) : (
-            <span className="flex items-center justify-center w-full h-full text-4xl opacity-30">🧵</span>
+            <span className="flex flex-col items-center justify-center w-full h-full text-brand-charcoal-light">
+              <span className="text-4xl opacity-30">🧵</span>
+              <span className="mt-2 text-sm">Tap a swatch below to preview the fabric</span>
+            </span>
           )}
         </button>
-        <div className="min-w-0">
-          {selected?.swatch_image_url && (
-            <button type="button" onClick={() => setZoomed(true)} className="text-xs text-brand-yellow-dark hover:underline mb-1">
-              Tap to enlarge ⤢
-            </button>
-          )}
-          {selected ? (
-            <>
-              <div className="text-sm font-semibold text-brand-charcoal truncate">
-                {selected.name}{selected.grade ? ` · Grade ${selected.grade}` : ''}
-                {selected.in_stock && <span className="ml-2 text-xs text-brand-green font-medium">In stock</span>}
-              </div>
-              <div className="text-2xl font-bold text-brand-charcoal mt-0.5">${price.toFixed(2)}</div>
-              <button
-                type="button"
-                onClick={handleAdd}
-                className="btn-brand text-sm px-6 py-2 mt-2"
-              >
-                {added ? 'Added!' : 'Add to Cart'}
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="text-sm text-brand-charcoal-light">Select a fabric</div>
-              <div className="text-2xl font-bold text-brand-charcoal mt-0.5">from ${fromPrice.toFixed(2)}</div>
-            </>
-          )}
+        <div className="flex items-center justify-between gap-3 p-3">
+          <div className="min-w-0">
+            {selected ? (
+              <>
+                <div className="text-sm font-semibold text-brand-charcoal truncate">
+                  {selected.name}{selected.grade ? ` · Grade ${selected.grade}` : ''}
+                  {selected.in_stock && <span className="ml-2 text-xs text-brand-green font-medium">In stock</span>}
+                </div>
+                <div className="text-2xl font-bold text-brand-charcoal">${price.toFixed(2)}</div>
+              </>
+            ) : (
+              <>
+                <div className="text-sm text-brand-charcoal-light">Select a fabric</div>
+                <div className="text-2xl font-bold text-brand-charcoal">from ${fromPrice.toFixed(2)}</div>
+              </>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={!selected}
+            className="btn-brand text-sm px-6 py-2.5 shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {added ? 'Added!' : 'Add to Cart'}
+          </button>
         </div>
       </div>
 
