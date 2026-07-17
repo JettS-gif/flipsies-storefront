@@ -32,6 +32,7 @@ async function request<T = unknown>(method: string, path: string, body?: unknown
 export interface ProductVariant {
   id: string;
   color: string | null;
+  size: string | null;
   in_stock: boolean;
   image_url: string | null;
   retail_price: number;
@@ -77,6 +78,13 @@ export interface Product {
   description?: string | null;
   dimensions?: string | null;
   variant_group_id?: string | null;
+  /**
+   * Which attribute distinguishes this product's variant siblings — 'color' for
+   * colorway groups (Jofran/Fusion), 'size' for mattress size groups (MLily).
+   * The selector labels + a size group skips the swatch row (photos are
+   * identical across sizes). Defaults to 'color' server-side.
+   */
+  variant_axis?: 'color' | 'size';
   /**
    * How many published colourways this tile stands for. Only meaningful on the
    * collapsed browse grid, where one tile represents the whole variant group;

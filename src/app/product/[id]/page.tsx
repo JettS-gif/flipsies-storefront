@@ -205,9 +205,10 @@ export default async function ProductPage({ params }: Props) {
             )}
           </div>
 
-          {/* In-stock colorways we physically have — routable product siblings. */}
+          {/* Variant siblings — colorways (Jofran/Fusion) or mattress sizes
+              (MLily). Same component, axis from the backend's variant_axis. */}
           {p.variants && p.variants.length > 1 && (
-            <ColorSelector variants={p.variants} currentId={p.id} />
+            <ColorSelector variants={p.variants} currentId={p.id} axis={p.variant_axis} />
           )}
 
           {/* CTA Buttons */}
