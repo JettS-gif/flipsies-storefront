@@ -9,6 +9,7 @@ import { fetchSectionalFamilies, type SectionalFamily } from '@/lib/sectional';
 import { fetchFacets } from '@/lib/facets';
 import { fetchPackages, type StorefrontPackage } from '@/lib/packages';
 import PackageCards from '@/components/PackageCards';
+import CollectionCards, { type CollectionCard } from '@/components/CollectionCards';
 import { SORTS, buildHref, activeFilterCount, type ShopSearchParams } from '@/lib/shopFilters';
 
 // `path` is hardcoded, so every filtered view (/shop?color_family=Grey&…)
@@ -47,6 +48,11 @@ export default async function ShopPage({ searchParams }: Props) {
   const sp = await searchParams;
   const { search } = sp;
   const nActive = activeFilterCount(sp);
+  // Room browse (e.g. ?room=Bedroom) is a "show me the collections" intent, not a
+  // piece-level query — so it KEEPS the collapsed set cards instead of hiding
+  // them. Search, an explicit ?collection= drill-in, and a colour-intent query
+  // still escape to the flat piece grid below.
+  const roomBrowse = !!sp.room && !search && !sp.collection && !sp.color_family;
 
   let products: Product[] = [];
   let categories: string[] = [];
@@ -56,7 +62,9 @@ export default async function ShopPage({ searchParams }: Props) {
   let count = 0;
 
   try {
-    const params: Record<string, string | number> = { limit: 48, exclude_sectionals: 1 };
+    // Room browse groups by collection client-side, so fetch enough to cover a
+    // whole room's pieces before the packaged ones are suppressed (no paging yet).
+    const params: Record<string, string | number> = { limit: roomBrowse ? 1000 : 48, exclude_sectionals: 1 };
     if (search) params.search = search;
     // Pass filters straight through — the endpoint owns the semantics (colour
     // forces the base table, availability reads the generated qty, etc).
@@ -102,7 +110,46 @@ export default async function ShopPage({ searchParams }: Props) {
   // own "Akerson — shop pieces" badge, which sets ?collection=. That's the
   // drill-in working as intended: the badge trades the set card for the pieces.
   // An intent-driven query ("chest") must never be answered with a set tile.
-  const shownPackages = nActive > 0 ? [] : packages;
+  const shownPackages = (roomBrowse || nActive === 0) ? packages : [];
+
+  // Room browse collapses to ONE card per collection. A collection with a
+  // published set shows its PackageCard; every other collection is collapsed into
+  // a synthesized CollectionCard (rep image + from-price + piece count) instead
+  // of spilling its dresser/nightstand/chest/mirror as separate tiles — that's
+  // the noise we're cutting. normColl mirrors the server's projectPackage
+  // trailing-punctuation scrub (it derives "Rhett" from a "Rhett:" component) so
+  // package and product collections actually match.
+  const normColl = (s?: string | null) => (s || '').trim().toLowerCase().replace(/[\s:·—-]+$/, '');
+  const packagedCollections = new Set(shownPackages.map((p) => normColl(p.collection)).filter(Boolean));
+
+  let collectionCards: CollectionCard[] = [];
+  let shownProducts = products;
+  if (roomBrowse) {
+    const groups = new Map<string, { name: string; items: Product[] }>();
+    const loose: Product[] = [];
+    for (const p of products) {
+      const key = normColl(p.collection);
+      if (packagedCollections.has(key)) continue; // its PackageCard represents it
+      if (!key) { loose.push(p); continue; }       // no collection → keep as its own tile
+      const g = groups.get(key) ?? { name: p.collection as string, items: [] };
+      g.items.push(p);
+      groups.set(key, g);
+    }
+    collectionCards = [...groups.values()]
+      .map((g) => {
+        const withImg = g.items.find((i) => i.image_url || i.images?.length);
+        const prices = g.items.map((i) => Number(i.retail_price)).filter((n) => n > 0);
+        return {
+          collection: g.name,
+          image: withImg?.image_url ?? withImg?.images?.[0] ?? null,
+          fromPrice: prices.length ? Math.min(...prices) : 0,
+          count: g.items.length,
+          inStock: g.items.some((i) => i.in_stock),
+        };
+      })
+      .sort((a, b) => a.collection.localeCompare(b.collection));
+    shownProducts = loose; // only uncollected pieces remain as individual tiles
+  }
   const catHref = (c: string) => (c === 'Sectional' ? '/sectionals' : `/shop/${encodeURIComponent(c)}`);
 
   const title = search ? `Results for "${search}"` : 'Shop All';
@@ -231,16 +278,19 @@ export default async function ShopPage({ searchParams }: Props) {
           {/* Bundles as set cards, not five near-identical piece tiles */}
           <PackageCards packages={shownPackages} />
 
+          {/* Non-packaged collections collapsed to one card each (room browse) */}
+          <CollectionCards collections={collectionCards} />
+
           {/* Sectionals as family cards (built via the wizard), not piece tiles */}
           <SectionalFamilyCards families={shownFamilies} />
 
-          {products.length > 0 ? (
+          {shownProducts.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {products.map(p => (
+              {shownProducts.map(p => (
                 <ProductCard key={p.id} product={p} />
               ))}
             </div>
-          ) : shownFamilies.length === 0 && shownPackages.length === 0 ? (
+          ) : shownFamilies.length === 0 && shownPackages.length === 0 && collectionCards.length === 0 ? (
             <div className="text-center py-20 text-brand-charcoal-light">
               <div className="text-4xl mb-4">📦</div>
               <p>{search ? `No products match "${search}".` : 'No products found. Check back soon!'}</p>
