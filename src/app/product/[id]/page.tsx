@@ -212,54 +212,6 @@ export default async function ProductPage({ params }: Props) {
             </Link>
           </div>
 
-          {/* Description */}
-          {p.description && (
-            <div className="mt-10">
-              <h2 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wider mb-3">Description</h2>
-              <p className="text-sm text-brand-charcoal-light leading-relaxed">{p.description}</p>
-            </div>
-          )}
-
-          {/* Details table */}
-          {details.length > 0 && (
-            <div className="mt-8">
-              <h2 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wider mb-3">Details</h2>
-              <div className="border border-brand-border rounded-lg overflow-hidden">
-                {details.map((d, i) => (
-                  <div key={d.label} className={`flex text-sm ${i > 0 ? 'border-t border-brand-border' : ''}`}>
-                    <span className="w-32 sm:w-40 shrink-0 px-4 py-3 bg-brand-warm-gray text-brand-charcoal-light font-medium">
-                      {d.label}
-                    </span>
-                    <span className="px-4 py-3 text-brand-charcoal">{d.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Financing note */}
-          <div className="mt-8 bg-brand-warm-gray rounded-lg p-4">
-            <p className="text-sm text-brand-charcoal-light">
-              <span className="font-semibold text-brand-charcoal">Financing available</span> — Synchrony, Progressive Leasing, and 1st Franklin options.
-              <Link href="/financing" className="text-brand-yellow-dark hover:underline ml-1">Learn more</Link>
-            </p>
-          </div>
-
-          {/* Warranty note — deep-links to this brand's section on /warranty when
-              we carry the brand; otherwise to the warranty index. */}
-          {p.vendor?.name && (
-            <div className="mt-3 bg-brand-warm-gray rounded-lg p-4">
-              <p className="text-sm text-brand-charcoal-light">
-                <span className="font-semibold text-brand-charcoal">Warranty</span> — covered by the {p.vendor.name} manufacturer&apos;s warranty.
-                <Link
-                  href={warrantyForBrand(p.vendor.name) ? `/warranty#${brandSlug(p.vendor.name)}` : '/warranty'}
-                  className="text-brand-yellow-dark hover:underline ml-1"
-                >
-                  View coverage
-                </Link>
-              </p>
-            </div>
-          )}
         </div>
       </div>
 
@@ -281,6 +233,59 @@ export default async function ProductPage({ params }: Props) {
           fromPrice={Number(p.retail_price)}
         />
       )}
+
+      {/* Product info — below the fabric picker (Jett): description, details,
+          financing, warranty. */}
+      <div className="mt-10 max-w-3xl">
+        {/* Description */}
+        {p.description && (
+          <div>
+            <h2 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wider mb-3">Description</h2>
+            <p className="text-sm text-brand-charcoal-light leading-relaxed">{p.description}</p>
+          </div>
+        )}
+
+        {/* Details table */}
+        {details.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wider mb-3">Details</h2>
+            <div className="border border-brand-border rounded-lg overflow-hidden">
+              {details.map((d, i) => (
+                <div key={d.label} className={`flex text-sm ${i > 0 ? 'border-t border-brand-border' : ''}`}>
+                  <span className="w-32 sm:w-40 shrink-0 px-4 py-3 bg-brand-warm-gray text-brand-charcoal-light font-medium">
+                    {d.label}
+                  </span>
+                  <span className="px-4 py-3 text-brand-charcoal">{d.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Financing note */}
+        <div className="mt-8 bg-brand-warm-gray rounded-lg p-4">
+          <p className="text-sm text-brand-charcoal-light">
+            <span className="font-semibold text-brand-charcoal">Financing available</span> — Synchrony, Progressive Leasing, and 1st Franklin options.
+            <Link href="/financing" className="text-brand-yellow-dark hover:underline ml-1">Learn more</Link>
+          </p>
+        </div>
+
+        {/* Warranty note — deep-links to this brand's section on /warranty when
+            we carry the brand; otherwise to the warranty index. */}
+        {p.vendor?.name && (
+          <div className="mt-3 bg-brand-warm-gray rounded-lg p-4">
+            <p className="text-sm text-brand-charcoal-light">
+              <span className="font-semibold text-brand-charcoal">Warranty</span> — covered by the {p.vendor.name}{' '}manufacturer&apos;s warranty.
+              <Link
+                href={warrantyForBrand(p.vendor.name) ? `/warranty#${brandSlug(p.vendor.name)}` : '/warranty'}
+                className="text-brand-yellow-dark hover:underline ml-1"
+              >
+                View coverage
+              </Link>
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Coordinate rail: the rest of this suite in the fabric you're viewing. */}
       <RelatedProducts collection={p.collection} color={p.color} excludeId={p.id} />
