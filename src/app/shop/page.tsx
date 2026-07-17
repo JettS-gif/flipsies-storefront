@@ -125,9 +125,14 @@ export default async function ShopPage({ searchParams }: Props) {
   let collectionCards: CollectionCard[] = [];
   let shownProducts = products;
   if (roomBrowse) {
+    // Loose bed components (rails / HB-FB / drawers) sell via the bed, never as a
+    // standalone tile — keep them out of the room grid entirely. They stay
+    // reachable via an explicit /shop/[category] "Bed Parts" browse.
+    const PART_CATEGORIES = new Set(['Bed Parts', 'Parts']);
     const groups = new Map<string, { name: string; items: Product[] }>();
     const loose: Product[] = [];
     for (const p of products) {
+      if (p.category && PART_CATEGORIES.has(p.category)) continue;
       const key = normColl(p.collection);
       if (packagedCollections.has(key)) continue; // its PackageCard represents it
       if (!key) { loose.push(p); continue; }       // no collection → keep as its own tile
