@@ -84,6 +84,12 @@ export interface Product {
    * already render one tile per colourway.
    */
   variant_count?: number;
+  /**
+   * Full fabric library this frame can be ordered in (Chairs America, Southern
+   * Motion, …) — the "orderable" side of the badge's "X in stock · Y orderable"
+   * split. Null/absent for products that aren't ordered in a fabric library.
+   */
+  orderable_count?: number | null;
   /** Sibling color/finish variants (same variant_group_id OR frame parent), in-stock first. */
   variants?: ProductVariant[];
   /** Orderable fabric library for fabric-graded frames (Chairs America). */

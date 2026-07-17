@@ -10,6 +10,11 @@ export default function ProductCard({ product }: { product: Product }) {
   // The browse grid collapses a variant group to one tile, so without this the
   // shopper can't tell a model comes in nine colourways until they open it.
   const colorways = p.variant_count ?? 1;
+  // Fabric-graded frames (Chairs America, Southern Motion) are stocked in a few
+  // colourways but orderable in the whole fabric library. When that library is
+  // bigger than what we stock, show the honest split instead of a bare count.
+  const orderable = p.orderable_count ?? 0;
+  const showFabricSplit = orderable > colorways;
 
   return (
     <Link
@@ -54,18 +59,22 @@ export default function ProductCard({ product }: { product: Product }) {
         </div>
         {/* Top-right stack — "Special Order" already lives here, so the colour
             badge stacks under it rather than overlapping when both apply. */}
-        {(colorways > 1 || !inStock) && (
+        {(colorways > 1 || showFabricSplit || !inStock) && (
           <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
             {!inStock && (
               <span className="bg-brand-charcoal text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
                 Special Order
               </span>
             )}
-            {colorways > 1 && (
+            {showFabricSplit ? (
+              <span className="bg-brand-green text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm whitespace-nowrap">
+                {colorways} in stock · {orderable} orderable
+              </span>
+            ) : colorways > 1 ? (
               <span className="bg-brand-green text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm whitespace-nowrap">
                 Available in {colorways} Colors!
               </span>
-            )}
+            ) : null}
           </div>
         )}
       </div>
