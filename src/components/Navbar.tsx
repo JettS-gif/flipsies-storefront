@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { href: '/shop', label: 'Shop' },
   { href: '/sectionals', label: 'Sectionals' },
   { href: '/deals', label: 'Deals' },
+  { href: '/warranty', label: 'Warranty' },
   { href: '/locations', label: 'Locations' },
 ];
 
