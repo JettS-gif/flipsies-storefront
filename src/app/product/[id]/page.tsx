@@ -72,6 +72,16 @@ export default async function ProductPage({ params }: Props) {
   // with no direct doc fall back to their section on /warranty.
   const warranty = warrantyForBrand(p.vendor?.name);
 
+  // Made-to-order summary for fabric frames: colours we stock vs the full
+  // orderable fabric library vs the production lead window.
+  const inStockColors = p.variants?.filter((v) => v.in_stock).length ?? 0;
+  const leadLabel =
+    p.lead && (p.lead.min_weeks || p.lead.max_weeks)
+      ? p.lead.min_weeks && p.lead.max_weeks && p.lead.min_weeks !== p.lead.max_weeks
+        ? `${p.lead.min_weeks}–${p.lead.max_weeks} weeks`
+        : `${p.lead.min_weeks || p.lead.max_weeks} weeks`
+      : null;
+
   const productUrl = `${SITE_URL}/product/${p.id}`;
   const galleryImages = p.images ?? [];
   const absImages = galleryImages.map((u) => (u.startsWith('http') ? u : `${SITE_URL}${u}`));
@@ -224,6 +234,26 @@ export default async function ProductPage({ params }: Props) {
           gallery: a floated zoom window on the left with swatches flowing around
           it, so the shopper doesn't scroll and the void beside/under the window
           is filled. Priced per grade off the frame's map, SKU minted at checkout. */}
+      {p.fabrics && p.fabrics.length > 0 && (
+        <div className="mt-10 mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-brand-charcoal-light">
+          {inStockColors > 0 && (
+            <span>
+              <span className="font-semibold text-brand-charcoal">{inStockColors}</span>{' '}
+              {inStockColors === 1 ? 'colour' : 'colours'} in stock
+            </span>
+          )}
+          {inStockColors > 0 && <span className="text-brand-border">·</span>}
+          <span>
+            orderable in <span className="font-semibold text-brand-charcoal">{p.fabrics.length} fabrics</span>
+          </span>
+          {leadLabel && (
+            <>
+              <span className="text-brand-border">·</span>
+              <span>made to order in <span className="font-semibold text-brand-charcoal">{leadLabel}</span></span>
+            </>
+          )}
+        </div>
+      )}
       {p.fabrics && p.fabrics.length > 0 && (
         <FabricSelector
           frame={{
