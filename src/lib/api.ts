@@ -37,6 +37,22 @@ export interface ProductVariant {
   retail_price: number;
 }
 
+/**
+ * An orderable fabric from the vendor's swatch library (Chairs America). Not a
+ * product row — the SKU is minted at checkout. `price` is resolved server-side
+ * off the frame's grade→price map; `in_stock` is true when a stocked colorway
+ * on this frame already carries the fabric.
+ */
+export interface Fabric {
+  id: string;
+  name: string;
+  grade: string | null;
+  content: string | null;
+  swatch_image_url: string | null;
+  price: number | null;
+  in_stock: boolean;
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -68,8 +84,14 @@ export interface Product {
    * already render one tile per colourway.
    */
   variant_count?: number;
-  /** Sibling color/finish variants (same variant_group_id), in-stock first. */
+  /** Sibling color/finish variants (same variant_group_id OR frame parent), in-stock first. */
   variants?: ProductVariant[];
+  /** Orderable fabric library for fabric-graded frames (Chairs America). */
+  fabrics?: Fabric[];
+  /** Frame's grade→price map: { "1": 699.97, ... }. Drives per-fabric pricing. */
+  grade_prices?: Record<string, number> | null;
+  /** Production lead window for made-to-order frames. */
+  lead?: { min_weeks: number | null; max_weeks: number | null } | null;
 }
 
 /** Ensure product has image_url derived from images array */

@@ -22,14 +22,25 @@ export interface CartItem {
   category: string | null;
   /** Serialized sectional config JSON, if applicable */
   sectional_config?: string;
+  /**
+   * Made-to-order fabric selection (Chairs America). The frame has no per-fabric
+   * product row; checkout mints the child SKU from (product_id, fabric_id). Two
+   * fabrics on the same frame are DISTINCT cart lines, so fabric_id joins the key.
+   */
+  fabric_id?: string;
+  fabric_name?: string | null;
 }
 
 /**
  * Identity of a cart line. A package line has no product_id, so every
- * add/remove/update keys off this rather than product_id directly.
+ * add/remove/update keys off this rather than product_id directly. A
+ * fabric-selected frame keys off (product_id, fabric_id) so the same frame in
+ * two fabrics stays two lines.
  */
-export function cartKey(i: Pick<CartItem, 'product_id' | 'package_id'>): string {
-  return i.package_id ?? i.product_id ?? '';
+export function cartKey(i: Pick<CartItem, 'product_id' | 'package_id' | 'fabric_id'>): string {
+  if (i.package_id) return i.package_id;
+  if (i.product_id) return i.fabric_id ? `${i.product_id}::${i.fabric_id}` : i.product_id;
+  return '';
 }
 
 interface CartState {

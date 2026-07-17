@@ -20,6 +20,9 @@ interface CartItem {
   name?: string;
   price?: number;
   qty: number;
+  /** Made-to-order fabric pick (Chairs America etc.) — backend mints the child. */
+  fabric_id?: string;
+  fabric_name?: string | null;
 }
 
 interface RequestBody {
@@ -74,6 +77,8 @@ export async function POST(req: Request) {
                 name: i.name,
                 qty: i.qty,
                 price: i.price,
+                // Made-to-order fabric pick — backend mints/swaps + prices it.
+                ...(i.fabric_id ? { fabric_id: i.fabric_id, fabric_name: i.fabric_name } : {}),
               }
         )),
         fulfillment,

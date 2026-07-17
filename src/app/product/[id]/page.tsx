@@ -6,6 +6,7 @@ import type { Metadata } from 'next';
 import AddToCartButton from '@/components/AddToCartButton';
 import ProductGallery from '@/components/ProductGallery';
 import ColorSelector from '@/components/ColorSelector';
+import FabricSelector from '@/components/FabricSelector';
 import RelatedProducts from '@/components/RelatedProducts';
 import SimilarProducts from '@/components/SimilarProducts';
 import JsonLd from '@/components/JsonLd';
@@ -188,9 +189,27 @@ export default async function ProductPage({ params }: Props) {
             )}
           </div>
 
-          {/* Color/finish variant picker — only when this product has siblings */}
+          {/* In-stock colorways we physically have — routable product siblings. */}
           {p.variants && p.variants.length > 1 && (
             <ColorSelector variants={p.variants} currentId={p.id} />
+          )}
+
+          {/* Full made-to-order fabric library (Chairs America) — priced per
+              grade off the frame's map, SKU minted at checkout. Renders only
+              when the frame carries a fabric library. */}
+          {p.fabrics && p.fabrics.length > 0 && (
+            <FabricSelector
+              frame={{
+                id: p.id,
+                sku: p.sku,
+                name: p.name,
+                collection: p.collection,
+                category: p.category,
+                image_url: p.image_url,
+              }}
+              fabrics={p.fabrics}
+              fromPrice={Number(p.retail_price)}
+            />
           )}
 
           {/* CTA Buttons */}

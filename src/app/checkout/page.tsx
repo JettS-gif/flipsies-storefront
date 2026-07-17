@@ -389,6 +389,9 @@ export default function CheckoutPage() {
                   name: i.name,
                   price: i.price,
                   qty: i.qty,
+                  // Made-to-order fabric pick — the backend mints/swaps the
+                  // fabric child and prices it off the frame's grade map.
+                  ...(i.fabric_id ? { fabric_id: i.fabric_id, fabric_name: i.fabric_name } : {}),
                 }
           )),
           customer: { name, email, phone: phone || undefined },
