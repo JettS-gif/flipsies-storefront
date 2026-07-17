@@ -11,6 +11,7 @@ import RelatedProducts from '@/components/RelatedProducts';
 import SimilarProducts from '@/components/SimilarProducts';
 import JsonLd from '@/components/JsonLd';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
+import { warrantyForBrand, brandSlug } from '@/lib/warranty';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -194,24 +195,6 @@ export default async function ProductPage({ params }: Props) {
             <ColorSelector variants={p.variants} currentId={p.id} />
           )}
 
-          {/* Full made-to-order fabric library (Chairs America) — priced per
-              grade off the frame's map, SKU minted at checkout. Renders only
-              when the frame carries a fabric library. */}
-          {p.fabrics && p.fabrics.length > 0 && (
-            <FabricSelector
-              frame={{
-                id: p.id,
-                sku: p.sku,
-                name: p.name,
-                collection: p.collection,
-                category: p.category,
-                image_url: p.image_url,
-              }}
-              fabrics={p.fabrics}
-              fromPrice={Number(p.retail_price)}
-            />
-          )}
-
           {/* CTA Buttons */}
           <div className="mt-8 flex flex-col sm:flex-row gap-3">
             <AddToCartButton product={{
@@ -261,8 +244,43 @@ export default async function ProductPage({ params }: Props) {
               <Link href="/financing" className="text-brand-yellow-dark hover:underline ml-1">Learn more</Link>
             </p>
           </div>
+
+          {/* Warranty note — deep-links to this brand's section on /warranty when
+              we carry the brand; otherwise to the warranty index. */}
+          {p.vendor?.name && (
+            <div className="mt-3 bg-brand-warm-gray rounded-lg p-4">
+              <p className="text-sm text-brand-charcoal-light">
+                <span className="font-semibold text-brand-charcoal">Warranty</span> — covered by the {p.vendor.name} manufacturer&apos;s warranty.
+                <Link
+                  href={warrantyForBrand(p.vendor.name) ? `/warranty#${brandSlug(p.vendor.name)}` : '/warranty'}
+                  className="text-brand-yellow-dark hover:underline ml-1"
+                >
+                  View coverage
+                </Link>
+              </p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Full made-to-order fabric library (Chairs America) — full-width below the
+          gallery: a floated zoom window on the left with swatches flowing around
+          it, so the shopper doesn't scroll and the void beside/under the window
+          is filled. Priced per grade off the frame's map, SKU minted at checkout. */}
+      {p.fabrics && p.fabrics.length > 0 && (
+        <FabricSelector
+          frame={{
+            id: p.id,
+            sku: p.sku,
+            name: p.name,
+            collection: p.collection,
+            category: p.category,
+            image_url: p.image_url,
+          }}
+          fabrics={p.fabrics}
+          fromPrice={Number(p.retail_price)}
+        />
+      )}
 
       {/* Coordinate rail: the rest of this suite in the fabric you're viewing. */}
       <RelatedProducts collection={p.collection} color={p.color} excludeId={p.id} />
