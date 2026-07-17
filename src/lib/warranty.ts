@@ -69,8 +69,8 @@ export const WARRANTY_BRANDS: WarrantyBrand[] = [
   },
   {
     brand: 'Leather Italia',
-    url: null,
-    summary: 'Stationary: 5-yr frame and seating, 2-yr foam, 1-yr leather. Motion: 2-yr mechanism (1-yr labor), 1-yr leather. Claims through your dealer.',
+    url: '/warranties/leather-italia-warranty.pdf',
+    summary: 'Stationary: 5-year frame & seat suspension, 2-year cushions & foam, 1-year leather. Motion: 2-year frame, springs & reclining mechanism, 1-year leather & motor. Labor 1 year (pre-approved). Claims filed through your dealer.',
   },
   {
     brand: 'MLily',

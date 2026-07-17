@@ -67,6 +67,11 @@ export default async function ProductPage({ params }: Props) {
     p.sku && { label: 'SKU', value: p.sku },
   ].filter(Boolean) as { label: string; value: string }[];
 
+  // Warranty for this product's brand — the PDP links STRAIGHT to the
+  // manufacturer's warranty (page or hosted PDF) when we have it; only brands
+  // with no direct doc fall back to their section on /warranty.
+  const warranty = warrantyForBrand(p.vendor?.name);
+
   const productUrl = `${SITE_URL}/product/${p.id}`;
   const galleryImages = p.images ?? [];
   const absImages = galleryImages.map((u) => (u.startsWith('http') ? u : `${SITE_URL}${u}`));
@@ -270,18 +275,30 @@ export default async function ProductPage({ params }: Props) {
           </p>
         </div>
 
-        {/* Warranty note — deep-links to this brand's section on /warranty when
-            we carry the brand; otherwise to the warranty index. */}
+        {/* Warranty note — links straight to the manufacturer's warranty (page
+            or hosted PDF) when we have the doc; brands without one fall back to
+            their section on /warranty. */}
         {p.vendor?.name && (
           <div className="mt-3 bg-brand-warm-gray rounded-lg p-4">
             <p className="text-sm text-brand-charcoal-light">
               <span className="font-semibold text-brand-charcoal">Warranty</span> — covered by the {p.vendor.name}{' '}manufacturer&apos;s warranty.
-              <Link
-                href={warrantyForBrand(p.vendor.name) ? `/warranty#${brandSlug(p.vendor.name)}` : '/warranty'}
-                className="text-brand-yellow-dark hover:underline ml-1"
-              >
-                View coverage
-              </Link>
+              {warranty?.url ? (
+                <a
+                  href={warranty.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand-yellow-dark hover:underline ml-1"
+                >
+                  View {p.vendor.name} warranty
+                </a>
+              ) : (
+                <Link
+                  href={warranty ? `/warranty#${brandSlug(p.vendor.name)}` : '/warranty'}
+                  className="text-brand-yellow-dark hover:underline ml-1"
+                >
+                  View coverage
+                </Link>
+              )}
             </p>
           </div>
         )}
