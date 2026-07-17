@@ -11,9 +11,8 @@ import type { Fabric } from '@/lib/api';
 // swaps price in CLIENT state (no per-fabric URL to route to) and adds a
 // frame+fabric line to the cart.
 //
-// Layout mirrors the Fusion swatch UX: a grid of swatches, current one ringed,
-// captioned with the name (our swatches are small and some frames' fabrics ship
-// without a close-up image). Grouped by grade because price is per-grade.
+// Selecting a swatch expands it in place (large preview) and updates the price —
+// the shopper sees the fabric and its grade price before adding to cart.
 export default function FabricSelector({
   frame,
   fabrics,
@@ -75,8 +74,43 @@ export default function FabricSelector({
         <span className="text-xs text-brand-charcoal-light">{fabrics.length} fabrics</span>
       </div>
       <p className="mt-1 text-sm text-brand-charcoal-light">
-        Made to order in any fabric below — price shown updates with the grade you choose.
+        Made to order in any fabric below — pick one to see it enlarged and priced.
       </p>
+
+      {/* Selected preview + reactive price — the swatch expands in place here. */}
+      <div className="mt-4 flex items-center gap-4 rounded-xl border border-brand-border bg-brand-warm-gray/50 p-4">
+        <div className="w-24 h-24 shrink-0 rounded-lg overflow-hidden border border-brand-border bg-brand-warm-gray">
+          {selected?.swatch_image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={selected.swatch_image_url} alt={selected.name} className="w-full h-full object-cover" />
+          ) : (
+            <span className="flex items-center justify-center w-full h-full text-2xl opacity-30">🧵</span>
+          )}
+        </div>
+        <div className="min-w-0">
+          {selected ? (
+            <>
+              <div className="text-sm font-semibold text-brand-charcoal truncate">
+                {selected.name}{selected.grade ? ` · Grade ${selected.grade}` : ''}
+                {selected.in_stock && <span className="ml-2 text-xs text-brand-green font-medium">In stock</span>}
+              </div>
+              <div className="text-2xl font-bold text-brand-charcoal mt-0.5">${price.toFixed(2)}</div>
+              <button
+                type="button"
+                onClick={handleAdd}
+                className="btn-brand text-sm px-6 py-2 mt-2"
+              >
+                {added ? 'Added!' : 'Add to Cart'}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="text-sm text-brand-charcoal-light">Select a fabric</div>
+              <div className="text-2xl font-bold text-brand-charcoal mt-0.5">from ${fromPrice.toFixed(2)}</div>
+            </>
+          )}
+        </div>
+      </div>
 
       {byGrade.map(([grade, list]) => {
         const gradePrice = list.find((f) => f.price != null)?.price ?? null;
@@ -103,9 +137,9 @@ export default function FabricSelector({
                       className="group block w-full text-left"
                     >
                       <span
-                        className={`relative block w-16 h-16 rounded-lg overflow-hidden border-2 bg-brand-warm-gray transition-colors ${
+                        className={`relative block w-16 h-16 rounded-lg overflow-hidden border-2 bg-brand-warm-gray transition-all ${
                           active
-                            ? 'border-brand-yellow ring-2 ring-brand-yellow/30'
+                            ? 'border-brand-yellow ring-2 ring-brand-yellow/30 scale-105'
                             : 'border-brand-border group-hover:border-brand-charcoal-light'
                         }`}
                       >
@@ -136,33 +170,6 @@ export default function FabricSelector({
           </div>
         );
       })}
-
-      {/* Selection summary + add to cart */}
-      <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-3">
-        <div className="text-sm">
-          {selected ? (
-            <>
-              <span className="text-brand-charcoal-light">Selected: </span>
-              <span className="font-semibold text-brand-charcoal">
-                {selected.name}{selected.grade ? ` · Grade ${selected.grade}` : ''}
-              </span>
-              <span className="ml-2 text-lg font-bold text-brand-charcoal">${price.toFixed(2)}</span>
-            </>
-          ) : (
-            <span className="text-brand-charcoal-light">
-              Select a fabric to see its price — from <span className="font-semibold text-brand-charcoal">${fromPrice.toFixed(2)}</span>
-            </span>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={handleAdd}
-          disabled={!selected}
-          className="btn-brand text-base px-8 py-3 min-w-[160px] disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {added ? 'Added!' : 'Add to Cart'}
-        </button>
-      </div>
     </div>
   );
 }
