@@ -25,6 +25,7 @@ export default function FabricSelector({
   const { addItem } = useCart();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [added, setAdded] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
 
   // Group by grade (1..6, then ungraded last); in-stock first within a grade.
   const byGrade = useMemo(() => {
@@ -77,17 +78,29 @@ export default function FabricSelector({
         Made to order in any fabric below — pick one to see it enlarged and priced.
       </p>
 
-      {/* Selected preview + reactive price — the swatch expands in place here. */}
+      {/* Selected preview + reactive price — the swatch expands in place here.
+          The preview is large and click-to-zoom (full-screen lightbox) so the
+          shopper can inspect the fabric weave. */}
       <div className="mt-4 flex items-center gap-4 rounded-xl border border-brand-border bg-brand-warm-gray/50 p-4">
-        <div className="w-24 h-24 shrink-0 rounded-lg overflow-hidden border border-brand-border bg-brand-warm-gray">
+        <button
+          type="button"
+          onClick={() => selected?.swatch_image_url && setZoomed(true)}
+          className={`w-40 h-40 shrink-0 rounded-lg overflow-hidden border border-brand-border bg-brand-warm-gray ${selected?.swatch_image_url ? 'cursor-zoom-in' : ''}`}
+          aria-label={selected?.swatch_image_url ? `Enlarge ${selected.name}` : undefined}
+        >
           {selected?.swatch_image_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={selected.swatch_image_url} alt={selected.name} className="w-full h-full object-cover" />
           ) : (
-            <span className="flex items-center justify-center w-full h-full text-2xl opacity-30">🧵</span>
+            <span className="flex items-center justify-center w-full h-full text-4xl opacity-30">🧵</span>
           )}
-        </div>
+        </button>
         <div className="min-w-0">
+          {selected?.swatch_image_url && (
+            <button type="button" onClick={() => setZoomed(true)} className="text-xs text-brand-yellow-dark hover:underline mb-1">
+              Tap to enlarge ⤢
+            </button>
+          )}
           {selected ? (
             <>
               <div className="text-sm font-semibold text-brand-charcoal truncate">
@@ -170,6 +183,38 @@ export default function FabricSelector({
           </div>
         );
       })}
+
+      {/* Full-screen lightbox for the selected swatch. */}
+      {zoomed && selected?.swatch_image_url && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setZoomed(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 cursor-zoom-out"
+        >
+          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={selected.swatch_image_url}
+              alt={selected.name}
+              className="w-full h-auto max-h-[85vh] object-contain rounded-lg"
+            />
+            <div className="mt-3 text-center text-white">
+              <span className="font-semibold">{selected.name}</span>
+              {selected.grade ? <span className="opacity-80"> · Grade {selected.grade}</span> : null}
+              <span className="ml-2 font-bold">${price.toFixed(2)}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setZoomed(false)}
+              aria-label="Close"
+              className="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-white text-brand-charcoal text-lg font-bold shadow flex items-center justify-center"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
