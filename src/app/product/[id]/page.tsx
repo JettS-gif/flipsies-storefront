@@ -7,13 +7,8 @@ import AddToCartButton from '@/components/AddToCartButton';
 import ProductGallery from '@/components/ProductGallery';
 import ColorSelector from '@/components/ColorSelector';
 import FabricSelector from '@/components/FabricSelector';
+import FabricPicker from '@/components/FabricPicker';
 import MechanismSelector from '@/components/MechanismSelector';
-import CustomizeWizard from '@/components/CustomizeWizard';
-
-// A/B trial (Jett): one model gets the guided customization wizard in place of
-// the inline mechanism list, so staff can experience-test the concept before we
-// wire it for the whole catalog. Scoped by collection.
-const WIZARD_TRIAL_COLLECTIONS = new Set(['1157 BANK SHOT']);
 import RelatedProducts from '@/components/RelatedProducts';
 import SimilarProducts from '@/components/SimilarProducts';
 import JsonLd from '@/components/JsonLd';
@@ -212,16 +207,12 @@ export default async function ProductPage({ params }: Props) {
             )}
           </div>
 
-          {/* Reclining mechanism choice (Southern Motion) — sits above
-              colour/fabric as the primary frame decision. Trial models get the
-              guided customization wizard; everyone else gets the inline list of
-              mechanisms (in-stock link to their live PDP, made-to-order priced-from). */}
-          {p.collection && WIZARD_TRIAL_COLLECTIONS.has(p.collection) ? (
-            <CustomizeWizard product={p} />
-          ) : (
-            p.mechanisms && p.mechanisms.length > 1 && (
-              <MechanismSelector mechanisms={p.mechanisms} currentId={p.id} />
-            )
+          {/* Reclining mechanism choice (Southern Motion) — the primary frame
+              decision, above colour/fabric. In-stock mechanisms link to their live
+              PDP; made-to-order ones show priced-from. Fabric is chosen below in the
+              faceted per-colour FabricPicker (replaced the Bank Shot wizard A/B). */}
+          {p.mechanisms && p.mechanisms.length > 1 && (
+            <MechanismSelector mechanisms={p.mechanisms} currentId={p.id} />
           )}
 
           {/* Variant siblings — colorways (Jofran/Fusion) or mattress sizes
@@ -274,20 +265,14 @@ export default async function ProductPage({ params }: Props) {
           )}
         </div>
       )}
-      {p.fabrics && p.fabrics.length > 0 && (
-        <FabricSelector
-          frame={{
-            id: p.id,
-            sku: p.sku,
-            name: p.name,
-            collection: p.collection,
-            category: p.category,
-            image_url: p.image_url,
-          }}
-          fabrics={p.fabrics}
-          fromPrice={Number(p.retail_price)}
-        />
-      )}
+      {p.fabrics && p.fabrics.length > 0 && (() => {
+        const frame = { id: p.id, sku: p.sku, name: p.name, collection: p.collection, category: p.category, image_url: p.image_url };
+        // Per-colour faceted picker once any line has verified swatches; else the
+        // line-composite selector (falls back cleanly as verification progresses).
+        return p.fabrics.some((f) => (f.colors?.length ?? 0) > 0)
+          ? <FabricPicker frame={frame} fabrics={p.fabrics} fromPrice={Number(p.retail_price)} />
+          : <FabricSelector frame={frame} fabrics={p.fabrics} fromPrice={Number(p.retail_price)} />;
+      })()}
 
       {/* Product info — below the fabric picker (Jett): description, details,
           financing, warranty. */}

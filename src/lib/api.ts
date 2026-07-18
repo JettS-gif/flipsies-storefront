@@ -44,6 +44,18 @@ export interface ProductVariant {
  * off the frame's grade→price map; `in_stock` is true when a stocked colorway
  * on this frame already carries the fabric.
  */
+/** One colour within a fabric line, with a verified isolated swatch + facets. */
+export interface FabricColor {
+  id: string;
+  code: string | null;
+  name: string;
+  swatch_image_url: string | null;
+  hex: string | null;
+  color_family: string | null;   // Neutral buckets / Blue / Green / Red-Rust / …
+  pattern_type: string | null;   // Solid / Textured / Patterned
+  in_stock: boolean;
+}
+
 export interface Fabric {
   id: string;
   name: string;
@@ -52,6 +64,8 @@ export interface Fabric {
   swatch_image_url: string | null;
   price: number | null;
   in_stock: boolean;
+  /** Verified per-colour swatches for this line (feeds the faceted picker). */
+  colors?: FabricColor[];
 }
 
 /**
