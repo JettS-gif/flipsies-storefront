@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ProductVariant } from '@/lib/api';
+import { thumb } from '@/lib/img';
 
 // Variant selector for products with sibling variants (same variant_group_id).
 // One component, two axes (`axis` prop, from the backend's variant_axis):
@@ -86,8 +87,10 @@ export default function ColorSelector({
                     }`}
                   >
                     {v.image_url ? (
+                      // Server-side resized thumb — a full-size showroom photo
+                      // downscaled to 64px by the browser reads grainy. (128px = 2x DPR)
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={v.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                      <img src={thumb(v.image_url, 128)} alt="" className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <span className="flex items-center justify-center w-full h-full text-base opacity-30">🛋</span>
                     )}
