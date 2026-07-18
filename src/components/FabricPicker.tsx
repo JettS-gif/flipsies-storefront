@@ -25,6 +25,7 @@ type Item = {
   id: string; name: string; swatch_image_url: string | null; hex: string | null;
   color_family: string | null; pattern_type: string | null; in_stock: boolean;
   line_id: string; line_name: string; grade: string | null; price: number | null;
+  product_image_url: string | null;
 };
 
 // Stable display order for the colour-family chips.
@@ -52,6 +53,7 @@ export default function FabricPicker({
       id: c.id, name: c.name, swatch_image_url: c.swatch_image_url, hex: c.hex,
       color_family: c.color_family, pattern_type: c.pattern_type, in_stock: c.in_stock,
       line_id: f.id, line_name: f.name, grade: f.grade, price: f.price,
+      product_image_url: c.product_image_url ?? null,
     }))),
     [fabrics],
   );
@@ -86,6 +88,9 @@ export default function FabricPicker({
   const selected = items.find((i) => i.id === selectedId) ?? null;
   const price = selected?.price ?? fromPrice;
   const anyFilter = !!(material || family || pattern);
+  // Prefer a real floor photo of this frame in the colour; fall back to the swatch.
+  const previewImg = selected?.product_image_url ?? selected?.swatch_image_url ?? null;
+  const previewIsPhoto = !!selected?.product_image_url;
 
   function handleAdd() {
     if (!selected) return;
@@ -153,14 +158,17 @@ export default function FabricPicker({
         <div className="float-left w-56 sm:w-64 mr-5 mb-4 rounded-xl border border-brand-border overflow-hidden bg-brand-warm-gray/50">
           <button
             type="button"
-            onClick={() => selected?.swatch_image_url && setZoomed(true)}
-            className={`relative block w-full aspect-square bg-brand-warm-gray ${selected?.swatch_image_url ? 'cursor-zoom-in' : 'cursor-default'}`}
-            aria-label={selected?.swatch_image_url ? `Enlarge ${selected.name}` : undefined}
+            onClick={() => previewImg && setZoomed(true)}
+            className={`relative block w-full aspect-square bg-brand-warm-gray ${previewImg ? 'cursor-zoom-in' : 'cursor-default'}`}
+            aria-label={previewImg ? `Enlarge ${selected?.name}` : undefined}
           >
-            {selected?.swatch_image_url ? (
+            {previewImg ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={selected.swatch_image_url} alt={selected.name} className="w-full h-full object-cover" />
+                <img src={previewImg} alt={selected?.name} className={`w-full h-full ${previewIsPhoto ? 'object-contain' : 'object-cover'}`} />
+                {previewIsPhoto && (
+                  <span className="absolute top-2 left-2 bg-brand-green text-white text-[11px] px-2 py-1 rounded-full">Floor sample</span>
+                )}
                 <span className="absolute bottom-2 right-2 bg-black/60 text-white text-[11px] px-2 py-1 rounded-full">Tap to enlarge ⤢</span>
               </>
             ) : (
@@ -232,11 +240,11 @@ export default function FabricPicker({
         )}
       </div>
 
-      {zoomed && selected?.swatch_image_url && (
+      {zoomed && previewImg && selected && (
         <div role="dialog" aria-modal="true" onClick={() => setZoomed(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 cursor-zoom-out">
           <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={selected.swatch_image_url} alt={selected.name} className="w-full h-auto max-h-[85vh] object-contain rounded-lg" />
+            <img src={previewImg} alt={selected.name} className="w-full h-auto max-h-[85vh] object-contain rounded-lg" />
             <div className="mt-3 text-center text-white">
               <span className="font-semibold">{selected.name}</span>
               <span className="opacity-80"> · {selected.line_name} · {gradeLabel(selected.grade)}</span>

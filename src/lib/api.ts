@@ -54,6 +54,9 @@ export interface FabricColor {
   color_family: string | null;   // Neutral buckets / Blue / Green / Red-Rust / …
   pattern_type: string | null;   // Solid / Textured / Patterned
   in_stock: boolean;
+  /** Real floor photo of THIS frame in this colour, when we've shot one (joined
+   *  on fabric_code). Preview shows it instead of the swatch tile. */
+  product_image_url?: string | null;
 }
 
 export interface Fabric {
