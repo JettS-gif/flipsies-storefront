@@ -9,11 +9,16 @@ import ColorSelector from '@/components/ColorSelector';
 import FabricSelector from '@/components/FabricSelector';
 import FabricPicker from '@/components/FabricPicker';
 import MechanismSelector from '@/components/MechanismSelector';
+import CustomizeWizard from '@/components/CustomizeWizard';
 import RelatedProducts from '@/components/RelatedProducts';
 import SimilarProducts from '@/components/SimilarProducts';
 import JsonLd from '@/components/JsonLd';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
 import { warrantyForBrand, brandSlug } from '@/lib/warranty';
+
+// Collections that get the guided CustomizeWizard (A/B) instead of the inline
+// mechanism selector + fabric picker.
+const WIZARD_TRIAL_COLLECTIONS = new Set(['1157 BANK SHOT']);
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -83,6 +88,15 @@ export default async function ProductPage({ params }: Props) {
         ? `${p.lead.min_weeks}–${p.lead.max_weeks} weeks`
         : `${p.lead.min_weeks || p.lead.max_weeks} weeks`
       : null;
+
+  // Bank Shot A/B: the guided customize wizard (prompt → mechanism → fabric →
+  // cart) stands in for the inline mechanism selector + fabric picker on this
+  // one collection, to experience-test the flow. No renderer — the wizard shows
+  // the stock chair photo only.
+  const useWizard = !!p.collection
+    && WIZARD_TRIAL_COLLECTIONS.has(p.collection)
+    && (p.mechanisms?.length ?? 0) > 0
+    && (p.fabrics?.length ?? 0) > 0;
 
   const productUrl = `${SITE_URL}/product/${p.id}`;
   const galleryImages = p.images ?? [];
@@ -207,13 +221,16 @@ export default async function ProductPage({ params }: Props) {
             )}
           </div>
 
-          {/* Reclining mechanism choice (Southern Motion) — the primary frame
-              decision, above colour/fabric. In-stock mechanisms link to their live
-              PDP; made-to-order ones show priced-from. Fabric is chosen below in the
-              faceted per-colour FabricPicker (replaced the Bank Shot wizard A/B). */}
-          {p.mechanisms && p.mechanisms.length > 1 && (
+          {/* Bank Shot A/B: guided wizard replaces the inline mechanism selector +
+              fabric picker (both skipped below when useWizard). Everywhere else:
+              inline mechanism choice above colour/fabric, in-stock mechanisms link
+              to their live PDP, made-to-order show priced-from; fabric is the
+              faceted per-colour FabricPicker below. */}
+          {useWizard ? (
+            <CustomizeWizard product={p} />
+          ) : p.mechanisms && p.mechanisms.length > 1 ? (
             <MechanismSelector mechanisms={p.mechanisms} currentId={p.id} />
-          )}
+          ) : null}
 
           {/* Variant siblings — colorways (Jofran/Fusion) or mattress sizes
               (MLily). Same component, axis from the backend's variant_axis. */}
@@ -245,7 +262,7 @@ export default async function ProductPage({ params }: Props) {
           gallery: a floated zoom window on the left with swatches flowing around
           it, so the shopper doesn't scroll and the void beside/under the window
           is filled. Priced per grade off the frame's map, SKU minted at checkout. */}
-      {p.fabrics && p.fabrics.length > 0 && (
+      {!useWizard && p.fabrics && p.fabrics.length > 0 && (
         <div className="mt-10 mb-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-brand-charcoal-light">
           {inStockColors > 0 && (
             <span>
@@ -265,7 +282,7 @@ export default async function ProductPage({ params }: Props) {
           )}
         </div>
       )}
-      {p.fabrics && p.fabrics.length > 0 && (() => {
+      {!useWizard && p.fabrics && p.fabrics.length > 0 && (() => {
         const frame = { id: p.id, sku: p.sku, name: p.name, collection: p.collection, category: p.category, image_url: p.image_url };
         // Per-colour faceted picker once any line has verified swatches; else the
         // line-composite selector (falls back cleanly as verification progresses).
