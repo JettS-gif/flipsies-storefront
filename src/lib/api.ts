@@ -54,6 +54,28 @@ export interface Fabric {
   in_stock: boolean;
 }
 
+/**
+ * A reclining mechanism a Southern Motion model comes in (rocker, wall-hugger,
+ * power headrest, swivel…). Each is a real priced frame row. `from_price` is the
+ * base (Fabric-grade) price; `route_id` is a live PDP to link to when the
+ * mechanism is stocked, else null (made-to-order). `description` is the
+ * customer-facing "what it does" blurb.
+ */
+export interface Mechanism {
+  id: string;
+  sku: string;
+  label: string;
+  key: string;
+  description: string | null;
+  from_price: number | null;
+  grade_prices: Record<string, number> | null;
+  image_url: string | null;
+  in_stock: boolean;
+  is_current: boolean;
+  made_to_order: boolean;
+  route_id: string | null;
+}
+
 export interface Product {
   id: string;
   sku: string;
@@ -102,6 +124,14 @@ export interface Product {
   variants?: ProductVariant[];
   /** Orderable fabric library for fabric-graded frames (Chairs America). */
   fabrics?: Fabric[];
+  /**
+   * Reclining mechanisms this model comes in (Southern Motion) — the "how it
+   * moves" menu. Each is a priced frame the shopper can choose; in-stock ones
+   * link to a live PDP (route_id), made-to-order ones show priced-from with a
+   * description of what the mechanism does. Absent for products with only one
+   * mechanism or vendors that don't sell by mechanism.
+   */
+  mechanisms?: Mechanism[];
   /** Frame's grade→price map: { "1": 699.97, ... }. Drives per-fabric pricing. */
   grade_prices?: Record<string, number> | null;
   /** Production lead window for made-to-order frames. */

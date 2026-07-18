@@ -7,6 +7,7 @@ import AddToCartButton from '@/components/AddToCartButton';
 import ProductGallery from '@/components/ProductGallery';
 import ColorSelector from '@/components/ColorSelector';
 import FabricSelector from '@/components/FabricSelector';
+import MechanismSelector from '@/components/MechanismSelector';
 import RelatedProducts from '@/components/RelatedProducts';
 import SimilarProducts from '@/components/SimilarProducts';
 import JsonLd from '@/components/JsonLd';
@@ -204,6 +205,14 @@ export default async function ProductPage({ params }: Props) {
               <span className="text-sm text-brand-yellow-dark font-medium">Special Order — Ask about lead time</span>
             )}
           </div>
+
+          {/* Reclining mechanism menu (Southern Motion) — the "how it moves"
+              choice sits above colour/fabric: it's the primary frame decision.
+              In-stock mechanisms link to their live PDP; made-to-order ones show
+              priced-from with what they do. */}
+          {p.mechanisms && p.mechanisms.length > 1 && (
+            <MechanismSelector mechanisms={p.mechanisms} currentId={p.id} />
+          )}
 
           {/* Variant siblings — colorways (Jofran/Fusion) or mattress sizes
               (MLily). Same component, axis from the backend's variant_axis. */}
