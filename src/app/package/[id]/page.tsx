@@ -78,7 +78,7 @@ export default async function PackagePage({ params }: Props) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <JsonLd data={ld} />
+      <JsonLd id="ld-package" data={ld} />
 
       <nav className="text-sm text-brand-charcoal-light mb-6">
         <Link href="/shop" className="hover:underline">Shop</Link>

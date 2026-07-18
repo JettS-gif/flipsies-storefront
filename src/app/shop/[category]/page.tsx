@@ -61,7 +61,7 @@ export default async function CategoryPage({ params }: Props) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <JsonLd data={breadcrumbLd} />
+      <JsonLd id="ld-category" data={breadcrumbLd} />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-brand-charcoal-light mb-6">
         <Link href="/shop" className="hover:text-brand-charcoal transition-colors">Shop</Link>
