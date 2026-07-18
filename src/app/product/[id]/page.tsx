@@ -8,6 +8,12 @@ import ProductGallery from '@/components/ProductGallery';
 import ColorSelector from '@/components/ColorSelector';
 import FabricSelector from '@/components/FabricSelector';
 import MechanismSelector from '@/components/MechanismSelector';
+import CustomizeWizard from '@/components/CustomizeWizard';
+
+// A/B trial (Jett): one model gets the guided customization wizard in place of
+// the inline mechanism list, so staff can experience-test the concept before we
+// wire it for the whole catalog. Scoped by collection.
+const WIZARD_TRIAL_COLLECTIONS = new Set(['1157 BANK SHOT']);
 import RelatedProducts from '@/components/RelatedProducts';
 import SimilarProducts from '@/components/SimilarProducts';
 import JsonLd from '@/components/JsonLd';
@@ -206,12 +212,16 @@ export default async function ProductPage({ params }: Props) {
             )}
           </div>
 
-          {/* Reclining mechanism menu (Southern Motion) — the "how it moves"
-              choice sits above colour/fabric: it's the primary frame decision.
-              In-stock mechanisms link to their live PDP; made-to-order ones show
-              priced-from with what they do. */}
-          {p.mechanisms && p.mechanisms.length > 1 && (
-            <MechanismSelector mechanisms={p.mechanisms} currentId={p.id} />
+          {/* Reclining mechanism choice (Southern Motion) — sits above
+              colour/fabric as the primary frame decision. Trial models get the
+              guided customization wizard; everyone else gets the inline list of
+              mechanisms (in-stock link to their live PDP, made-to-order priced-from). */}
+          {p.collection && WIZARD_TRIAL_COLLECTIONS.has(p.collection) ? (
+            <CustomizeWizard product={p} />
+          ) : (
+            p.mechanisms && p.mechanisms.length > 1 && (
+              <MechanismSelector mechanisms={p.mechanisms} currentId={p.id} />
+            )
           )}
 
           {/* Variant siblings — colorways (Jofran/Fusion) or mattress sizes
