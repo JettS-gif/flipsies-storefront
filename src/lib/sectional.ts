@@ -61,6 +61,8 @@ export interface SectionalFamily {
   colors:       string[];
   piece_count:  number;
   sample_image: string | null;
+  /** True when any in-stock piece of this family is a clearance sell-through unit. */
+  has_clearance?: boolean;
 }
 
 /**

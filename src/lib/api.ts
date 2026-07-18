@@ -107,6 +107,12 @@ export interface Product {
   retail_price: number;
   compare_at_price: number | null;
   in_stock: boolean;
+  /**
+   * Vendor-exited sell-through item: still selling from on-hand stock but not
+   * reorderable. Drives the /deals Clearance rail + a "Final Units" card badge;
+   * suppresses the "Special Order" badge (it can't be special-ordered).
+   */
+  clearance?: boolean;
   vendor?: { name: string };
   attributes?: string | null;
   sectional_piece_type: string | null;

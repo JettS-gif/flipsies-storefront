@@ -35,7 +35,12 @@ export default function SectionalFamilyCards({
             href={`/sectionals?family=${encodeURIComponent(f.family)}`}
             className="group block bg-white rounded-xl border border-brand-border overflow-hidden hover:shadow-lg hover:border-brand-yellow transition-all"
           >
-            <div className="aspect-[4/3] bg-brand-warm-gray flex items-center justify-center overflow-hidden">
+            <div className="relative aspect-[4/3] bg-brand-warm-gray flex items-center justify-center overflow-hidden">
+              {f.has_clearance && (
+                <span className="absolute top-2 left-2 z-10 bg-brand-charcoal text-brand-yellow text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+                  CLEARANCE · FINAL UNITS
+                </span>
+              )}
               {f.sample_image ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={f.sample_image} alt={`${f.family} sectional`} className="w-full h-full object-contain p-2" />

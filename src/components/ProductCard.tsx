@@ -8,6 +8,10 @@ export default function ProductCard({ product }: { product: Product }) {
   const subtitle = [p.type, p.category].filter(Boolean).join(' · ');
   const hasDiscount = p.compare_at_price && p.compare_at_price > p.retail_price;
   const inStock = p.in_stock;
+  // Vendor-exited sell-through: genuine liquidation of remaining stock, not a
+  // Hi-Lo "sale" (EDLP intact). It's not reorderable, so never show it as a
+  // "Special Order" — the units on hand are all there is.
+  const clearance = !!p.clearance;
   // The browse grid collapses a variant group to one tile, so without this the
   // shopper can't tell a model comes in nine colourways until they open it.
   const colorways = p.variant_count ?? 1;
@@ -53,8 +57,14 @@ export default function ProductCard({ product }: { product: Product }) {
             <div className="text-xs text-brand-charcoal-light opacity-40 font-mono">{p.sku}</div>
           </div>
         )}
-        {/* Badges — no SALE badge (EDLP: no Hi-Lo sale framing). */}
+        {/* Badges — no SALE badge (EDLP: no Hi-Lo sale framing). Clearance is a
+            lifecycle fact (final units of an exited line), not a promo. */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
+          {clearance && (
+            <span className="bg-brand-charcoal text-brand-yellow text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap">
+              CLEARANCE · FINAL UNITS
+            </span>
+          )}
           {p.sectional_piece_type && (
             <span className="bg-brand-green text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
               SECTIONAL
@@ -63,9 +73,9 @@ export default function ProductCard({ product }: { product: Product }) {
         </div>
         {/* Top-right stack — "Special Order" already lives here, so the colour
             badge stacks under it rather than overlapping when both apply. */}
-        {(colorways > 1 || showFabricSplit || !inStock) && (
+        {(colorways > 1 || showFabricSplit || (!inStock && !clearance)) && (
           <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-            {!inStock && (
+            {!inStock && !clearance && (
               <span className="bg-brand-charcoal text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
                 Special Order
               </span>
