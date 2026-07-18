@@ -2,18 +2,19 @@
 
 import { useMemo, useState } from 'react';
 import { useCart } from '@/context/CartContext';
-import type { Product, Mechanism } from '@/lib/api';
+import type { Product, Mechanism, Fabric } from '@/lib/api';
 
-// Guided customization flow (A/B concept, Southern Motion — Bank Shot trial).
-// Concept (Jett): on the PDP a shopper is offered "customize, or shop what's in
-// stock?"; the customize path walks mechanism → fabric → add to cart. Both axes
-// ride on the product payload (mechanisms[] + per-colour fabrics[].colors[]); the
-// pairing price is the mechanism's grade→price map indexed by the fabric line's
-// grade (Fabric/Accent/L1/L2), so no extra fetch.
+// Guided customization flow. Two shapes, chosen off the product payload:
+//   • Southern Motion — sold by reclining mechanism: landing → mechanism → fabric
+//     → cart. Price = the chosen mechanism's grade→price map at the fabric grade.
+//     Fabric step is the per-COLOUR faceted grid (swatch_verified colours), with
+//     the real floor photo surfaced in review when we've shot that frame+colour.
+//   • Chairs America — fabric-only (no mechanism): landing → fabric → cart. The
+//     fabric step is the fabric LINE grid (each line carries its own swatch +
+//     grade); price = the frame's grade→price map at the line grade (fabrics[]
+//     .price, already computed server-side). Skips the mechanism step entirely.
 //
-// Fabric step is the per-COLOUR faceted grid (isolated swatches, not the line
-// composites) — same source as FabricPicker: only swatch_verified colours, with
-// the real floor photo surfaced in review when we've shot that frame+colour.
+// Landing offers "Shop In Stock" (green, primary) or "Customize" (yellow).
 
 type Step = 'landing' | 'mechanism' | 'fabric' | 'review';
 
@@ -33,11 +34,17 @@ function gradeMaterial(grade: string | null): string {
   return GRADE_LABEL[grade ?? ''] ?? 'Fabric';
 }
 
-function priceFor(mech: Mechanism | null, color: ColorItem | null, fallback: number): number {
-  if (!mech) return fallback;
-  const byGrade = mech.grade_prices?.[color?.grade ?? 'Fabric'];
-  if (typeof byGrade === 'number') return byGrade;
-  return mech.from_price ?? color?.price ?? fallback;
+// `pick` is the chosen fabric — a per-colour item (SoMo) or a fabric line (CA);
+// both carry a grade + line price. With a mechanism, price off its grade→price
+// map; without one (Chairs America), the fabric line's own grade price is the
+// price.
+function priceFor(mech: Mechanism | null, pick: { grade: string | null; price: number | null } | null, fallback: number): number {
+  if (mech) {
+    const byGrade = mech.grade_prices?.[pick?.grade ?? 'Fabric'];
+    if (typeof byGrade === 'number') return byGrade;
+    return mech.from_price ?? pick?.price ?? fallback;
+  }
+  return pick?.price ?? fallback;
 }
 
 export default function CustomizeWizard({ product }: { product: Product }) {
@@ -61,9 +68,17 @@ export default function CustomizeWizard({ product }: { product: Product }) {
   const [step, setStep] = useState<Step>('landing');
   const [mech, setMech] = useState<Mechanism | null>(null);
   const [color, setColor] = useState<ColorItem | null>(null);
+  const [line, setLine] = useState<Fabric | null>(null);
   const [material, setMaterial] = useState<string | null>(null);
   const [family, setFamily] = useState<string | null>(null);
+  const [lineGrade, setLineGrade] = useState<string | null>(null);
   const [added, setAdded] = useState(false);
+
+  const hasMech = mechanisms.length > 0;
+  // SoMo (mechanism) frames use the per-colour swatch grid; fabric-only frames
+  // (Chairs America) always use the fabric LINE grid — even if a stray colour is
+  // verified, so we never hide most of the library behind a handful of swatches.
+  const useColorGrid = hasMech && items.length > 0;
 
   // Facet option lists with counts, over the full item set.
   const facets = useMemo(() => {
@@ -85,34 +100,66 @@ export default function CustomizeWizard({ product }: { product: Product }) {
     [items, material, family],
   );
 
-  if (!mechanisms.length || !items.length) return null;
+  // Fabric-only (Chairs America): pick from the fabric LINES directly, in-stock
+  // first then grade then name — each line has its own swatch + grade price.
+  const lines = useMemo<Fabric[]>(
+    () =>
+      [...(product.fabrics ?? [])].sort((a, b) =>
+        a.in_stock !== b.in_stock
+          ? Number(b.in_stock) - Number(a.in_stock)
+          : (a.grade ?? '9').localeCompare(b.grade ?? '9') || a.name.localeCompare(b.name)),
+    [product.fabrics],
+  );
+  const gradeFacets = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const f of lines) { if (f.grade) m.set(f.grade, (m.get(f.grade) ?? 0) + 1); }
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [lines]);
+  const filteredLines = useMemo(
+    () => lines.filter((f) => !lineGrade || f.grade === lineGrade),
+    [lines, lineGrade],
+  );
 
-  const price = priceFor(mech, color, Number(product.retail_price));
+  if (!items.length && !lines.length) return null;
+
+  // The active fabric pick (per-colour item or fabric line) — both carry a grade
+  // + line price, so pricing is uniform.
+  const pick = color ?? line ?? null;
+  const price = priceFor(mech, pick, Number(product.retail_price));
   // Stock chair photo shown while picking mechanism + fabric (never a synthetic
   // render — accuracy). Review prefers the real floor photo of this colour.
   const heroImage = product.image_url ?? product.images?.[0] ?? null;
-  const reviewImage = color?.product_image_url ?? color?.swatch_image_url ?? null;
+  const reviewImage = color?.product_image_url ?? color?.swatch_image_url ?? line?.swatch_image_url ?? null;
+  const reviewIsPhoto = !!color?.product_image_url;
+  // Fabric display label + grade text, from whichever pick shape is set.
+  const fabricLabel = color ? `${color.line_name} ${color.name}` : line ? line.name : '';
+  const gradeText = color ? (color.grade ? gradeMaterial(color.grade) : '') : line?.grade ? `Grade ${line.grade}` : '';
 
   function launch() {
-    setStep('landing'); setMech(null); setColor(null);
-    setMaterial(null); setFamily(null); setAdded(false); setOpen(true);
+    setStep('landing'); setMech(null); setColor(null); setLine(null);
+    setMaterial(null); setFamily(null); setLineGrade(null); setAdded(false); setOpen(true);
   }
 
   function handleAdd() {
-    if (!mech || !color) return;
-    const label = `${color.line_name} ${color.name}`;
+    if (!fabricLabel) return;
+    // With a mechanism (SoMo) the chosen mechanism frame is the product/SKU;
+    // fabric-only (CA) books the frame itself.
+    const fid = mech ? mech.id : product.id;
+    const fsku = mech ? mech.sku : product.sku;
+    const mechPrefix = mech ? `${mech.label} · ` : '';
+    const img = color?.product_image_url ?? color?.swatch_image_url ?? line?.swatch_image_url ?? product.image_url ?? null;
     addItem({
-      product_id: mech.id, fabric_id: color.id, fabric_name: label,
-      sku: `${mech.sku}::${label}`,
-      name: `${product.collection ?? product.name} — ${mech.label} · ${label}`,
-      price, image_url: color.product_image_url ?? color.swatch_image_url ?? product.image_url ?? null,
+      product_id: fid, fabric_id: color?.id ?? line?.id, fabric_name: fabricLabel,
+      sku: `${fsku}::${fabricLabel}`,
+      name: `${product.collection ?? product.name} — ${mechPrefix}${fabricLabel}`,
+      price, image_url: img,
       category: product.category,
     });
     setAdded(true);
   }
 
   const StepDots = () => {
-    const order: Step[] = ['mechanism', 'fabric', 'review'];
+    const order: Step[] = hasMech ? ['mechanism', 'fabric', 'review'] : ['fabric', 'review'];
     const idx = order.indexOf(step);
     if (idx < 0) return null;
     return (
@@ -135,7 +182,7 @@ export default function CustomizeWizard({ product }: { product: Product }) {
     <>
       <button type="button" onClick={launch}
         className="mt-5 w-full rounded-xl border-2 border-brand-yellow bg-brand-yellow/10 px-5 py-3 text-sm font-semibold text-brand-charcoal hover:bg-brand-yellow/20 transition-colors">
-        ✨ Customize this chair — pick your mechanism &amp; fabric
+        ✨ Customize this chair — pick your {hasMech ? 'mechanism & fabric' : 'fabric'}
       </button>
 
       {open && (
@@ -147,7 +194,7 @@ export default function CustomizeWizard({ product }: { product: Product }) {
             <div className="flex items-center justify-between border-b border-brand-border px-5 py-3">
               <div className="flex items-center gap-3">
                 {step !== 'landing' && step !== 'mechanism' && (
-                  <button type="button" aria-label="Back" onClick={() => setStep(step === 'review' ? 'fabric' : 'mechanism')}
+                  <button type="button" aria-label="Back" onClick={() => setStep(step === 'review' ? 'fabric' : hasMech ? 'mechanism' : 'landing')}
                     className="text-brand-charcoal-light hover:text-brand-charcoal text-lg leading-none">‹</button>
                 )}
                 <span className="text-sm font-semibold text-brand-charcoal">
@@ -175,15 +222,16 @@ export default function CustomizeWizard({ product }: { product: Product }) {
                 </div>
               )}
 
-              {/* LANDING */}
+              {/* LANDING — in-stock is the primary (green) action on top; customize
+                  is the secondary (yellow) beneath it. */}
               {step === 'landing' && (
                 <div className="text-center py-4">
                   {!heroImage && <div className="text-3xl">🛋️</div>}
                   <h3 className="mt-3 text-lg font-bold text-brand-charcoal">Make it yours</h3>
-                  <p className="mt-1 text-sm text-brand-charcoal-light">Would you like to customize your chair today, or choose one that&apos;s in stock?</p>
+                  <p className="mt-1 text-sm text-brand-charcoal-light">Shop one that&apos;s ready to deliver, or customize yours to order.</p>
                   <div className="mt-6 flex flex-col gap-2">
-                    <button type="button" onClick={() => setStep('mechanism')} className="btn-brand w-full py-3 text-sm">Customize my chair</button>
-                    <button type="button" onClick={() => setOpen(false)} className="btn-outline w-full py-3 text-sm">Shop what&apos;s in stock</button>
+                    <button type="button" onClick={() => setOpen(false)} className="w-full py-3 text-sm rounded-lg font-semibold text-white bg-brand-green hover:opacity-90 transition-opacity">Shop In Stock</button>
+                    <button type="button" onClick={() => setStep(hasMech ? 'mechanism' : 'fabric')} className="btn-brand w-full py-3 text-sm">{hasMech ? 'Customize My Chair' : 'Customize Fabric'}</button>
                   </div>
                 </div>
               )}
@@ -210,8 +258,8 @@ export default function CustomizeWizard({ product }: { product: Product }) {
                 </ul>
               )}
 
-              {/* FABRIC — per-colour faceted grid (isolated swatches, lazy). */}
-              {step === 'fabric' && (
+              {/* FABRIC (SoMo) — per-colour faceted grid (isolated swatches, lazy). */}
+              {step === 'fabric' && useColorGrid && (
                 <div>
                   <div className="mb-3 flex flex-wrap gap-1.5">
                     {facets.materials.length > 1 && facets.materials.map(([opt, n]) => (
@@ -252,14 +300,54 @@ export default function CustomizeWizard({ product }: { product: Product }) {
                 </div>
               )}
 
+              {/* FABRIC (Chairs America) — fabric LINE grid, filtered by grade. */}
+              {step === 'fabric' && !useColorGrid && (
+                <div>
+                  {gradeFacets.length > 1 && (
+                    <div className="mb-3 flex flex-wrap gap-1.5">
+                      {gradeFacets.map(([g, n]) => (
+                        <Chip key={`g-${g}`} label={`Grade ${g}`} count={n} active={lineGrade === g} onClick={() => setLineGrade(lineGrade === g ? null : g)} />
+                      ))}
+                    </div>
+                  )}
+                  <div className="mb-2 flex items-center justify-between text-xs text-brand-charcoal-light">
+                    <span>Made to order</span>
+                    <span>{filteredLines.length}{lineGrade ? ` of ${lines.length}` : ''} fabrics</span>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {filteredLines.map((f) => {
+                      const active = line?.id === f.id;
+                      const p = priceFor(mech, f, Number(product.retail_price));
+                      return (
+                        <button key={f.id} type="button" onClick={() => { setLine(f); setColor(null); setStep('review'); }}
+                          title={`${f.name}${f.grade ? ` · Grade ${f.grade}` : ''} — $${p.toFixed(2)}`} className="text-left group">
+                          <span className={`relative block aspect-square w-full overflow-hidden rounded-lg border-2 bg-brand-warm-gray transition-all ${active ? 'border-brand-yellow ring-2 ring-brand-yellow/30' : 'border-brand-border group-hover:border-brand-charcoal-light'}`}>
+                            {f.swatch_image_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={f.swatch_image_url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                            ) : (
+                              <span className="flex h-full w-full items-center justify-center text-base opacity-30">🧵</span>
+                            )}
+                            {f.grade && <span className="absolute top-0 inset-x-0 bg-black/55 text-white text-[8px] text-center py-0.5">Grade {f.grade}</span>}
+                            {f.in_stock && <span className="absolute bottom-0 inset-x-0 bg-brand-green text-white text-[8px] text-center py-0.5">In stock</span>}
+                          </span>
+                          <span className="mt-1 block text-[10px] leading-tight text-brand-charcoal-light break-words">{f.name}</span>
+                        </button>
+                      );
+                    })}
+                    {!filteredLines.length && <div className="col-span-full py-8 text-center text-sm text-brand-charcoal-light">No fabrics match.</div>}
+                  </div>
+                </div>
+              )}
+
               {/* REVIEW */}
-              {step === 'review' && mech && color && (
+              {step === 'review' && (color || line) && (
                 <div>
                   <div className="flex gap-4">
                     <div className="h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-brand-border bg-brand-warm-gray">
                       {reviewImage ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={reviewImage} alt={color.name} className={`h-full w-full ${color.product_image_url ? 'object-contain' : 'object-cover'}`} />
+                        <img src={reviewImage} alt={fabricLabel} className={`h-full w-full ${reviewIsPhoto ? 'object-contain' : 'object-cover'}`} />
                       ) : (
                         <span className="flex h-full w-full items-center justify-center text-2xl opacity-30">🧵</span>
                       )}
@@ -267,8 +355,8 @@ export default function CustomizeWizard({ product }: { product: Product }) {
                     <div className="min-w-0">
                       <div className="text-sm font-bold text-brand-charcoal">{product.collection ?? product.name}</div>
                       <dl className="mt-1 space-y-0.5 text-xs text-brand-charcoal-light">
-                        <div><span className="font-medium text-brand-charcoal">Mechanism:</span> {mech.label}{mech.made_to_order ? ' (made to order)' : ''}</div>
-                        <div><span className="font-medium text-brand-charcoal">Fabric:</span> {color.line_name} {color.name}{color.grade ? ` · ${gradeMaterial(color.grade)}` : ''}</div>
+                        {mech && <div><span className="font-medium text-brand-charcoal">Mechanism:</span> {mech.label}{mech.made_to_order ? ' (made to order)' : ''}</div>}
+                        <div><span className="font-medium text-brand-charcoal">Fabric:</span> {fabricLabel}{gradeText ? ` · ${gradeText}` : ''}</div>
                       </dl>
                     </div>
                   </div>
@@ -277,8 +365,12 @@ export default function CustomizeWizard({ product }: { product: Product }) {
                     <span className="text-2xl font-bold text-brand-charcoal">${price.toFixed(2)}</span>
                   </div>
                   <div className="mt-2 flex gap-2 text-xs">
-                    <button type="button" onClick={() => setStep('mechanism')} className="text-brand-yellow-dark hover:underline">Change mechanism</button>
-                    <span className="text-brand-border">·</span>
+                    {hasMech && (
+                      <>
+                        <button type="button" onClick={() => setStep('mechanism')} className="text-brand-yellow-dark hover:underline">Change mechanism</button>
+                        <span className="text-brand-border">·</span>
+                      </>
+                    )}
                     <button type="button" onClick={() => setStep('fabric')} className="text-brand-yellow-dark hover:underline">Change fabric</button>
                   </div>
                   <button type="button" onClick={handleAdd} disabled={added} className="btn-brand mt-5 w-full py-3 text-sm disabled:opacity-60">

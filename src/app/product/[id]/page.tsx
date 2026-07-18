@@ -16,10 +16,6 @@ import JsonLd from '@/components/JsonLd';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
 import { warrantyForBrand, brandSlug } from '@/lib/warranty';
 
-// Collections that get the guided CustomizeWizard (A/B) instead of the inline
-// mechanism selector + fabric picker.
-const WIZARD_TRIAL_COLLECTIONS = new Set(['1157 BANK SHOT']);
-
 interface Props {
   params: Promise<{ id: string }>;
 }
@@ -89,14 +85,19 @@ export default async function ProductPage({ params }: Props) {
         : `${p.lead.min_weeks || p.lead.max_weeks} weeks`
       : null;
 
-  // Bank Shot A/B: the guided customize wizard (prompt → mechanism → fabric →
-  // cart) stands in for the inline mechanism selector + fabric picker on this
-  // one collection, to experience-test the flow. No renderer — the wizard shows
-  // the stock chair photo only.
-  const useWizard = !!p.collection
-    && WIZARD_TRIAL_COLLECTIONS.has(p.collection)
-    && (p.mechanisms?.length ?? 0) > 0
-    && (p.fabrics?.length ?? 0) > 0;
+  // The guided CustomizeWizard (Model B) replaces the inline mechanism selector +
+  // fabric picker for every Southern Motion + Chairs America fabric frame:
+  //   • Southern Motion — carries `mechanisms` (sold by reclining mechanism). The
+  //     wizard uses the per-colour swatch grid when the frame has verified
+  //     colours, else the fabric-line grid — so it covers ALL SoMo frames.
+  //   • Chairs America — no mechanism, but a fabric-graded frame: a grade→price
+  //     map (grade_prices) lets the fabric-line step price by grade. This
+  //     naturally excludes the 700 sectional (per-piece, no grade map) and any
+  //     CA frame not yet in the price sheet — those keep the inline picker.
+  // Anything else keeps the inline picker below.
+  const hasMech = (p.mechanisms?.length ?? 0) > 0;
+  const hasFabrics = (p.fabrics?.length ?? 0) > 0;
+  const useWizard = hasFabrics && (hasMech || p.grade_prices != null);
 
   const productUrl = `${SITE_URL}/product/${p.id}`;
   const galleryImages = p.images ?? [];
