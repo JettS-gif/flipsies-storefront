@@ -4,6 +4,19 @@ import { useMemo, useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import type { Fabric } from '@/lib/api';
 
+// Friendly badge label for a fabric grade. Southern Motion uses string grades
+// (Fabric / Accent / L1 / L2) — show them as readable names. Other vendors
+// (Chairs America) use numeric grades — keep the compact "G{n}" form.
+function gradeLabel(grade: string): string {
+  switch (grade) {
+    case 'Fabric': return 'Fabric';
+    case 'Accent': return 'Accent';
+    case 'L1':     return 'Leather';
+    case 'L2':     return 'Premium Leather';
+    default:       return `G${grade}`;
+  }
+}
+
 // Fabric selector for fabric-graded frames (Chairs America). A fabric is NOT a
 // product row — the frame is made to order in any library fabric, priced off the
 // frame's grade→price map, SKU minted at checkout. So this swaps price in CLIENT
@@ -128,7 +141,7 @@ export default function FabricSelector({
               type="button"
               onClick={() => setSelectedId(f.id)}
               aria-pressed={active}
-              title={`${f.name}${f.grade ? ` · Grade ${f.grade}` : ''}${f.in_stock ? ' (in stock)' : ''}${f.price != null ? ` — $${f.price.toFixed(2)}` : ''}`}
+              title={`${f.name}${f.grade ? ` · ${gradeLabel(f.grade)}` : ''}${f.in_stock ? ' (in stock)' : ''}${f.price != null ? ` — $${f.price.toFixed(2)}` : ''}`}
               className="inline-block align-top w-16 m-1 text-left group"
             >
               <span
@@ -145,7 +158,7 @@ export default function FabricSelector({
                   <span className="flex items-center justify-center w-full h-full text-base opacity-30">🧵</span>
                 )}
                 {f.grade && (
-                  <span className="absolute top-0 left-0 bg-black/55 text-white text-[8px] px-1 rounded-br">G{f.grade}</span>
+                  <span className="absolute top-0 inset-x-0 bg-black/55 text-white text-[8px] leading-tight text-center py-0.5 px-0.5 truncate">{gradeLabel(f.grade)}</span>
                 )}
                 {f.in_stock && (
                   <span className="absolute bottom-0 inset-x-0 bg-brand-green text-white text-[8px] leading-tight text-center py-0.5">
