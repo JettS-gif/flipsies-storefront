@@ -83,6 +83,11 @@ export const WARRANTY_BRANDS: WarrantyBrand[] = [
     summary: 'Manufacturer defect claims are handled through the retailer with proof of purchase — see the Elements claims policy.',
   },
   {
+    brand: 'Emerald Home',
+    url: 'https://emeraldhome.zendesk.com/hc/en-us/articles/360037248472-Emerald-Home-Warranty-Information',
+    summary: 'Limited warranty to the original purchaser, filed through your retailer. Upholstery: 5 years on wood frames and spring units, 3 years on recliner mechanisms, 2 years on motors, 1 year on fabric and foam. Wood furniture: 1 year. Mattresses: 5- or 10-year coverage depending on the line.',
+  },
+  {
     brand: 'Crown Mark',
     url: null,
     summary: 'Crown Mark does not issue a consumer manufacturer’s warranty; coverage on Crown Mark pieces is handled directly through Flipsies — contact us.',

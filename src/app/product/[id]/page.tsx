@@ -15,6 +15,7 @@ import SimilarProducts from '@/components/SimilarProducts';
 import JsonLd from '@/components/JsonLd';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
 import { warrantyForBrand, brandSlug } from '@/lib/warranty';
+import { brandByName } from '@/lib/brands';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -74,6 +75,9 @@ export default async function ProductPage({ params }: Props) {
   // manufacturer's warranty (page or hosted PDF) when we have it; only brands
   // with no direct doc fall back to their section on /warranty.
   const warranty = warrantyForBrand(p.vendor?.name);
+  // Brand profile for this vendor, if we have one — links the PDP brand label
+  // to the /brands story page.
+  const brandProfile = brandByName(p.vendor?.name);
 
   // Made-to-order summary for fabric frames: colours we stock vs the full
   // orderable fabric library vs the production lead window.
@@ -163,7 +167,13 @@ export default async function ProductPage({ params }: Props) {
         <div>
           {p.vendor?.name && (
             <div className="text-xs font-mono text-brand-charcoal-light uppercase tracking-widest mb-2">
-              {p.vendor.name}
+              {brandProfile ? (
+                <Link href={`/brands/${brandProfile.slug}`} className="hover:text-brand-charcoal transition-colors">
+                  {p.vendor.name}
+                </Link>
+              ) : (
+                p.vendor.name
+              )}
             </div>
           )}
 

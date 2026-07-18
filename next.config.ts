@@ -35,7 +35,8 @@ const nextConfig: NextConfig = {
       // Info / brand paths.
       { source: "/locations/flipsies-furniture", destination: "/locations", permanent: true },
       { source: "/shop-brands", destination: "/shop", permanent: true },
-      { source: "/brands", destination: "/shop", permanent: true },
+      // NOTE: /brands is now a real page (brand profiles) — the old
+      // /brands → /shop migration redirect was removed 2026-07-18.
       // Old site had a standalone accessibility page; fold to /contact until a
       // dedicated page ships, so the indexed legal URL doesn't 404.
       { source: "/accessibility", destination: "/contact", permanent: true },

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { api } from '@/lib/api';
 import { SITE_URL, SHOWROOMS } from '@/lib/site';
+import { BRANDS } from '@/lib/brands';
 
 // Cached route handler — refresh daily. The catalog moves, but a day-stale
 // sitemap is harmless and keeps us off the backend on every crawl.
@@ -13,6 +14,8 @@ const STATIC_PATHS: { path: string; priority: number; changeFrequency: ChangeFre
   { path: '/shop',       priority: 0.9, changeFrequency: 'daily' },
   { path: '/sectionals', priority: 0.8, changeFrequency: 'weekly' },
   { path: '/deals',      priority: 0.8, changeFrequency: 'daily' },
+  { path: '/brands',     priority: 0.7, changeFrequency: 'weekly' },
+  { path: '/warranty',   priority: 0.6, changeFrequency: 'monthly' },
   { path: '/locations',  priority: 0.7, changeFrequency: 'monthly' },
   { path: '/delivery',   priority: 0.6, changeFrequency: 'monthly' },
   { path: '/financing',  priority: 0.6, changeFrequency: 'monthly' },
@@ -39,6 +42,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: 'monthly',
       priority: 0.7,
+    });
+  }
+
+  // Per-brand profile pages (/brands/[slug]).
+  for (const b of BRANDS) {
+    entries.push({
+      url: `${SITE_URL}/brands/${b.slug}`,
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.6,
     });
   }
 
