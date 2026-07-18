@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Product } from '@/lib/api';
+import { thumb } from '@/lib/img';
 
 export default function ProductCard({ product }: { product: Product }) {
   const p = product;
@@ -30,7 +31,10 @@ export default function ProductCard({ product }: { product: Product }) {
         {p.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={p.image_url}
+            // Server-side resize (aspect-preserving, width-only) — the grid card
+            // renders ~300px, so downscaling a 1400px showroom photo in-browser
+            // aliases (grainy). 600px stays crisp on retina at a fraction of the bytes.
+            src={thumb(p.image_url, { width: 600 })}
             alt={displayName}
             className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
           />
