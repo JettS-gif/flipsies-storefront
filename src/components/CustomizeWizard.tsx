@@ -75,6 +75,14 @@ export default function CustomizeWizard({ product }: { product: Product }) {
   const [added, setAdded] = useState(false);
 
   const hasMech = mechanisms.length > 0;
+  // User-facing noun for the piece — SoMo mechanism frames also cover sofas,
+  // loveseats, and sectionals, so the copy can't hard-code "chair".
+  const pieceNoun =
+    /sectional/i.test(product.category ?? '') ? 'sectional'
+    : /loveseat/i.test(product.category ?? '') ? 'loveseat'
+    : /sofa/i.test(product.category ?? '') ? 'sofa'
+    : 'chair';
+  const PieceNoun = pieceNoun.charAt(0).toUpperCase() + pieceNoun.slice(1);
   // SoMo (mechanism) frames use the per-colour swatch grid; fabric-only frames
   // (Chairs America) always use the fabric LINE grid — even if a stray colour is
   // verified, so we never hide most of the library behind a handful of swatches.
@@ -182,11 +190,11 @@ export default function CustomizeWizard({ product }: { product: Product }) {
     <>
       <button type="button" onClick={launch}
         className="mt-5 w-full rounded-xl border-2 border-brand-yellow bg-brand-yellow/10 px-5 py-3 text-sm font-semibold text-brand-charcoal hover:bg-brand-yellow/20 transition-colors">
-        ✨ Customize this chair — pick your {hasMech ? 'mechanism & fabric' : 'fabric'}
+        ✨ Customize this {pieceNoun} — pick your {hasMech ? 'mechanism & fabric' : 'fabric'}
       </button>
 
       {open && (
-        <div role="dialog" aria-modal="true" aria-label="Customize your chair"
+        <div role="dialog" aria-modal="true" aria-label={`Customize your ${pieceNoun}`}
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4"
           onClick={() => setOpen(false)}>
           <div className="relative flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -201,7 +209,7 @@ export default function CustomizeWizard({ product }: { product: Product }) {
                   {step === 'landing' ? product.collection ?? product.name
                     : step === 'mechanism' ? 'Choose your mechanism'
                     : step === 'fabric' ? 'Choose your fabric'
-                    : 'Review your chair'}
+                    : `Review your ${pieceNoun}`}
                 </span>
               </div>
               <div className="flex items-center gap-3">
@@ -231,7 +239,7 @@ export default function CustomizeWizard({ product }: { product: Product }) {
                   <p className="mt-1 text-sm text-brand-charcoal-light">Shop one that&apos;s ready to deliver, or customize yours to order.</p>
                   <div className="mt-6 flex flex-col gap-2">
                     <button type="button" onClick={() => setOpen(false)} className="w-full py-3 text-sm rounded-lg font-semibold text-white bg-brand-green hover:opacity-90 transition-opacity">Shop In Stock</button>
-                    <button type="button" onClick={() => setStep(hasMech ? 'mechanism' : 'fabric')} className="btn-brand w-full py-3 text-sm">{hasMech ? 'Customize My Chair' : 'Customize Fabric'}</button>
+                    <button type="button" onClick={() => setStep(hasMech ? 'mechanism' : 'fabric')} className="btn-brand w-full py-3 text-sm">{hasMech ? `Customize My ${PieceNoun}` : 'Customize Fabric'}</button>
                   </div>
                 </div>
               )}
