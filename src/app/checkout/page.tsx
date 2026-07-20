@@ -919,8 +919,9 @@ export default function CheckoutPage() {
             </p>
           )}
           <p className="text-sm text-brand-charcoal-light mb-8 max-w-md mx-auto">
-            Thank you for your order! We&apos;ve sent a confirmation to your email.
-            Our team will reach out to schedule your {fulfillmentType === 'delivery' ? 'delivery' : 'pickup'}.
+            Thank you for your order! A confirmation is on its way to{' '}
+            {email ? <span className="font-semibold text-brand-charcoal">{email}</span> : 'your email'}.
+            {' '}Our team will reach out to confirm your {fulfillmentType === 'delivery' ? 'delivery' : 'pickup'}.
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             {invoiceNumber && email && (
