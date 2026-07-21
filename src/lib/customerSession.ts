@@ -269,3 +269,30 @@ export async function portalRemoveWishlist(productId: string): Promise<WishlistM
   if (res.status === 401) return { ok: false, unauthorized: true };
   return { ok: res.ok, unauthorized: false };
 }
+
+// ── Persisted cart (Phase 3b) ────────────────────────────────────────────────────
+// Cart lines are typed unknown[] here to keep this module decoupled from the
+// storefront's CartItem shape — CartContext owns that type and casts.
+
+export async function portalGetCart(): Promise<{ ok: boolean; unauthorized: boolean; cart: unknown[] }> {
+  const token = getCustomerToken();
+  if (!token) return { ok: false, unauthorized: true, cart: [] };
+  const res = await fetch(`${API_BASE}/portal/cart`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401) return { ok: false, unauthorized: true, cart: [] };
+  const body = await res.json().catch(() => ({}));
+  return { ok: res.ok, unauthorized: false, cart: Array.isArray(body?.cart) ? body.cart : [] };
+}
+
+export async function portalPutCart(cart: unknown[]): Promise<{ ok: boolean; unauthorized: boolean }> {
+  const token = getCustomerToken();
+  if (!token) return { ok: false, unauthorized: true };
+  const res = await fetch(`${API_BASE}/portal/cart`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ cart }),
+  });
+  if (res.status === 401) return { ok: false, unauthorized: true };
+  return { ok: res.ok, unauthorized: false };
+}

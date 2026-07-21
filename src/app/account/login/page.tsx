@@ -10,6 +10,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useCart } from '@/context/CartContext';
 import {
   portalRequestOtp,
   portalVerifyOtp,
@@ -20,6 +21,7 @@ type Step = 'phone' | 'code';
 
 export default function AccountLoginPage() {
   const router = useRouter();
+  const { syncCartFromAccount } = useCart();
   const [step,    setStep]    = useState<Step>('phone');
   const [phone,   setPhone]   = useState('');
   const [code,    setCode]    = useState('');
@@ -89,6 +91,9 @@ export default function AccountLoginPage() {
         return;
       }
       saveCustomerSession(r.token, r.customer);
+      // Merge this device's cart with the customer's saved cart before leaving
+      // the page, so the union is persisted at the login moment.
+      await syncCartFromAccount();
       router.push('/account');
     } catch (err) {
       console.error('[account-login] verify-otp failed:', err);
