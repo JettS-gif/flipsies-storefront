@@ -1,11 +1,11 @@
 'use client';
 
-// ── Customer account home (Phase 0) ───────────────────────────────────────────
+// ── Customer account home (Phase 1) ───────────────────────────────────────────
 //
-// Minimal authed landing that proves the portal session end-to-end. If there's
-// no session we bounce to /account/login. Phase 1 replaces the placeholder body
-// with unified order history (online + in-store) off an authed /portal/orders
-// endpoint.
+// Authed landing + unified order history (online + in-store). Reads the session
+// from localStorage after mount (SSR-safe), then loads /portal/orders. A 401
+// means the token expired → sign out. Phase 2 adds per-order delivery/custom-
+// order status detail.
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -14,15 +14,43 @@ import {
   getCustomer,
   isSignedIn,
   clearCustomerSession,
+  portalGetOrders,
   type CustomerProfile,
+  type OrderCard,
 } from '@/lib/customerSession';
+
+// Raw invoice status → customer-friendly label. Unknown values fall through to
+// a title-cased default so a new backend status never renders as a raw token.
+const STATUS_LABELS: Record<string, string> = {
+  active:              'In progress',
+  layaway:             'Layaway',
+  paid:                'Paid',
+  partial:             'Partially paid',
+  en_route:            'Out for delivery',
+  partially_fulfilled: 'Partially delivered',
+  delivered:           'Delivered',
+  issue:               'Needs attention',
+  cancelled:           'Cancelled',
+  partially_returned:  'Partially returned',
+  returned:            'Returned',
+};
+function statusLabel(s: string): string {
+  return STATUS_LABELS[s] || s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+function money(n: number): string {
+  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+}
+function orderDate(ds: string): string {
+  const d = new Date(ds);
+  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 export default function AccountHomePage() {
   const router = useRouter();
-  // Session lives in localStorage, so read it after mount to stay SSR-safe and
-  // avoid a hydration mismatch. `ready` gates the first paint until we know.
   const [ready,    setReady]    = useState(false);
   const [customer, setCustomer] = useState<CustomerProfile | null>(null);
+  const [orders,   setOrders]   = useState<OrderCard[] | null>(null); // null = still loading
+  const [loadErr,  setLoadErr]  = useState(false);
 
   useEffect(() => {
     if (!isSignedIn()) {
@@ -31,6 +59,21 @@ export default function AccountHomePage() {
     }
     setCustomer(getCustomer());
     setReady(true);
+
+    let cancelled = false;
+    (async () => {
+      const r = await portalGetOrders();
+      if (cancelled) return;
+      if (r.unauthorized) {
+        // Token expired/invalid — drop the session and re-auth.
+        clearCustomerSession();
+        router.replace('/account/login');
+        return;
+      }
+      if (!r.ok) { setLoadErr(true); setOrders([]); return; }
+      setOrders(r.orders);
+    })();
+    return () => { cancelled = true; };
   }, [router]);
 
   function signOut() {
@@ -64,19 +107,81 @@ export default function AccountHomePage() {
           </button>
         </div>
 
-        <div className="bg-white rounded-2xl border border-brand-border p-6 sm:p-8 shadow-sm space-y-3">
-          <p className="text-sm text-brand-charcoal">
-            You&apos;re signed in{customer?.phone ? <> as <strong>{customer.phone}</strong></> : null}.
-          </p>
-          <p className="text-sm text-brand-charcoal-light">
-            Your orders, delivery updates, and saved items will appear here soon.
-          </p>
-          <p className="pt-2">
-            <Link href="/" className="text-sm underline hover:text-brand-charcoal">
-              ← Back to the storefront
-            </Link>
-          </p>
-        </div>
+        <h2 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wide mb-3">
+          Your orders
+        </h2>
+
+        {/* Loading */}
+        {orders === null && (
+          <div className="bg-white rounded-2xl border border-brand-border p-6 text-sm text-brand-charcoal-light shadow-sm">
+            Loading your orders…
+          </div>
+        )}
+
+        {/* Error */}
+        {orders !== null && loadErr && (
+          <div className="bg-white rounded-2xl border border-brand-border p-6 text-sm text-red-700 shadow-sm">
+            We couldn&apos;t load your orders right now. Please refresh in a moment.
+          </div>
+        )}
+
+        {/* Empty */}
+        {orders !== null && !loadErr && orders.length === 0 && (
+          <div className="bg-white rounded-2xl border border-brand-border p-6 sm:p-8 text-center shadow-sm">
+            <p className="text-sm text-brand-charcoal">You don&apos;t have any orders yet.</p>
+            <p className="pt-3">
+              <Link href="/" className="text-sm underline hover:text-brand-charcoal">Start shopping →</Link>
+            </p>
+          </div>
+        )}
+
+        {/* Order list */}
+        {orders !== null && orders.length > 0 && (
+          <ul className="space-y-3">
+            {orders.map(o => (
+              <li
+                key={o.invoice_number}
+                className="bg-white rounded-2xl border border-brand-border p-4 sm:p-5 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-brand-charcoal">{o.invoice_number}</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-brand-warm-gray text-brand-charcoal-light">
+                        {o.channel === 'online' ? 'Online' : 'In-store'}
+                      </span>
+                      {o.type === 'custom_order' && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                          Custom order
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-brand-charcoal-light mt-1">{orderDate(o.date)}</p>
+                    {o.items_preview.length > 0 && (
+                      <p className="text-sm text-brand-charcoal mt-2 truncate">
+                        {o.items_preview.join(', ')}
+                        {o.item_count > o.items_preview.length ? ` + ${o.item_count - o.items_preview.length} more` : ''}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-semibold text-brand-charcoal">{money(o.total)}</div>
+                    <div className="text-xs text-brand-charcoal-light mt-0.5">{statusLabel(o.status)}</div>
+                    {o.balance_due > 0 && (
+                      <div className="text-xs text-red-700 mt-0.5">{money(o.balance_due)} due</div>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <p className="pt-6">
+          <Link href="/" className="text-sm underline hover:text-brand-charcoal">
+            ← Back to the storefront
+          </Link>
+        </p>
       </div>
     </div>
   );

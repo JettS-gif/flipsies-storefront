@@ -93,3 +93,41 @@ export async function portalVerifyOtp(phone: string, code: string): Promise<Veri
   const body = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, token: body?.token, customer: body?.customer };
 }
+
+// ── Authed portal data ─────────────────────────────────────────────────────────
+
+/** One row in the unified order history (online + in-store). Mirrors the
+ *  backend /portal/orders customer-safe projection — no cost/salesperson. */
+export interface OrderCard {
+  invoice_number: string;
+  date: string;
+  status: string;
+  channel: 'online' | 'in_store';
+  type: string | null;
+  total: number;
+  amount_paid: number;
+  balance_due: number;
+  delivery_mode: string | null;
+  delivery_date: string | null;
+  delivery_time: string | null;
+  item_count: number;
+  items_preview: string[];
+}
+
+export interface OrdersResult {
+  ok: boolean;
+  /** true when the token was rejected (expired/invalid) — caller should sign out. */
+  unauthorized: boolean;
+  orders: OrderCard[];
+}
+
+export async function portalGetOrders(): Promise<OrdersResult> {
+  const token = getCustomerToken();
+  if (!token) return { ok: false, unauthorized: true, orders: [] };
+  const res = await fetch(`${API_BASE}/portal/orders`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401) return { ok: false, unauthorized: true, orders: [] };
+  const body = await res.json().catch(() => ({}));
+  return { ok: res.ok, unauthorized: false, orders: Array.isArray(body?.orders) ? body.orders : [] };
+}
