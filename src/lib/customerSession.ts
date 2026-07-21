@@ -206,3 +206,66 @@ export async function portalGetOrder(invoiceNumber: string): Promise<OrderDetail
   const body = await res.json().catch(() => ({}));
   return { ok: res.ok, unauthorized: false, notFound: false, order: res.ok ? (body as OrderDetail) : null };
 }
+
+// ── Wishlist (Phase 3) ───────────────────────────────────────────────────────────
+
+export interface WishlistItem {
+  product_id: string;
+  name: string;
+  sku: string | null;
+  collection: string | null;
+  color: string | null;
+  category: string | null;
+  price: number;
+  image_url: string | null;
+  in_stock: boolean;
+  available: boolean;
+  added_at: string;
+}
+
+export interface WishlistResult {
+  ok: boolean;
+  unauthorized: boolean;
+  items: WishlistItem[];
+}
+
+export async function portalGetWishlist(): Promise<WishlistResult> {
+  const token = getCustomerToken();
+  if (!token) return { ok: false, unauthorized: true, items: [] };
+  const res = await fetch(`${API_BASE}/portal/wishlist`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401) return { ok: false, unauthorized: true, items: [] };
+  const body = await res.json().catch(() => ({}));
+  return { ok: res.ok, unauthorized: false, items: Array.isArray(body?.items) ? body.items : [] };
+}
+
+/** Result of a wishlist mutation. `unauthorized` means "not signed in / token
+ *  rejected" — the caller should route to /account/login. */
+export interface WishlistMutationResult {
+  ok: boolean;
+  unauthorized: boolean;
+}
+
+export async function portalAddWishlist(productId: string): Promise<WishlistMutationResult> {
+  const token = getCustomerToken();
+  if (!token) return { ok: false, unauthorized: true };
+  const res = await fetch(`${API_BASE}/portal/wishlist`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ product_id: productId }),
+  });
+  if (res.status === 401) return { ok: false, unauthorized: true };
+  return { ok: res.ok, unauthorized: false };
+}
+
+export async function portalRemoveWishlist(productId: string): Promise<WishlistMutationResult> {
+  const token = getCustomerToken();
+  if (!token) return { ok: false, unauthorized: true };
+  const res = await fetch(`${API_BASE}/portal/wishlist/${encodeURIComponent(productId)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401) return { ok: false, unauthorized: true };
+  return { ok: res.ok, unauthorized: false };
+}

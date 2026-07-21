@@ -82,9 +82,14 @@ export default function AccountHomePage() {
           </button>
         </div>
 
-        <h2 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wide mb-3">
-          Your orders
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wide">
+            Your orders
+          </h2>
+          <Link href="/account/wishlist" className="text-sm text-brand-charcoal-light hover:text-brand-charcoal underline">
+            Saved items →
+          </Link>
+        </div>
 
         {/* Loading */}
         {orders === null && (

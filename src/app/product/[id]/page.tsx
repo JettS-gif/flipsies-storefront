@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import AddToCartButton from '@/components/AddToCartButton';
+import WishlistButton from '@/components/WishlistButton';
 import ProductGallery from '@/components/ProductGallery';
 import ColorSelector from '@/components/ColorSelector';
 import FabricSelector from '@/components/FabricSelector';
@@ -261,6 +262,7 @@ export default async function ProductPage({ params }: Props) {
               image_url: p.image_url,
               category: p.category,
             }} />
+            <WishlistButton productId={p.id} />
             <Link href="/locations" className="btn-outline text-base px-8 py-3 text-center">
               Visit Showroom
             </Link>
