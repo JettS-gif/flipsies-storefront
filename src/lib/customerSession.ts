@@ -131,3 +131,78 @@ export async function portalGetOrders(): Promise<OrdersResult> {
   const body = await res.json().catch(() => ({}));
   return { ok: res.ok, unauthorized: false, orders: Array.isArray(body?.orders) ? body.orders : [] };
 }
+
+// ── Order detail + status (Phase 2) ─────────────────────────────────────────────
+
+/** One step in a custom order's production timeline. */
+export interface CustomStageStep {
+  key: string;
+  label: string;
+  passed: boolean;
+  current: boolean;
+}
+
+/** Customer-safe custom-order view — mirrors the backend getPublicCustomOrder. */
+export interface CustomOrderView {
+  invoice_number: string | null;
+  stage: string;
+  stage_label: string;
+  stage_timeline: CustomStageStep[];
+  needed_by: string | null;
+  promised_by: string | null;
+  cancelled: boolean;
+  cancel_reason: string | null;
+  payment_pct: number;
+  items: { name: string; sku: string | null; qty: number; configuration: unknown }[];
+  timeline: { type: string; message: string; created_at: string }[];
+}
+
+export interface OrderDetailItem {
+  name: string;
+  sku: string | null;
+  qty: number;
+  fulfillment_status: string | null;
+  needs_po: boolean;
+  is_custom: boolean;
+}
+
+export interface OrderDetail {
+  invoice_number: string;
+  date: string;
+  status: string;
+  channel: 'online' | 'in_store';
+  type: string | null;
+  total: number;
+  amount_paid: number;
+  balance_due: number;
+  delivery: {
+    mode: string | null;
+    date: string | null;
+    time: string | null;
+    order_status: string | null;
+    order_kind: string | null;
+    order_date: string | null;
+    order_window: string | null;
+  };
+  items: OrderDetailItem[];
+  custom_orders: CustomOrderView[];
+}
+
+export interface OrderDetailResult {
+  ok: boolean;
+  unauthorized: boolean;
+  notFound: boolean;
+  order: OrderDetail | null;
+}
+
+export async function portalGetOrder(invoiceNumber: string): Promise<OrderDetailResult> {
+  const token = getCustomerToken();
+  if (!token) return { ok: false, unauthorized: true, notFound: false, order: null };
+  const res = await fetch(`${API_BASE}/portal/orders/${encodeURIComponent(invoiceNumber)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 401) return { ok: false, unauthorized: true, notFound: false, order: null };
+  if (res.status === 404) return { ok: false, unauthorized: false, notFound: true, order: null };
+  const body = await res.json().catch(() => ({}));
+  return { ok: res.ok, unauthorized: false, notFound: false, order: res.ok ? (body as OrderDetail) : null };
+}

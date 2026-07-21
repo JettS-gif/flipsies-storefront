@@ -18,32 +18,7 @@ import {
   type CustomerProfile,
   type OrderCard,
 } from '@/lib/customerSession';
-
-// Raw invoice status → customer-friendly label. Unknown values fall through to
-// a title-cased default so a new backend status never renders as a raw token.
-const STATUS_LABELS: Record<string, string> = {
-  active:              'In progress',
-  layaway:             'Layaway',
-  paid:                'Paid',
-  partial:             'Partially paid',
-  en_route:            'Out for delivery',
-  partially_fulfilled: 'Partially delivered',
-  delivered:           'Delivered',
-  issue:               'Needs attention',
-  cancelled:           'Cancelled',
-  partially_returned:  'Partially returned',
-  returned:            'Returned',
-};
-function statusLabel(s: string): string {
-  return STATUS_LABELS[s] || s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-}
-function money(n: number): string {
-  return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
-}
-function orderDate(ds: string): string {
-  const d = new Date(ds);
-  return isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
+import { statusLabel, money, orderDate } from '@/lib/orderLabels';
 
 export default function AccountHomePage() {
   const router = useRouter();
@@ -139,10 +114,11 @@ export default function AccountHomePage() {
         {orders !== null && orders.length > 0 && (
           <ul className="space-y-3">
             {orders.map(o => (
-              <li
-                key={o.invoice_number}
-                className="bg-white rounded-2xl border border-brand-border p-4 sm:p-5 shadow-sm"
-              >
+              <li key={o.invoice_number}>
+                <Link
+                  href={`/account/orders/${encodeURIComponent(o.invoice_number)}`}
+                  className="block bg-white rounded-2xl border border-brand-border p-4 sm:p-5 shadow-sm hover:border-brand-charcoal-light transition-colors"
+                >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -172,6 +148,7 @@ export default function AccountHomePage() {
                     )}
                   </div>
                 </div>
+                </Link>
               </li>
             ))}
           </ul>
