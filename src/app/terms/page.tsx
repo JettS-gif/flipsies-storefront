@@ -23,7 +23,7 @@ export default function TermsPage() {
         <p>
           These terms govern your use of flipsiesfurniture.com (the
           &quot;Site&quot;) and any purchases you make from Flipsies
-          Furniture, with showrooms at 2929 John Hawkins Pkwy, Hoover,
+          Furniture, with showrooms at 1709 Montgomery Hwy S, Hoover,
           AL 35244 and {STORE_ADDR}. By using the Site or placing an
           order, you agree to these terms.
         </p>

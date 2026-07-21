@@ -404,7 +404,7 @@ export default function CheckoutPage() {
             address: fulfillmentType === 'delivery'
               ? address.trim()
               : (pickupStore === 'Hoover'
-                  ? '2929 John Hawkins Pkwy, Hoover, AL 35244 (in-store pickup)'
+                  ? '1709 Montgomery Hwy S, Hoover, AL 35244 (in-store pickup)'
                   : '1811 Crestwood Blvd, Irondale, AL 35210 (in-store pickup)'),
             // Delivery path uses the slot's date + time_window.
             // Pickup path uses the picker + preset time preference.
@@ -724,7 +724,7 @@ export default function CheckoutPage() {
                   >
                     <p className="font-semibold text-brand-charcoal">Hoover Showroom</p>
                     <p className="text-xs text-brand-charcoal-light mt-1">
-                      2929 John Hawkins Pkwy<br />Hoover, AL 35244
+                      1709 Montgomery Hwy S<br />Hoover, AL 35244
                     </p>
                   </button>
                   <button
