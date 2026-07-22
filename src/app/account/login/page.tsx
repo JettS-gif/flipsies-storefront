@@ -28,6 +28,8 @@ export default function AccountLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
   const [devHint, setDevHint] = useState<string | null>(null); // DEV_MODE code echo
+  // A2P 10DLC: explicit, non-pre-checked SMS consent gating the send.
+  const [smsConsent, setSmsConsent] = useState(false);
 
   async function requestOtp(e: FormEvent) {
     e.preventDefault();
@@ -37,6 +39,10 @@ export default function AccountLoginPage() {
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 10) {
       setError('Please enter a 10-digit phone number.');
+      return;
+    }
+    if (!smsConsent) {
+      setError('Please agree to receive text messages to continue.');
       return;
     }
 
@@ -139,19 +145,26 @@ export default function AccountLoginPage() {
                 />
               </div>
 
-              {/* SMS consent disclosure — required for A2P 10DLC; the reviewer
-                  must see this at the point we collect the number. */}
-              <p className="text-xs text-brand-charcoal-light leading-relaxed">
-                By tapping &quot;Send Code,&quot; you agree to receive account,
-                order, delivery, and review-request text messages from Flipsies
-                Furniture at the number provided, including a one-time login code.
-                Consent is not a condition of purchase. Msg &amp; data rates may
-                apply; message frequency varies. Reply STOP to opt out, HELP for
-                help. See our{' '}
-                <Link href="/terms" className="underline hover:text-brand-charcoal">SMS Terms</Link>{' '}
-                and{' '}
-                <Link href="/privacy" className="underline hover:text-brand-charcoal">Privacy Policy</Link>.
-              </p>
+              {/* SMS consent — A2P 10DLC requires an explicit, non-pre-checked
+                  checkbox at the point we collect the number. */}
+              <label className="flex items-start gap-2 text-xs text-brand-charcoal-light leading-relaxed cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={smsConsent}
+                  onChange={e => setSmsConsent(e.target.checked)}
+                  className="mt-0.5 flex-shrink-0 h-4 w-4 accent-brand-yellow"
+                />
+                <span>
+                  I agree to receive account, order, delivery, and review-request
+                  text messages from Flipsies Furniture at the number provided,
+                  including a one-time login code. Consent is not a condition of
+                  purchase. Msg &amp; data rates may apply; message frequency varies.
+                  Reply STOP to opt out, HELP for help. See our{' '}
+                  <Link href="/terms" className="underline hover:text-brand-charcoal">SMS Terms</Link>{' '}
+                  and{' '}
+                  <Link href="/privacy" className="underline hover:text-brand-charcoal">Privacy Policy</Link>.
+                </span>
+              </label>
 
               {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -161,7 +174,7 @@ export default function AccountLoginPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !smsConsent}
                 className="btn-brand w-full py-3 text-base disabled:opacity-50"
               >
                 {loading ? 'Sending code…' : 'Send Code'}
