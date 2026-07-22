@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>Your Order — Flipsies Furniture</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+  <style>
+    /* Brand colors per the Flipsies logo:
+       - Primary Yellow #F5B731 (chair badge)
+       - Dark Charcoal #2D2D2D (text/outlines)
+       - White #FFFFFF
+       Mobile-first — most customers open this from an SMS link on their phone. */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #2D2D2D;
+      background: #FAFAF8;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #2D2D2D; text-decoration: underline; }
+
+    .page {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 20px 18px 60px;
+    }
+
+    /* Header brand bar */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 0 24px;
+      border-bottom: 1px solid #e5e5e3;
+      margin-bottom: 24px;
+    }
+    .brand-badge {
+      width: 44px; height: 44px;
+      background: #F5B731;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px;
+      color: #2D2D2D;
+    }
+    .brand-name {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .brand-tagline {
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    /* Loading + error states */
+    .loading, .error {
+      text-align: center;
+      padding: 60px 20px;
+      color: #888;
+      font-size: 14px;
+    }
+    .error {
+      color: #C0392B;
+    }
+
+    /* Order header card */
+    .order-header {
+      background: #FFFFFF;
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.04);
+      border: 1px solid #f0f0ee;
+    }
+    .order-greeting {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      letter-spacing: -0.01em;
+    }
+    .order-meta {
+      font-size: 13px;
+      color: #888;
+    }
+
+    /* Status pill — current stage label */
+    .current-stage {
+      display: inline-block;
+      background: #FEF3E1;
+      color: #92580A;
+      padding: 6px 14px;
+      border-radius: 18px;
+      font-size: 13px;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+    .current-stage.complete { background: #D4F4DD; color: #14532D; }
+    .current-stage.cancelled { background: #FEE2E2; color: #991B1B; }
+
+    /* Progress timeline */
+    .timeline {
+      background: #FFFFFF;
+      border-radius: 14px;
+      padding: 22px 18px;
+      margin-bottom: 18px;
+      border: 1px solid #f0f0ee;
+    }
+    .timeline-title {
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+    .timeline-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 6px 0;
+      position: relative;
+    }
+    .timeline-step:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 26px;
+      bottom: -6px;
+      width: 2px;
+      background: #e5e5e3;
+    }
+    .timeline-step.passed:not(:last-child)::before,
+    .timeline-step.current:not(:last-child)::before {
+      background: #F5B731;
+    }
+    .timeline-dot {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      background: #f0f0ee;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: #888;
+      font-weight: 700;
+      margin-top: 2px;
+      position: relative;
+      z-index: 1;
+    }
+    .timeline-step.passed .timeline-dot {
+      background: #F5B731;
+      color: #2D2D2D;
+    }
+    .timeline-step.current .timeline-dot {
+      background: #F5B731;
+      color: #2D2D2D;
+      box-shadow: 0 0 0 4px rgba(245, 183, 49, 0.25);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 4px rgba(245, 183, 49, 0.25); }
+      50%      { box-shadow: 0 0 0 8px rgba(245, 183, 49, 0.15); }
+    }
+    .timeline-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #888;
+      padding-top: 4px;
+    }
+    .timeline-step.passed .timeline-label,
+    .timeline-step.current .timeline-label {
+      color: #2D2D2D;
+    }
+    .timeline-step.current .timeline-label {
+      font-weight: 700;
+    }
+
+    /* Items list */
+    .items {
+      background: #FFFFFF;
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 18px;
+      border: 1px solid #f0f0ee;
+    }
+    .items-title {
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+    .item {
+      padding: 10px 0;
+      border-bottom: 1px solid #f5f5f3;
+    }
+    .item:last-child { border-bottom: none; }
+    .item-name {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .item-qty {
+      color: #888;
+      font-weight: 400;
+      font-size: 13px;
+    }
+    .item-config {
+      font-size: 12px;
+      color: #666;
+      font-style: italic;
+    }
+
+    /* Recent updates */
+    .updates {
+      background: #FFFFFF;
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 18px;
+      border: 1px solid #f0f0ee;
+    }
+    .updates-title {
+      font-size: 11px;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+      font-weight: 600;
+    }
+    .update {
+      padding: 8px 0;
+      font-size: 13px;
+      color: #555;
+      border-bottom: 1px solid #f5f5f3;
+    }
+    .update:last-child { border-bottom: none; }
+    .update-date {
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 2px;
+    }
+
+    /* Footer with contact info */
+    .footer {
+      text-align: center;
+      padding: 24px 0 0;
+      color: #888;
+      font-size: 13px;
+    }
+    .footer strong {
+      color: #2D2D2D;
+      display: block;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .footer a {
+      color: #2D2D2D;
+      font-weight: 600;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <!-- Brand header -->
+    <div class="brand">
+      <div class="brand-badge">🪑</div>
+      <div>
+        <div class="brand-name">Flipsies Furniture</div>
+        <div class="brand-tagline">Your Order Status</div>
+      </div>
+    </div>
+
+    <div id="content">
+      <div class="loading">Loading your order…</div>
+    </div>
+
+    <div class="footer">
+      <strong>Questions about your order?</strong>
+      Call us at <a href="tel:+12056742300">(205) 674-2300</a><br>
+      <span style="font-size: 11px; color: #aaa;">Hoover Showroom &middot; Irondale Showroom</span>
+    </div>
+  </div>
+
+  <script>
+    // Self-contained — no module bundling, no auth headers, no shared deps
+    // with the main DeliverDesk app. Customer hits this static page from
+    // an SMS link, we fetch /public/custom-order/:token, render or fail.
+    (async function main() {
+      const params = new URLSearchParams(location.search);
+      const token = params.get('token');
+      if (!token) {
+        showError("Missing tracking token. Please check the link from your text message.");
+        return;
+      }
+
+      // Backend URL — same convention as the main app, env-aware so the
+      // page works locally pointed at the dev backend too.
+      const BACKEND_URL =
+        location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+          ? 'http://localhost:3000'
+          : 'https://deliverdesk-backend-production.up.railway.app';
+
+      let order;
+      try {
+        const r = await fetch(`${BACKEND_URL}/public/custom-order/${encodeURIComponent(token)}`);
+        if (r.status === 404) {
+          showError("We couldn't find that order. The link may have expired or been mistyped.");
+          return;
+        }
+        if (!r.ok) throw new Error('network');
+        order = await r.json();
+      } catch (e) {
+        showError("Couldn't load your order right now. Please try again in a few minutes.");
+        return;
+      }
+
+      render(order);
+    })();
+
+    function showError(msg) {
+      document.getElementById('content').innerHTML =
+        '<div class="error">' + escapeHtml(msg) + '</div>';
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function fmtDate(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
+    function render(order) {
+      const stageClass =
+        order.stage === 'fulfilled' ? 'complete' :
+        order.cancelled ? 'cancelled' : '';
+
+      let html = '';
+
+      // Order header card
+      html += '<div class="order-header">';
+      html += '<div class="order-greeting">Hi ' + escapeHtml((order.customer_name || '').split(/\s+/)[0] || 'there') + '!</div>';
+      html += '<div class="order-meta">';
+      if (order.invoice_number) html += 'Order ' + escapeHtml(order.invoice_number);
+      if (order.sale_date) html += ' · Placed ' + escapeHtml(fmtDate(order.sale_date));
+      html += '</div>';
+      html += '<div class="current-stage ' + stageClass + '">' + escapeHtml(order.stage_label || 'In Progress') + '</div>';
+      html += '</div>';
+
+      // Progress timeline (skip if cancelled)
+      if (!order.cancelled && order.stage_timeline && order.stage_timeline.length) {
+        html += '<div class="timeline">';
+        html += '<div class="timeline-title">Order Progress</div>';
+        order.stage_timeline.forEach(function(step, idx) {
+          const cls = step.current ? 'current' : (step.passed ? 'passed' : '');
+          html += '<div class="timeline-step ' + cls + '">';
+          html += '<div class="timeline-dot">' + (step.passed ? '✓' : (idx + 1)) + '</div>';
+          html += '<div class="timeline-label">' + escapeHtml(step.label) + '</div>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
+      // Cancelled state
+      if (order.cancelled) {
+        html += '<div class="order-header" style="background:#FEE2E2;border-color:#FECACA;">';
+        html += '<div class="order-greeting" style="color:#991B1B;font-size:16px;">Order Cancelled</div>';
+        if (order.cancel_reason) {
+          html += '<div class="order-meta" style="color:#991B1B;margin-top:6px;">' + escapeHtml(order.cancel_reason) + '</div>';
+        }
+        html += '<div class="order-meta" style="margin-top:8px;">If you have questions, please give us a call.</div>';
+        html += '</div>';
+      }
+
+      // Items
+      if (order.items && order.items.length) {
+        html += '<div class="items">';
+        html += '<div class="items-title">Your Items</div>';
+        order.items.forEach(function(it) {
+          html += '<div class="item">';
+          html += '<div class="item-name">' + escapeHtml(it.name) + (it.qty > 1 ? ' <span class="item-qty">× ' + it.qty + '</span>' : '') + '</div>';
+          if (it.configuration) {
+            html += '<div class="item-config">' + escapeHtml(it.configuration) + '</div>';
+          }
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
+      // Updates timeline
+      if (order.timeline && order.timeline.length) {
+        html += '<div class="updates">';
+        html += '<div class="updates-title">Recent Updates</div>';
+        order.timeline.slice(0, 6).forEach(function(ev) {
+          html += '<div class="update">';
+          html += escapeHtml(ev.message);
+          html += '<div class="update-date">' + escapeHtml(fmtDate(ev.created_at)) + '</div>';
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
+      document.getElementById('content').innerHTML = html;
+    }
+  </script>
+</body>
+</html>
