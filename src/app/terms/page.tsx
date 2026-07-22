@@ -180,6 +180,27 @@ export default function TermsPage() {
         </section>
 
         <section>
+          <h2 className="text-lg font-semibold text-brand-charcoal mt-8 mb-2">11. SMS Text Messaging Terms</h2>
+          <p>
+            By providing your mobile number — at checkout, in one of our
+            showrooms, or when signing in to your account — you agree to
+            receive text messages from Flipsies Furniture related to your
+            account and orders. This includes one-time login passcodes (2FA),
+            delivery and pickup updates, custom-order status updates, and
+            occasional review requests after a purchase. Consent to receive
+            texts is not a condition of any purchase.
+          </p>
+          <p className="mt-3">
+            Message frequency varies with your order activity. Message and
+            data rates may apply. Reply STOP to any message to unsubscribe;
+            reply HELP for help, or contact us at the number below. Carriers
+            are not liable for delayed or undelivered messages. See our{' '}
+            <a href="/privacy" className="text-brand-yellow-dark hover:underline">Privacy Policy</a>{' '}
+            for how we handle the information you provide.
+          </p>
+        </section>
+
+        <section>
           <h2 className="text-lg font-semibold text-brand-charcoal mt-8 mb-2">Contact</h2>
           <address className="not-italic mt-2">
             <p>Flipsies Furniture</p>

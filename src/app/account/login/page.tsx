@@ -139,6 +139,20 @@ export default function AccountLoginPage() {
                 />
               </div>
 
+              {/* SMS consent disclosure — required for A2P 10DLC; the reviewer
+                  must see this at the point we collect the number. */}
+              <p className="text-xs text-brand-charcoal-light leading-relaxed">
+                By tapping &quot;Send Code,&quot; you agree to receive account,
+                order, delivery, and review-request text messages from Flipsies
+                Furniture at the number provided, including a one-time login code.
+                Consent is not a condition of purchase. Msg &amp; data rates may
+                apply; message frequency varies. Reply STOP to opt out, HELP for
+                help. See our{' '}
+                <Link href="/terms" className="underline hover:text-brand-charcoal">SMS Terms</Link>{' '}
+                and{' '}
+                <Link href="/privacy" className="underline hover:text-brand-charcoal">Privacy Policy</Link>.
+              </p>
+
               {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {error}

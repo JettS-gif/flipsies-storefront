@@ -69,12 +69,22 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold text-brand-charcoal mt-8 mb-2">SMS Messaging</h2>
           <p>
-            If you provide a phone number, we may send delivery scheduling
-            updates, pickup-ready notifications, and order status messages
-            by SMS. Message and data rates may apply. Reply STOP to opt
-            out of further messages at any time; reply HELP for support.
-            Opting out of texts will not affect your order, but our team
-            may need to follow up by phone instead.
+            If you provide a phone number — at checkout, in one of our
+            showrooms, or when signing in to your account — we may send
+            one-time login passcodes, delivery scheduling updates,
+            pickup-ready notifications, custom-order status updates, order
+            status messages, and occasional post-purchase review requests
+            by SMS. Consent to receive texts is not a condition of any
+            purchase. Message frequency varies. Message and data rates may
+            apply. Reply STOP to opt out of further messages at any time;
+            reply HELP for support. Opting out of texts will not affect
+            your order, but our team may need to follow up by phone instead.
+          </p>
+          <p className="mt-3">
+            No mobile information will be shared with third parties or
+            affiliates for marketing or promotional purposes. Text-messaging
+            opt-in and consent data is not shared with any third parties
+            under any circumstances.
           </p>
         </section>
 
