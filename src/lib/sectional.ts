@@ -244,6 +244,8 @@ export interface SectionalPieceProduct {
   color: string | null;
   price: number;
   image_url: string | null;
+  /** Raw catalog dimensions string, e.g. `48"W x 46"D x 39"H` (null when unknown). */
+  dimensions?: string | null;
 }
 export interface SectionalFamilyDetail {
   family: string;

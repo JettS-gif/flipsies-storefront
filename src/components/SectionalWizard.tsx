@@ -15,6 +15,12 @@ import {
   type SectionalFamily,
   type SectionalFamilyDetail,
 } from '@/lib/sectional';
+import {
+  parseDimensions, computeFootprint, formatFootprint,
+  autoPlace, removeLastOfType, DEFS_BY_ID, SECT_U,
+  type PlacedPiece, type Dim,
+} from '@/lib/sectionalCanvas';
+import SectionalCanvas from '@/components/SectionalCanvas';
 import { useCart } from '@/context/CartContext';
 import Link from 'next/link';
 
@@ -34,7 +40,15 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
 
   const [family, setFamily] = useState<string>(seedFamily || '');
   const [color, setColor] = useState<string>(seedColor || '');
-  const [counts, setCounts] = useState<Record<string, number>>({});
+  // Single source of truth for the configuration — the list (counts) and the
+  // canvas visualizer are two editors of this one placed-piece array.
+  const [placed, setPlaced] = useState<PlacedPiece[]>([]);
+  const [showDims, setShowDims] = useState(false);
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const p of placed) c[p.defId] = (c[p.defId] || 0) + 1;
+    return c;
+  }, [placed]);
   const [step, setStep] = useState<Step>(seedFamily ? 'pick-color' : 'pick-family');
 
   const [detail, setDetail] = useState<SectionalFamilyDetail | null>(null);
@@ -116,6 +130,24 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
     [availablePieces],
   );
 
+  // Canvas inputs: the piece types this family+color carries, and real per-piece
+  // dims keyed by sectional_piece_type (prefer the chosen color's row).
+  const allowedTypes = useMemo(() => availablePieces.map((x) => x.piece_type), [availablePieces]);
+  const dimsByType = useMemo(() => {
+    const map: Record<string, Dim | undefined> = {};
+    if (!detail) return map;
+    for (const pt of detail.pieces) {
+      const inColor = color ? pt.products.find((p) => p.color === color && p.dimensions) : null;
+      const anyDim = pt.products.find((p) => p.dimensions);
+      const dim = parseDimensions((inColor || anyDim)?.dimensions || null);
+      if (dim) map[pt.piece_type] = dim;
+    }
+    return map;
+  }, [detail, color]);
+  const footprint = useMemo(() => computeFootprint(placed, dimsByType, DEFS_BY_ID, SECT_U), [placed, dimsByType]);
+  const footprintLabel = formatFootprint(footprint);
+  const dimsLoaded = Object.keys(dimsByType).length > 0;
+
   const resolved = availablePieces
     .filter((x) => (counts[x.piece_type] || 0) > 0)
     .map((x) => ({ ...x, qty: counts[x.piece_type] }));
@@ -123,20 +155,15 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
   const total = resolved.reduce((s, r) => s + r.product.price * r.qty, 0);
 
   function selectFamily(fam: string) {
-    setCounts({});
+    setPlaced([]);
     setColor('');
     setFamily(fam); // detail effect drives the next step
   }
   function increment(id: string) {
-    setCounts((c) => ({ ...c, [id]: (c[id] || 0) + 1 }));
+    setPlaced((prev) => [...prev, autoPlace(prev, id)]);
   }
   function decrement(id: string) {
-    setCounts((c) => {
-      const next = Math.max(0, (c[id] || 0) - 1);
-      const copy = { ...c };
-      if (next === 0) delete copy[id]; else copy[id] = next;
-      return copy;
-    });
+    setPlaced((prev) => removeLastOfType(prev, id));
   }
   function addToCart() {
     const signature = `${family}::${color || 'default'}::${Date.now()}`;
@@ -155,7 +182,7 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
     setStep('done');
   }
   function resetForNewBuild() {
-    setCounts({});
+    setPlaced([]);
     if (seedFamily) { setStep(seedColor ? 'pick-pieces' : 'pick-color'); }
     else { setFamily(''); setColor(''); setDetail(null); setStep('pick-family'); }
   }
@@ -328,10 +355,33 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
           ))}
         </div>
 
-        <div className="flex items-center justify-between pt-5 border-t border-brand-border">
-          <p className="text-sm text-brand-charcoal-light">
-            {totalPieces} piece{totalPieces === 1 ? '' : 's'} · <span className="font-semibold text-brand-charcoal">${total.toFixed(2)}</span>
-          </p>
+        {/* Visualize — the canvas + list share one configuration. Arrange the
+            pieces to see the real overall footprint. */}
+        <div className="mt-8 pt-6 border-t border-brand-border">
+          <div className="mb-3">
+            <h3 className="text-sm font-semibold text-brand-charcoal">Visualize your layout</h3>
+            <p className="text-xs text-brand-charcoal-light">
+              Your picks appear here automatically — drag to arrange them into your room’s shape, or add pieces right on the grid.
+              Turn on <strong>Dimensions</strong> to see the real overall size.
+            </p>
+          </div>
+          <SectionalCanvas
+            placed={placed}
+            onChange={setPlaced}
+            allowedTypes={allowedTypes}
+            dimsByType={dimsByType}
+            showDims={showDims}
+            onToggleDims={() => setShowDims((s) => !s)}
+          />
+        </div>
+
+        <div className="flex items-center justify-between pt-5 mt-6 border-t border-brand-border">
+          <div className="text-sm text-brand-charcoal-light">
+            <p>{totalPieces} piece{totalPieces === 1 ? '' : 's'} · <span className="font-semibold text-brand-charcoal">${total.toFixed(2)}</span></p>
+            {dimsLoaded && footprintLabel && (
+              <p className="text-xs text-brand-green font-semibold mt-0.5">Overall {footprintLabel}{footprint.complete ? '' : ' (approx.)'}</p>
+            )}
+          </div>
           <button type="button" onClick={() => setStep('review')} disabled={totalPieces === 0} className="btn-brand px-6 py-3 disabled:opacity-50">
             Review configuration
           </button>
@@ -363,7 +413,12 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
         </div>
 
         <div className="flex items-center justify-between bg-brand-warm-gray rounded-lg px-4 py-3 mb-5">
-          <p className="text-sm text-brand-charcoal-light">Total ({totalPieces} {totalPieces === 1 ? 'piece' : 'pieces'})</p>
+          <div>
+            <p className="text-sm text-brand-charcoal-light">Total ({totalPieces} {totalPieces === 1 ? 'piece' : 'pieces'})</p>
+            {dimsLoaded && footprintLabel && (
+              <p className="text-xs text-brand-green font-semibold mt-0.5">Overall footprint {footprintLabel}{footprint.complete ? '' : ' (approx.)'}</p>
+            )}
+          </div>
           <p className="text-xl font-bold text-brand-charcoal">${total.toFixed(2)}</p>
         </div>
 
