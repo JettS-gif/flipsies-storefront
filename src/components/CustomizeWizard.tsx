@@ -83,10 +83,18 @@ export default function CustomizeWizard({ product }: { product: Product }) {
     : /sofa/i.test(product.category ?? '') ? 'sofa'
     : 'chair';
   const PieceNoun = pieceNoun.charAt(0).toUpperCase() + pieceNoun.slice(1);
-  // SoMo (mechanism) frames use the per-colour swatch grid; fabric-only frames
-  // (Chairs America) always use the fabric LINE grid — even if a stray colour is
-  // verified, so we never hide most of the library behind a handful of swatches.
-  const useColorGrid = hasMech && items.length > 0;
+  // Which fabric-step grid: the per-COLOUR isolated-swatch grid (Southern Motion,
+  // whose library is presented as individual colour swatches) vs the grade-based
+  // fabric-LINE grid (Chairs America). Keyed on how much of the library actually
+  // HAS isolated swatches — NOT on mechanisms. The old `hasMech` proxy conflated
+  // the two: a single-motion SoMo piece (e.g. a Point Break sofa) has no mechanism
+  // options yet still ships 200+ colour swatches, and mustn't be dropped to the
+  // line grid. Coverage also preserves the CA guard the proxy was standing in for
+  // — a stray verified colour on an otherwise grade-based line stays on the line
+  // grid because a handful of swatches won't clear the bar (SoMo returns ~58
+  // colour-bearing fabrics for any product; CA returns 0).
+  const fabricsWithColors = (product.fabrics ?? []).filter((f) => (f.colors?.length ?? 0) > 0).length;
+  const useColorGrid = fabricsWithColors >= 2;
 
   // Facet option lists with counts, over the full item set.
   const facets = useMemo(() => {
