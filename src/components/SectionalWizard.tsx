@@ -14,6 +14,7 @@ import {
   GROUP_ORDER,
   type SectionalFamily,
   type SectionalFamilyDetail,
+  type SectionalPieceProduct,
 } from '@/lib/sectional';
 import {
   parseDimensions, computeFootprint, formatFootprint,
@@ -44,6 +45,11 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
   // canvas visualizer are two editors of this one placed-piece array.
   const [placed, setPlaced] = useState<PlacedPiece[]>([]);
   const [showDims, setShowDims] = useState(false);
+  // Selected variant (product id) per piece_type. A slot can carry several SKUs
+  // that share a piece_type but differ by motion / sub-variant (Dazzle LSF Chair
+  // = power vs manual; Marquis loveseats add console / recliner-count / Next
+  // Level). Empty ⇒ default to the first (cheapest) variant.
+  const [variantByType, setVariantByType] = useState<Record<string, string>>({});
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
     for (const p of placed) c[p.defId] = (c[p.defId] || 0) + 1;
@@ -103,16 +109,21 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
     return () => { cancelled = true; };
   }, [family, seedFamily, seedColor]);
 
-  // Pieces this family carries in the chosen color, with the resolved product.
+  // Pieces this family carries in the chosen color. Each slot carries ALL its
+  // variants (SKUs) plus the resolved (selected) product. Variants sorted
+  // cheapest-first so the default (first) is the lowest-priced option and the
+  // picker reads low→high.
   const availablePieces = useMemo(() => {
     if (!detail) return [];
     return detail.pieces
       .map((pt) => {
         const meta = PIECE_META[pt.piece_type];
-        const product = color
-          ? pt.products.find((pr) => pr.color === color) || null
-          : pt.products[0] || null;
-        return meta && product ? { piece_type: pt.piece_type, meta, product } : null;
+        const variants = pt.products
+          .filter((pr) => !color || pr.color === color)
+          .sort((a, b) => a.price - b.price);
+        if (!meta || variants.length === 0) return null;
+        const selected = variants.find((v) => v.id === variantByType[pt.piece_type]) || variants[0];
+        return { piece_type: pt.piece_type, meta, variants, product: selected };
       })
       .filter((x): x is NonNullable<typeof x> => x !== null)
       .sort(
@@ -120,7 +131,7 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
           GROUP_ORDER.indexOf(a.meta.group) - GROUP_ORDER.indexOf(b.meta.group) ||
           a.meta.order - b.meta.order,
       );
-  }, [detail, color]);
+  }, [detail, color, variantByType]);
 
   const grouped = useMemo(
     () =>
@@ -133,17 +144,16 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
   // Canvas inputs: the piece types this family+color carries, and real per-piece
   // dims keyed by sectional_piece_type (prefer the chosen color's row).
   const allowedTypes = useMemo(() => availablePieces.map((x) => x.piece_type), [availablePieces]);
+  // Dims follow the SELECTED variant per slot — a power recliner is often deeper
+  // than its manual twin, so the footprint tracks the shopper's actual pick.
   const dimsByType = useMemo(() => {
     const map: Record<string, Dim | undefined> = {};
-    if (!detail) return map;
-    for (const pt of detail.pieces) {
-      const inColor = color ? pt.products.find((p) => p.color === color && p.dimensions) : null;
-      const anyDim = pt.products.find((p) => p.dimensions);
-      const dim = parseDimensions((inColor || anyDim)?.dimensions || null);
-      if (dim) map[pt.piece_type] = dim;
+    for (const x of availablePieces) {
+      const dim = parseDimensions(x.product.dimensions || null);
+      if (dim) map[x.piece_type] = dim;
     }
     return map;
-  }, [detail, color]);
+  }, [availablePieces]);
   const footprint = useMemo(() => computeFootprint(placed, dimsByType, DEFS_BY_ID, SECT_U), [placed, dimsByType]);
   const footprintLabel = formatFootprint(footprint);
   const dimsLoaded = Object.keys(dimsByType).length > 0;
@@ -156,6 +166,7 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
 
   function selectFamily(fam: string) {
     setPlaced([]);
+    setVariantByType({});
     setColor('');
     setFamily(fam); // detail effect drives the next step
   }
@@ -183,6 +194,7 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
   }
   function resetForNewBuild() {
     setPlaced([]);
+    setVariantByType({});
     if (seedFamily) { setStep(seedColor ? 'pick-pieces' : 'pick-color'); }
     else { setFamily(''); setColor(''); setDetail(null); setStep('pick-family'); }
   }
@@ -318,7 +330,7 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
             <div key={group}>
               <h3 className="text-xs font-semibold text-brand-charcoal uppercase tracking-wider mb-2">{group}</h3>
               <div className="space-y-2">
-                {items.map(({ piece_type, meta, product }) => {
+                {items.map(({ piece_type, meta, product, variants }) => {
                   const qty = counts[piece_type] || 0;
                   return (
                     <div
@@ -334,9 +346,24 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
                             className="shrink-0 w-14 h-14 rounded-md object-contain bg-brand-warm-gray border border-brand-border p-0.5"
                           />
                         )}
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-brand-charcoal">{meta.label}</p>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-semibold text-brand-charcoal">{meta.label}</p>
+                            {product.motion && <MotionBadge motion={product.motion} />}
+                          </div>
                           {meta.hint && <p className="text-xs text-brand-charcoal-light mt-0.5">{meta.hint}</p>}
+                          {variants.length > 1 && (
+                            <select
+                              value={product.id}
+                              onChange={(e) => setVariantByType((m) => ({ ...m, [piece_type]: e.target.value }))}
+                              aria-label={`Choose ${meta.label} option`}
+                              className="mt-1.5 w-full max-w-sm text-xs border border-brand-border rounded-md px-2 py-1.5 bg-white text-brand-charcoal"
+                            >
+                              {variants.map((v) => (
+                                <option key={v.id} value={v.id}>{variantOptionLabel(v)}</option>
+                              ))}
+                            </select>
+                          )}
                           <p className="text-xs font-semibold text-brand-charcoal mt-0.5">${product.price.toFixed(2)}</p>
                         </div>
                       </div>
@@ -450,6 +477,27 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
       </div>
     </div>
   );
+}
+
+function MotionBadge({ motion }: { motion: string }) {
+  return (
+    <span className="inline-block text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-brand-green-light text-brand-green">
+      {motion}
+    </span>
+  );
+}
+
+// Human label for a variant option: "<motion> · <descriptor> — $<price>".
+// The descriptor is the product name after the family prefix ("883 DAZZLE · "),
+// with the motion phrase stripped so it isn't repeated (motion leads the label).
+function cleanDescriptor(name: string, motion: string | null): string {
+  let s = name.split('·').pop()?.trim() || name;
+  if (motion) s = s.replace(new RegExp(motion, 'i'), '').replace(/\s{2,}/g, ' ').trim();
+  return s;
+}
+function variantOptionLabel(v: SectionalPieceProduct): string {
+  const head = [v.motion, cleanDescriptor(v.name, v.motion ?? null)].filter(Boolean).join(' · ');
+  return `${head} — $${Math.round(v.price)}`;
 }
 
 function Shell({ children, tone }: { children: ReactNode; tone?: 'error' }) {

@@ -246,6 +246,8 @@ export interface SectionalPieceProduct {
   image_url: string | null;
   /** Raw catalog dimensions string, e.g. `48"W x 46"D x 39"H` (null when unknown). */
   dimensions?: string | null;
+  /** Recline mechanism (products.sectional_motion) — null for structural pieces. */
+  motion?: string | null;
 }
 export interface SectionalFamilyDetail {
   family: string;
