@@ -129,9 +129,20 @@ export async function POST(req: Request) {
       jurisdiction: order.tax_jurisdiction,
     });
   } catch (err) {
-    console.error('Payment intent error:', err);
+    // The live-fire failure (2026-07-26) landed here: paymentIntents.create
+    // threw on a bad key and the old generic "Failed to create payment" gave
+    // the customer nothing to act on — she retried 4x into orphan invoices.
+    // Log the Stripe type/code so a config failure (invalid key, account not
+    // activated) is NAMED in the deploy log, and tell the customer plainly the
+    // card was not charged so a transient glitch doesn't spawn a retry pile.
+    const stripeType = (err as { type?: string })?.type;
+    const stripeCode = (err as { code?: string })?.code;
+    console.error('Payment intent error:', stripeType || '', stripeCode || '', err);
     return NextResponse.json(
-      { error: 'Failed to create payment' },
+      {
+        error: "We couldn't start payment processing and your card was not charged. Please try again in a moment — if it keeps happening, contact us and we'll help you complete your order.",
+        code: 'payment_init_failed',
+      },
       { status: 500 }
     );
   }
