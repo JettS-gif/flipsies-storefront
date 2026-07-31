@@ -455,7 +455,11 @@ export default function CheckoutPage() {
           setOversoldItems(err.items);
           return;
         }
-        throw new Error(err.error || 'Failed to create order');
+        // `message` first — the backend ships a human sentence there, naming the
+        // offending items where it can. `error` is the raw code, so reading it
+        // first showed customers strings like "items_require_fabric_code" with
+        // nothing actionable in them.
+        throw new Error(err.message || err.detail || err.error || 'Failed to create order');
       }
 
       const data = await res.json();
