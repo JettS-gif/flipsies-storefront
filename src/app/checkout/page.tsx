@@ -290,8 +290,16 @@ export default function CheckoutPage() {
     e.preventDefault();
     // Guard against accidental skips: each fulfillment mode has its own
     // required fields before we'll create a payment intent.
-    if (fulfillmentType === 'delivery' && !selectedSlot) {
+    // A made-to-order cart has no slot to pick — delivery is quoted and billed
+    // when the item arrives — so requiring one here would dead-end checkout.
+    if (fulfillmentType === 'delivery'
+        && availability?.status !== 'delivery_on_arrival'
+        && !selectedSlot) {
       setAvailError('Please check availability and pick a delivery slot before continuing.');
+      return;
+    }
+    if (fulfillmentType === 'delivery' && !availability) {
+      setAvailError('Please check availability for your address before continuing.');
       return;
     }
     if (fulfillmentType === 'pickup') {
@@ -335,7 +343,12 @@ export default function CheckoutPage() {
     setSelectedSlot(null);
     clearStoredSlot();
     try {
-      const resp = await api.checkAvailability(trimmed);
+      // Pass the cart's product ids so the backend can answer
+      // `delivery_on_arrival` for a made-to-order cart rather than offering
+      // slots we cannot honour. Package lines have no product_id and are
+      // expanded server-side at submit, so they're simply omitted here.
+      const productIds = items.map(i => i.product_id).filter(Boolean) as string[];
+      const resp = await api.checkAvailability(trimmed, productIds);
       setAvailability(resp);
     } catch (err) {
       console.error('[checkout] check-availability failed:', err);
@@ -684,6 +697,38 @@ export default function CheckoutPage() {
               {availability?.status === 'geocode_failed' && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   {availability.message}
+                </div>
+              )}
+
+              {/* ── delivery_on_arrival: made-to-order, no slot to pick ── */}
+              {availability?.status === 'delivery_on_arrival' && (
+                <div className="rounded-lg border border-brand-yellow bg-brand-yellow/10 px-4 py-4 text-sm">
+                  <p className="font-semibold text-brand-charcoal mb-1">
+                    We&apos;ll schedule delivery when your order arrives
+                  </p>
+                  <p className="text-brand-charcoal-light mb-2">{availability.message}</p>
+                  {availability.special_orders.length > 0 && (
+                    <ul className="mb-2 list-disc pl-5 text-brand-charcoal-light">
+                      {availability.special_orders.map(it => (
+                        <li key={it.sku}>{it.name} <span className="opacity-70">({it.sku})</span></li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="text-brand-charcoal-light">
+                    <span className="font-semibold">No delivery charge today.</span>{' '}
+                    We&apos;ll quote the fee for your address and collect it when we book your delivery.
+                  </p>
+                  {availability.store_phone && (
+                    <p className="mt-2 text-brand-charcoal-light">
+                      Questions?{' '}
+                      <a
+                        href={`tel:${availability.store_phone.replace(/\D/g, '')}`}
+                        className="underline font-semibold text-brand-charcoal"
+                      >
+                        Call {availability.store_phone}
+                      </a>
+                    </p>
+                  )}
                 </div>
               )}
 

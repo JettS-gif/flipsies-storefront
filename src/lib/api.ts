@@ -251,13 +251,24 @@ export const api = {
    * storefront-specific 48h lead time and 50mi gate already applied.
    * Never caches — real-time driver capacity matters.
    */
-  checkAvailability: (address: string) =>
-    request<CheckAvailabilityResponse>(
+  /**
+   * `productIds` is optional. Supplying the cart's product ids lets the backend
+   * answer `delivery_on_arrival` for a made-to-order cart instead of offering
+   * slots we cannot honour. Stock is read server-side, not taken from the cart
+   * line, because an item can become a special order between add-to-cart and
+   * checkout. Omitting it preserves the old address-only behaviour (the
+   * home-page delivery widget still calls it that way).
+   */
+  checkAvailability: (address: string, productIds?: string[]) => {
+    const qs = new URLSearchParams({ address });
+    if (productIds?.length) qs.set('product_ids', productIds.join(','));
+    return request<CheckAvailabilityResponse>(
       'GET',
-      `/storefront/check-availability?address=${encodeURIComponent(address)}`,
+      `/storefront/check-availability?${qs.toString()}`,
       undefined,
       { cache: 'no-store' },
-    ),
+    );
+  },
 
   /**
    * Capture a storefront lead AND run availability in a single call.
@@ -334,7 +345,15 @@ export type CheckAvailabilityResponse =
   | { status: 'in_range'; slots: AvailableSlot[]; lead_hours: number }
   | { status: 'out_of_range'; distance_miles: number; store_phone: string; message: string }
   | { status: 'geocode_failed'; message: string }
-  | { status: 'unavailable'; message: string; store_phone?: string };
+  | { status: 'unavailable'; message: string; store_phone?: string }
+  /**
+   * The cart holds a made-to-order / special-order line, so there is no slot to
+   * pick: the item is on a 6-8 week vendor lead and the picker only ever covers
+   * the next 2-3 weeks. The customer orders now and we quote + bill delivery
+   * when it lands. Returned only when product_ids are supplied.
+   */
+  | { status: 'delivery_on_arrival'; message: string; store_phone?: string;
+      special_orders: Array<{ sku: string; name: string }> };
 
 // Response shape from POST /storefront/leads. The backend returns the
 // newly-created lead id plus the same four-way availability union so
