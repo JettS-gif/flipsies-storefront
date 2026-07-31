@@ -76,6 +76,8 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-gray-700 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+          {/* tz-neutral: copyright year. Wrong only for a few hours on 31 Dec,
+              on a line nobody makes a decision from. */}
           <p className="text-xs text-gray-500">&copy; {new Date().getFullYear()} Flipsies Furniture. All rights reserved.</p>
           <div className="flex flex-wrap justify-center gap-6">
             <Link href="/privacy" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">Privacy</Link>
