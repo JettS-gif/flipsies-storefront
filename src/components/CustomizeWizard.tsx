@@ -25,7 +25,16 @@ const FAMILY_ORDER = ['White', 'Cream/Beige', 'Tan/Taupe', 'Brown', 'Grey', 'Cha
 
 // One selectable colour, carrying its line's grade/price for the pairing price.
 type ColorItem = {
-  id: string; name: string; swatch_image_url: string | null; product_image_url: string | null;
+  /** vendor_fabric_colors.id — identifies the COLOURWAY. Not a fabric id. */
+  id: string;
+  /**
+   * vendor_fabrics.id — the fabric LINE this colourway belongs to. This is what
+   * checkout must send as `fabric_id`: the backend resolves it against
+   * vendor_fabrics, and a colourway id is in a different id space entirely, so
+   * sending `id` here fails the lookup and 422s the order.
+   */
+  line_id: string;
+  name: string; swatch_image_url: string | null; product_image_url: string | null;
   color_family: string | null; pattern_type: string | null; in_stock: boolean;
   line_name: string; grade: string | null; price: number | null;
 };
@@ -56,7 +65,8 @@ export default function CustomizeWizard({ product }: { product: Product }) {
     () =>
       (product.fabrics ?? [])
         .flatMap((f) => (f.colors ?? []).map((c) => ({
-          id: c.id, name: c.name, swatch_image_url: c.swatch_image_url, product_image_url: c.product_image_url ?? null,
+          id: c.id, line_id: f.id,
+          name: c.name, swatch_image_url: c.swatch_image_url, product_image_url: c.product_image_url ?? null,
           color_family: c.color_family, pattern_type: c.pattern_type, in_stock: c.in_stock,
           line_name: f.name, grade: f.grade, price: f.price,
         })))
@@ -165,7 +175,14 @@ export default function CustomizeWizard({ product }: { product: Product }) {
     const mechPrefix = mech ? `${mech.label} · ` : '';
     const img = color?.product_image_url ?? color?.swatch_image_url ?? line?.swatch_image_url ?? product.image_url ?? null;
     addItem({
-      product_id: fid, fabric_id: color?.id ?? line?.id, fabric_name: fabricLabel,
+      product_id: fid,
+      // The fabric LINE id, never the colourway id. `color.id` is a
+      // vendor_fabric_colors row; checkout resolves fabric_id against
+      // vendor_fabrics, so sending the colourway made the lookup miss and the
+      // order 422 with items_require_fabric_code (reported live 2026-07-31).
+      // The colourway is still preserved for humans in fabric_name and the SKU.
+      fabric_id: color ? color.line_id : line?.id,
+      fabric_name: fabricLabel,
       sku: `${fsku}::${fabricLabel}`,
       name: `${product.collection ?? product.name} — ${mechPrefix}${fabricLabel}`,
       price, image_url: img,

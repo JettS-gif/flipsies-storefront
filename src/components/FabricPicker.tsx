@@ -96,7 +96,12 @@ export default function FabricPicker({
     if (!selected) return;
     addItem({
       product_id: frame.id,
-      fabric_id: selected.id,
+      // line_id (vendor_fabrics), NOT selected.id (vendor_fabric_colors). The
+      // two are different id spaces; checkout resolves fabric_id against
+      // vendor_fabrics, so a colourway id misses the lookup and 422s the order
+      // with items_require_fabric_code. line_id was already carried here and
+      // simply wasn't used.
+      fabric_id: selected.line_id,
       fabric_name: `${selected.line_name} ${selected.name}`,
       sku: `${frame.sku}::${selected.line_name} ${selected.name}`,
       name: `${frame.collection ?? frame.name} — ${selected.line_name} ${selected.name}`,
