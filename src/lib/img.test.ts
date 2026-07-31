@@ -46,19 +46,43 @@ describe('thumb', () => {
     expect(p.get('resize')).toBe('cover');
   });
 
-  // THE CROP RULE. With only a width, Supabase already preserves aspect ratio;
-  // sending `resize` anyway would crop a landscape sofa into a square on the
-  // browse card — the exact bug the options-object form was added to avoid.
-  it('a width-only resize does NOT crop', () => {
+  // THE NO-DISTORTION RULE — this replaces an assertion that encoded a bug.
+  //
+  // The old test demanded `height` and `resize` be ABSENT on a width-only call,
+  // on the belief that Supabase preserves aspect ratio from one dimension. It
+  // does not: it returns the requested width and the ORIGINAL height. Measured
+  // against production 2026-07-31, a 1400x1867 photo came back 600x1867 — every
+  // grid card was serving a horizontally squashed image, which is the reported
+  // "thumbnails not displaying properly".
+  //
+  // The old test's INTENT was right (don't square-crop a sofa) — but omitting
+  // `resize` was the wrong mechanism. `contain` fits inside the box and neither
+  // crops nor distorts, which satisfies the original intent properly.
+  it('a width-only request still describes a box, and contains rather than crops', () => {
     const p = q(thumb(SUPA, { width: 600 }));
     expect(p.get('width')).toBe('600');
-    expect(p.get('height')).toBeNull();
-    expect(p.get('resize')).toBeNull();
+    expect(p.get('height')).toBe('600');   // filled from width — "fit inside 600x600"
+    expect(p.get('resize')).toBe('contain');
   });
 
-  it('honours an explicit resize only when both dimensions are given', () => {
+  it('a height-only request is symmetric', () => {
+    const p = q(thumb(SUPA, { height: 400 }));
+    expect(p.get('width')).toBe('400');
+    expect(p.get('height')).toBe('400');
+    expect(p.get('resize')).toBe('contain');
+  });
+
+  it('never emits a request that can distort — a resize mode is always set', () => {
+    for (const opts of [160, { width: 600 }, { height: 400 }, { width: 300, height: 200 }] as const) {
+      expect(q(thumb(SUPA, opts)).get('resize')).not.toBeNull();
+    }
+  });
+
+  it('honours an explicit resize', () => {
     expect(q(thumb(SUPA, { width: 300, height: 200, resize: 'contain' })).get('resize')).toBe('contain');
-    expect(q(thumb(SUPA, { height: 200, resize: 'contain' })).get('resize')).toBeNull();
+    expect(q(thumb(SUPA, { width: 300, height: 200, resize: 'cover' })).get('resize')).toBe('cover');
+    // cover stays opt-in: the square swatch chip wants a centre crop, a card does not.
+    expect(q(thumb(SUPA, { width: 600 })).get('resize')).toBe('contain');
   });
 
   it('defaults quality to 80 and lets it be overridden', () => {
