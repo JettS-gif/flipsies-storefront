@@ -351,9 +351,18 @@ export type CheckAvailabilityResponse =
    * pick: the item is on a 6-8 week vendor lead and the picker only ever covers
    * the next 2-3 weeks. The customer orders now and we quote + bill delivery
    * when it lands. Returned only when product_ids are supplied.
+   *
+   * `mixed` = the cart ALSO holds in-stock lines. That case is deliberately a
+   * phone call rather than an automated rule: splitting into two deliveries
+   * means two trips and two fees, holding for one trip means waiting on stock
+   * the customer could have had, and which is right depends on the items, the
+   * distance, and what they'd rather do. `in_stock_items` is populated only
+   * when mixed.
    */
   | { status: 'delivery_on_arrival'; message: string; store_phone?: string;
-      special_orders: Array<{ sku: string; name: string }> };
+      mixed: boolean;
+      special_orders: Array<{ sku: string; name: string }>;
+      in_stock_items: Array<{ sku: string; name: string }> };
 
 // Response shape from POST /storefront/leads. The backend returns the
 // newly-created lead id plus the same four-way availability union so

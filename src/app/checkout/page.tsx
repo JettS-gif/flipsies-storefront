@@ -716,19 +716,40 @@ export default function CheckoutPage() {
               {availability?.status === 'delivery_on_arrival' && (
                 <div className="rounded-lg border border-brand-yellow bg-brand-yellow/10 px-4 py-4 text-sm">
                   <p className="font-semibold text-brand-charcoal mb-1">
-                    We&apos;ll schedule delivery when your order arrives
+                    {availability.mixed
+                      ? 'We’ll call you to arrange delivery'
+                      : 'We’ll schedule delivery when your order arrives'}
                   </p>
                   <p className="text-brand-charcoal-light mb-2">{availability.message}</p>
+                  {/* On a mixed cart, name BOTH groups. "Some items are ready
+                      now" is only reassuring if the customer can see which. */}
+                  {availability.mixed && availability.in_stock_items.length > 0 && (
+                    <>
+                      <p className="font-medium text-brand-charcoal mb-1">Ready now</p>
+                      <ul className="mb-2 list-disc pl-5 text-brand-charcoal-light">
+                        {availability.in_stock_items.map(it => (
+                          <li key={it.sku}>{it.name} <span className="opacity-70">({it.sku})</span></li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
                   {availability.special_orders.length > 0 && (
-                    <ul className="mb-2 list-disc pl-5 text-brand-charcoal-light">
-                      {availability.special_orders.map(it => (
-                        <li key={it.sku}>{it.name} <span className="opacity-70">({it.sku})</span></li>
-                      ))}
-                    </ul>
+                    <>
+                      {availability.mixed && (
+                        <p className="font-medium text-brand-charcoal mb-1">Made to order (6-8 weeks)</p>
+                      )}
+                      <ul className="mb-2 list-disc pl-5 text-brand-charcoal-light">
+                        {availability.special_orders.map(it => (
+                          <li key={it.sku}>{it.name} <span className="opacity-70">({it.sku})</span></li>
+                        ))}
+                      </ul>
+                    </>
                   )}
                   <p className="text-brand-charcoal-light">
                     <span className="font-semibold">No delivery charge today.</span>{' '}
-                    We&apos;ll quote the fee for your address and collect it when we book your delivery.
+                    {availability.mixed
+                      ? 'We’ll quote the fee when we speak — it depends on whether you’d like one delivery or two.'
+                      : 'We’ll quote the fee for your address and collect it when we book your delivery.'}
                   </p>
                   {availability.store_phone && (
                     <p className="mt-2 text-brand-charcoal-light">
@@ -941,7 +962,11 @@ export default function CheckoutPage() {
             {deliveryOnArrival && fulfillmentType === 'delivery' && (
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-brand-charcoal-light">Delivery</span>
-                <span className="text-brand-charcoal-light">Quoted on arrival</span>
+                <span className="text-brand-charcoal-light">
+                  {availability?.status === 'delivery_on_arrival' && availability.mixed
+                    ? 'We’ll call to arrange'
+                    : 'Quoted on arrival'}
+                </span>
               </div>
             )}
             <div className="flex justify-between text-sm mb-1">
