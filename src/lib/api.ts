@@ -259,9 +259,19 @@ export const api = {
    * checkout. Omitting it preserves the old address-only behaviour (the
    * home-page delivery widget still calls it that way).
    */
-  checkAvailability: (address: string, productIds?: string[]) => {
+  /**
+   * `fabricPairs` is `<product_id>:<fabric_id>` for each line the fabric wizard
+   * configured, and is what makes the made-to-order answer correct. product_ids
+   * alone points at the FRAME, whose stock belongs to whatever colourway we
+   * happen to hold — so a customer configuring a different fabric was told the
+   * item was in stock and offered dated slots for a chair that has to be built
+   * (found 2026-07-31). The backend resolves the fabric's child product
+   * read-only and reads ITS stock. Omitting this keeps the old behaviour.
+   */
+  checkAvailability: (address: string, productIds?: string[], fabricPairs?: string[]) => {
     const qs = new URLSearchParams({ address });
     if (productIds?.length) qs.set('product_ids', productIds.join(','));
+    if (fabricPairs?.length) qs.set('fabric_pairs', fabricPairs.join(','));
     return request<CheckAvailabilityResponse>(
       'GET',
       `/storefront/check-availability?${qs.toString()}`,

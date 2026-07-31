@@ -362,7 +362,13 @@ export default function CheckoutPage() {
       // slots we cannot honour. Package lines have no product_id and are
       // expanded server-side at submit, so they're simply omitted here.
       const productIds = items.map(i => i.product_id).filter(Boolean) as string[];
-      const resp = await api.checkAvailability(trimmed, productIds);
+      // Lines the fabric wizard configured must be judged on the CHOSEN
+      // fabric's stock, not the frame's. Without this a made-to-order colourway
+      // on a stocked frame was offered real dated slots (2026-07-31).
+      const fabricPairs = items
+        .filter(i => i.product_id && i.fabric_id)
+        .map(i => `${i.product_id}:${i.fabric_id}`);
+      const resp = await api.checkAvailability(trimmed, productIds, fabricPairs);
       setAvailability(resp);
     } catch (err) {
       console.error('[checkout] check-availability failed:', err);
