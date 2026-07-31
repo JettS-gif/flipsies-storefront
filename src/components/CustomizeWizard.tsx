@@ -271,6 +271,14 @@ export default function CustomizeWizard({ product }: { product: Product }) {
 
               {/* MECHANISM */}
               {step === 'mechanism' && (
+                <>
+                  {/* Sits between the hero image and the list. "Mechanism" is
+                      trade language — a customer reading it cold doesn't know
+                      it means rocker vs power vs wall-hugger. Say what the
+                      choice actually IS before showing the options. */}
+                  <p className="mb-3 text-center text-sm text-brand-charcoal-light">
+                    Choose how your {pieceNoun} works!
+                  </p>
                 <ul className="flex flex-col gap-2">
                   {mechanisms.map((m) => {
                     const active = mech?.id === m.id;
@@ -289,6 +297,7 @@ export default function CustomizeWizard({ product }: { product: Product }) {
                     );
                   })}
                 </ul>
+                </>
               )}
 
               {/* FABRIC (SoMo) — per-colour faceted grid (isolated swatches, lazy). */}
