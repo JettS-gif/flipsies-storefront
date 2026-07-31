@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart, type CartItem } from '@/context/CartContext';
+import { canContinueFulfillment } from '@/lib/checkoutReadiness';
 import { trackEvent } from '@/lib/analytics';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { getStripe } from '@/lib/stripe';
@@ -285,21 +286,32 @@ export default function CheckoutPage() {
     setStep(1);
   }
 
+  // A made-to-order cart has no slot to pick: delivery is quoted and billed when
+  // the item arrives, so "has a selected slot" is the wrong readiness test for it.
+  const deliveryOnArrival = availability?.status === 'delivery_on_arrival';
+
+  // SINGLE SOURCE for "may this cart continue to payment" — the submit handler
+  // and the button's `disabled` prop both read this. The rule itself lives in
+  // src/lib/checkoutReadiness.ts so it is unit-tested; see that file for why.
+  const canContinue = canContinueFulfillment({
+    fulfillmentType,
+    hasSelectedSlot:   !!selectedSlot,
+    deliveryOnArrival,
+    hasPickupStore:    !!pickupStore,
+    hasPickupDate:     !!pickupDate,
+  });
+
   // Step 2: Fulfillment — "Continue to Payment" button handler.
   function handleFulfillmentSubmit(e: FormEvent) {
     e.preventDefault();
     // Guard against accidental skips: each fulfillment mode has its own
     // required fields before we'll create a payment intent.
-    // A made-to-order cart has no slot to pick — delivery is quoted and billed
-    // when the item arrives — so requiring one here would dead-end checkout.
-    if (fulfillmentType === 'delivery'
-        && availability?.status !== 'delivery_on_arrival'
-        && !selectedSlot) {
-      setAvailError('Please check availability and pick a delivery slot before continuing.');
-      return;
-    }
-    if (fulfillmentType === 'delivery' && !availability) {
-      setAvailError('Please check availability for your address before continuing.');
+    if (fulfillmentType === 'delivery' && !canContinue) {
+      setAvailError(
+        availability
+          ? 'Please pick a delivery slot before continuing.'
+          : 'Please check availability for your address before continuing.',
+      );
       return;
     }
     if (fulfillmentType === 'pickup') {
@@ -873,11 +885,11 @@ export default function CheckoutPage() {
             </button>
             <button
               type="submit"
-              disabled={
-                creatingIntent ||
-                (fulfillmentType === 'delivery' && !selectedSlot) ||
-                (fulfillmentType === 'pickup'   && (!pickupStore || !pickupDate))
-              }
+              // Reads the same predicate as handleFulfillmentSubmit — see
+              // canContinueFulfillment. Do not re-inline the condition here: a
+              // disabled button never fires its handler, so a divergence between
+              // the two silently blocks the sale with no error on screen.
+              disabled={creatingIntent || !canContinue}
               className="btn-brand flex-1 py-3 disabled:opacity-50"
             >
               {creatingIntent ? 'Creating Order...' : 'Continue to Payment'}
@@ -922,6 +934,15 @@ export default function CheckoutPage() {
                   </div>
                 )}
               </>
+            )}
+            {/* Made-to-order: no fee is charged now, but say so rather than
+                silently omitting the line — an absent delivery row on a
+                delivery order reads as "delivery is free", which it isn't. */}
+            {deliveryOnArrival && fulfillmentType === 'delivery' && (
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-brand-charcoal-light">Delivery</span>
+                <span className="text-brand-charcoal-light">Quoted on arrival</span>
+              </div>
             )}
             <div className="flex justify-between text-sm mb-1">
               <span className="text-brand-charcoal-light">Tax</span>
