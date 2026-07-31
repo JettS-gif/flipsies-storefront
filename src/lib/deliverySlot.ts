@@ -40,14 +40,42 @@ const STORAGE_KEY   = 'flipsies_delivery_slot';
 const SLOT_TTL_MS   = 24 * 60 * 60 * 1000;       // 24h
 const LEAD_HOURS_MS = 48 * 60 * 60 * 1000;       // 48h
 
+/**
+ * UTC offset for a Central calendar date: '-05:00' during CDT, '-06:00' during
+ * CST. US DST runs from the second Sunday in March to the first Sunday in
+ * November. Derived from the DATE rather than from "now", so a slot booked
+ * either side of the changeover resolves with its own offset.
+ */
+function centralOffset(ds: string): string {
+  const [y, m, d] = ds.split('-').map(Number);
+  if (!y || !m || !d) return '-06:00';
+  const nthSunday = (month: number, n: number) => {
+    const first = new Date(Date.UTC(y, month - 1, 1)).getUTCDay();
+    return 1 + ((7 - first) % 7) + (n - 1) * 7;
+  };
+  const dstStart = { m: 3,  d: nthSunday(3, 2) };
+  const dstEnd   = { m: 11, d: nthSunday(11, 1) };
+  const after  = m > dstStart.m || (m === dstStart.m && d >= dstStart.d);
+  const before = m < dstEnd.m   || (m === dstEnd.m   && d <  dstEnd.d);
+  return after && before ? '-05:00' : '-06:00';
+}
+
 function isSlotFresh(slot: StoredSlot): boolean {
   const savedAtMs = new Date(slot.savedAt).getTime();
   if (isNaN(savedAtMs)) return false;
   if (Date.now() - savedAtMs > SLOT_TTL_MS) return false;
 
-  // Slot date + start time (best-effort, falls back to midnight if parsing
-  // the label fails — the backend does the authoritative check).
-  const slotDate = new Date(`${slot.date}T00:00:00`);
+  // Slot date + start time, resolved in CENTRAL (best-effort — the backend does
+  // the authoritative check).
+  //
+  // `new Date('2026-08-05T00:00:00')` has no zone, so it parses in the
+  // CUSTOMER's timezone. The slot is a Central wall-clock time, so a shopper on
+  // the west coast validated their 48-hour lead against a moment two hours off,
+  // and one abroad far more — either dropping a slot that was still valid or
+  // keeping one that wasn't. Anchor to Central explicitly.
+  // CDT is UTC-5, CST UTC-6; the offset is picked from the slot's own date so a
+  // slot booked across the DST boundary still resolves correctly.
+  const slotDate = new Date(`${slot.date}T00:00:00${centralOffset(slot.date)}`);
   if (isNaN(slotDate.getTime())) return false;
 
   // Parse "10:00 AM" / "2 PM" style labels. If we can't parse, pessimistically
@@ -61,7 +89,10 @@ function isSlotFresh(slot: StoredSlot): boolean {
     const mer = m[3]?.toUpperCase();
     if (mer === 'PM' && hour < 12) hour += 12;
     if (mer === 'AM' && hour === 12) hour = 0;
-    slotDate.setHours(hour, min, 0, 0);
+    // setUTCHours, not setHours: slotDate is already the correct INSTANT for
+    // Central midnight, so shifting it by the shopper's local hours would undo
+    // the offset applied above. Add the wall-clock time in the same frame.
+    slotDate.setUTCHours(slotDate.getUTCHours() + hour, min, 0, 0);
   }
 
   const slotStartMs = slotDate.getTime();

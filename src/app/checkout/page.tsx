@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart, type CartItem } from '@/context/CartContext';
 import { canContinueFulfillment } from '@/lib/checkoutReadiness';
+import { addDaysCT } from '@/lib/ct';
 import { trackEvent } from '@/lib/analytics';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { getStripe } from '@/lib/stripe';
@@ -173,12 +174,13 @@ export default function CheckoutPage() {
   // Minimum pickup date = today + 2 calendar days, in YYYY-MM-DD. Mirrors
   // the 48h rule from the storefront delivery path. Computed once per
   // render; cheap enough not to memoize.
-  function computeMinPickupDate(): string {
-    const d = new Date();
-    d.setDate(d.getDate() + 2);
-    return d.toISOString().slice(0, 10);
-  }
-  const minPickupDate = computeMinPickupDate();
+  // CENTRAL, not the shopper's clock. This is a client component, so
+  // `new Date()` was the CUSTOMER's timezone and `.toISOString()` then
+  // converted it to UTC before slicing — so a Central shopper after 7pm got a
+  // minimum a day later than the 48-hour rule requires, and valid pickup days
+  // were silently unavailable. A shopper in another timezone got a different
+  // answer again. The store's calendar is the only one that matters here.
+  const minPickupDate = addDaysCT(2);
 
   // Pickups run only Tuesday / Thursday / Saturday. Noon-anchor the date-only
   // string so a TZ boundary can't shift the weekday. getDay(): 0=Sun … 6=Sat.
