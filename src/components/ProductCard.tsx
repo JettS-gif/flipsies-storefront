@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Product } from '@/lib/api';
-import { thumb } from '@/lib/img';
+import ProductCardImage from '@/components/ProductCardImage';
 
 export default function ProductCard({ product }: { product: Product }) {
   const p = product;
@@ -33,15 +33,10 @@ export default function ProductCard({ product }: { product: Product }) {
           a uniform height while preserving more of the product. */}
       <div className="aspect-[4/3] bg-brand-warm-gray flex items-center justify-center relative overflow-hidden">
         {p.image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            // Server-side resize (aspect-preserving, width-only) — the grid card
-            // renders ~300px, so downscaling a 1400px showroom photo in-browser
-            // aliases (grainy). 600px stays crisp on retina at a fraction of the bytes.
-            src={thumb(p.image_url, { width: 600 })}
-            alt={displayName}
-            className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
-          />
+          // Adaptive fill: photos close to the card's 4:3 shape fill it
+          // edge-to-edge; mis-shaped ones stay letterboxed rather than being
+          // cropped. See lib/imageFit.ts.
+          <ProductCardImage src={p.image_url} alt={displayName} />
         ) : (
           <div className="text-center p-4">
             <div className="text-4xl mb-2 opacity-20">
