@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 // 301 (308 permanent) redirects from the old outsourced flipsiesfurniture.com
 // URL scheme to the new routes, so inbound links + already-indexed pages keep
@@ -44,4 +45,27 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Sentry wraps the config rather than replacing it — the redirects() above are
+// preserved untouched. The wrapper's job is build-time: it uploads source maps
+// so a production stack trace resolves to real files instead of minified
+// Turbopack chunks, and it stamps a release id that those maps are keyed to.
+//
+// No SENTRY_AUTH_TOKEN ⇒ the upload step is skipped with a warning and the
+// build still succeeds. That keeps local `next build` working without secrets.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  // Source maps are uploaded to Sentry, then deleted from the build output so
+  // they are not served publicly — otherwise anyone could unminify the store.
+  sourcemaps: { deleteSourcemapsAfterUpload: true },
+
+  // Routes Sentry's own browser requests through our origin so ad blockers
+  // don't silently swallow error reports from real customers. Costs one
+  // rewrite; without it a meaningful share of client-side errors never arrive.
+  tunnelRoute: "/monitoring",
+
+  // The upload step is chatty on every build; warnings and errors still print.
+  silent: true,
+});
