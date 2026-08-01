@@ -39,12 +39,15 @@ interface RequestBody {
     time_window?: string;
   };
   delivery_fee?: number;
+  /** Opaque first-party visitor id. Optional: a shopper with storage disabled
+   *  sends nothing, and the order must proceed unchanged. */
+  visitor_id?: string;
 }
 
 export async function POST(req: Request) {
   try {
     const body: RequestBody = await req.json();
-    const { items, customer, fulfillment, delivery_fee = 0 } = body;
+    const { items, customer, fulfillment, delivery_fee = 0, visitor_id } = body;
 
     if (!items?.length || !customer?.name || !customer?.email) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -63,6 +66,10 @@ export async function POST(req: Request) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         customer,
+        // Opaque first-party id, forwarded untouched. Never used for pricing or
+        // auth — it only lets the Website dashboard join this sale to the
+        // visit that produced it.
+        visitor_id,
         // A package line forwards only { package_id, qty }: the backend
         // expands it from the packages row and allocates the bundle price
         // across the components itself (utils/expandPackage.js). Passing a

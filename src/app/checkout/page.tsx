@@ -6,6 +6,7 @@ import { useCart, type CartItem } from '@/context/CartContext';
 import { canContinueFulfillment } from '@/lib/checkoutReadiness';
 import { addDaysCT } from '@/lib/ct';
 import { trackEvent } from '@/lib/analytics';
+import { visitorId, track } from '@/lib/siteEvents';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { getStripe } from '@/lib/stripe';
 import { api, type AvailableSlot, type CheckAvailabilityResponse } from '@/lib/api';
@@ -267,6 +268,11 @@ export default function CheckoutPage() {
         value:    subtotal,
         items:    toGaItems(items),
       });
+      // Same event, first-party. Rides the existing guard so the two channels
+      // agree on what counted as a checkout start, and carries the cart value
+      // so the dashboard can show reached-checkout vs completed without
+      // needing GA4 to answer it.
+      track({ event_type: 'begin_checkout', payload: { value: subtotal, item_count: itemCount } });
     }
   }, [itemCount, subtotal, items]);
 
@@ -462,6 +468,11 @@ export default function CheckoutPage() {
           // Delivery fee comes from the picked slot for delivery orders,
           // zero for pickup.
           delivery_fee: fulfillmentType === 'delivery' && selectedSlot ? selectedSlot.price : 0,
+          // First-party attribution: carries this browser's visitor id onto the
+          // invoice so a sale can be joined back to the traffic that produced
+          // it. Best-effort — a shopper with storage disabled sends nothing and
+          // the order proceeds exactly as before.
+          visitor_id: visitorId(),
         }),
       });
 

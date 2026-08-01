@@ -2,6 +2,7 @@ import { cache } from 'react';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import TrackEvent from '@/components/TrackEvent';
 import type { Metadata } from 'next';
 import AddToCartButton from '@/components/AddToCartButton';
 import WishlistButton from '@/components/WishlistButton';
@@ -145,6 +146,9 @@ export default async function ProductPage({ params }: Props) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <JsonLd id="ld-product" data={[productLd, breadcrumbLd]} />
+      {/* First-party product view — feeds the Website dashboard's "what are people
+          looking at" panel, and the viewed-a-lot / cannot-buy signal. */}
+      <TrackEvent type="product_view" productId={p.id} sku={p.sku} />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-brand-charcoal-light mb-8">
         <Link href="/shop" className="hover:text-brand-charcoal transition-colors">Shop</Link>

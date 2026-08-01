@@ -10,6 +10,7 @@ import { fetchFacets } from '@/lib/facets';
 import { fetchPackages, type StorefrontPackage } from '@/lib/packages';
 import PackageCards from '@/components/PackageCards';
 import CollectionCards, { type CollectionCard } from '@/components/CollectionCards';
+import TrackEvent from '@/components/TrackEvent';
 import { SORTS, buildHref, activeFilterCount, type ShopSearchParams } from '@/lib/shopFilters';
 
 // `path` is hardcoded, so every filtered view (/shop?color_family=Grey&…)
@@ -161,6 +162,15 @@ export default async function ShopPage({ searchParams }: Props) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      {/* First-party search event. Fired ONLY when the shopper actually
+          searched — a room/filter browse is not a search and would drown the
+          real queries. `count` is the server's total match count, not the
+          length of the paged slice, so a search that matched nothing records
+          results_count = 0. That zero is the most valuable row in the whole
+          system: it is a customer naming something we do not carry, or do not
+          call what they call it. */}
+      {search && <TrackEvent type="search" query={search} resultsCount={count} />}
+
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-brand-charcoal">{title}</h1>
