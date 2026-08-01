@@ -29,6 +29,15 @@ export interface CartItem {
    * fabrics on the same frame are DISTINCT cart lines, so fabric_id joins the key.
    */
   fabric_id?: string;
+  /**
+   * The COLOURWAY (`vendor_fabric_colors.id`) inside that fabric line. Sent
+   * alongside fabric_id, never instead of it — checkout resolves fabric_id
+   * against vendor_fabrics and swapping the two is what 422'd live on
+   * 2026-07-31. The backend validates this id belongs to the named fabric and
+   * derives the label from the catalog, so the colourway reaches the invoice
+   * and the minted child's `color` field instead of dying as a client string.
+   */
+  fabric_color_id?: string;
   fabric_name?: string | null;
 }
 
@@ -38,10 +47,19 @@ export interface CartItem {
  * fabric-selected frame keys off (product_id, fabric_id) so the same frame in
  * two fabrics stays two lines.
  */
-export function cartKey(i: Pick<CartItem, 'product_id' | 'package_id' | 'fabric_id'>): string {
+export function cartKey(
+  i: Pick<CartItem, 'product_id' | 'package_id' | 'fabric_id' | 'fabric_color_id'>,
+): string {
   if (i.package_id) return i.package_id;
-  if (i.product_id) return i.fabric_id ? `${i.product_id}::${i.fabric_id}` : i.product_id;
-  return '';
+  if (!i.product_id) return '';
+  if (!i.fabric_id) return i.product_id;
+  // The COLOURWAY joins the key too. Keyed on fabric_id alone, the same frame
+  // in two colourways of one fabric line (366 Speedway Blue Mountain and 366
+  // Speedway Fawn) collapsed into a single line at qty 2 — one of the two
+  // colours silently vanished from the order.
+  return i.fabric_color_id
+    ? `${i.product_id}::${i.fabric_id}::${i.fabric_color_id}`
+    : `${i.product_id}::${i.fabric_id}`;
 }
 
 interface CartState {

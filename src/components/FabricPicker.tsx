@@ -102,6 +102,9 @@ export default function FabricPicker({
       // with items_require_fabric_code. line_id was already carried here and
       // simply wasn't used.
       fabric_id: selected.line_id,
+      // `selected` IS the colourway row, so its id is the colourway id — sent
+      // alongside line_id so the backend can name WHICH colour was ordered.
+      fabric_color_id: selected.id,
       fabric_name: `${selected.line_name} ${selected.name}`,
       sku: `${frame.sku}::${selected.line_name} ${selected.name}`,
       name: `${frame.collection ?? frame.name} — ${selected.line_name} ${selected.name}`,

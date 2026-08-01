@@ -180,8 +180,12 @@ export default function CustomizeWizard({ product }: { product: Product }) {
       // vendor_fabric_colors row; checkout resolves fabric_id against
       // vendor_fabrics, so sending the colourway made the lookup miss and the
       // order 422 with items_require_fabric_code (reported live 2026-07-31).
-      // The colourway is still preserved for humans in fabric_name and the SKU.
       fabric_id: color ? color.line_id : line?.id,
+      // The colourway id rides ALONGSIDE the line id (not in place of it, which
+      // is what broke above). Without it the backend can only name the fabric
+      // line — an order for "366 Speedway" that doesn't say which of its three
+      // colourways, so the invoice, the PO and the warehouse all guess.
+      fabric_color_id: color?.id,
       fabric_name: fabricLabel,
       sku: `${fsku}::${fabricLabel}`,
       name: `${product.collection ?? product.name} — ${mechPrefix}${fabricLabel}`,

@@ -424,7 +424,15 @@ export default function CheckoutPage() {
                   qty: i.qty,
                   // Made-to-order fabric pick — the backend mints/swaps the
                   // fabric child and prices it off the frame's grade map.
-                  ...(i.fabric_id ? { fabric_id: i.fabric_id, fabric_name: i.fabric_name } : {}),
+                  ...(i.fabric_id ? {
+                    fabric_id: i.fabric_id,
+                    // Colourway id — the backend validates it against the named
+                    // fabric and derives the label from the catalog, so the
+                    // colourway lands in the invoice and the minted child's
+                    // `color` rather than surviving only as this display string.
+                    ...(i.fabric_color_id ? { fabric_color_id: i.fabric_color_id } : {}),
+                    fabric_name: i.fabric_name,
+                  } : {}),
                 }
           )),
           customer: { name, email, phone: phone || undefined },
