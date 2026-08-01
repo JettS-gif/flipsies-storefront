@@ -22,8 +22,17 @@ export interface StoredSlot {
   address: string;
   /** YYYY-MM-DD in server-local timezone */
   date: string;
-  /** Human label like "10:00 AM" or "10:00 AM - 12:00 PM" */
+  /**
+   * The CONCRETE committed time, e.g. "12:15 PM". Sent back as the order's
+   * time_window; the dispatch board places the stop here. Display hour_label.
+   */
   time_label: string;
+  /**
+   * Customer-facing window, e.g. "12:00 PM – 1:00 PM" (2026-08-01). Optional
+   * so a slot saved before this shipped still rehydrates — readers fall back
+   * to time_label.
+   */
+  hour_label?: string;
   /** Minutes from midnight on the slot's date */
   time_mins: number;
   /** Delivery fee the scheduling engine quoted for this slot */

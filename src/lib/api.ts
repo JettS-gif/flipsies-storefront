@@ -342,8 +342,22 @@ export interface TrackOrderResponse {
 
 export interface AvailableSlot {
   date: string;             // YYYY-MM-DD
-  time_label: string;       // "10:00 AM"
-  time_mins: number;        // 600 for 10:00 AM
+  /**
+   * The CONCRETE slot we actually commit to — "12:15 PM". This is what goes
+   * back as `time_window` on the order and what the dispatch board places the
+   * stop at, so the crew keeps 15-minute precision. Show `hour_label` instead.
+   */
+  time_label: string;
+  time_mins: number;        // 735 for 12:15 PM
+  /**
+   * The customer-facing promise — "12:00 PM – 1:00 PM" (2026-08-01). The
+   * backend rolls its 15-minute grid up into hour windows for this endpoint;
+   * see DeliverDeskBackEnd/utils/slotRollup.js. Optional so an older backend
+   * (or a non-rolled caller) still type-checks — render `hour_label ??
+   * time_label`.
+   */
+  hour_label?: string;
+  hour_mins?: number;       // 720 for the 12:00 PM – 1:00 PM window
   price: number;            // delivery fee for this slot (base + surcharges)
   proximity_label: string;  // "Within 15 min" | "Open day" | etc.
   driver_name?: string;

@@ -211,6 +211,7 @@ export default function CheckoutPage() {
       const rehydrated: AvailableSlot = {
         date:               stored.date,
         time_label:         stored.time_label,
+        hour_label:         stored.hour_label,
         time_mins:          stored.time_mins,
         price:              stored.price,
         proximity_label:    stored.proximity_label,
@@ -394,6 +395,7 @@ export default function CheckoutPage() {
       address:            address.trim(),
       date:               slot.date,
       time_label:         slot.time_label,
+      hour_label:         slot.hour_label,
       time_mins:          slot.time_mins,
       price:              slot.price,
       proximity_label:    slot.proximity_label,
@@ -676,10 +678,20 @@ export default function CheckoutPage() {
                       </p>
                       {selectedSlot && (
                         <p className="text-xs text-brand-green font-medium">
-                          ✓ {formatDayLabel(selectedSlot.date)} @ {selectedSlot.time_label} — ${selectedSlot.price.toFixed(2)}
+                          ✓ {formatDayLabel(selectedSlot.date)} @ {selectedSlot.hour_label ?? selectedSlot.time_label} — ${selectedSlot.price.toFixed(2)}
                         </p>
                       )}
                     </div>
+                    {/* Estimate disclaimer (Jett 2026-08-01). Slots are hour
+                        windows now; the crew is routed to a concrete time
+                        inside the window and real routes slip. Say so where the
+                        customer chooses, not only on the invoice — the same
+                        sentence is on the printed invoice (invoicePdf.js) and
+                        the in-store picker. */}
+                    <p className="text-xs text-brand-charcoal-light bg-brand-yellow-light border border-brand-yellow rounded-lg px-3 py-2 leading-snug">
+                      Delivery windows are an <span className="font-semibold">estimate, not a guarantee</span>.
+                      We&apos;ll confirm your arrival time the day before and call if the route runs long.
+                    </p>
                     <div className="max-h-96 overflow-y-auto rounded-lg border border-brand-border divide-y divide-brand-border">
                       {sortedDates.map(dateStr => (
                         <div key={dateStr} className="p-3">
@@ -702,7 +714,7 @@ export default function CheckoutPage() {
                                       : 'border-brand-border hover:border-brand-charcoal-light bg-white'
                                   }`}
                                 >
-                                  <div className="text-brand-charcoal">{slot.time_label}</div>
+                                  <div className="text-brand-charcoal">{slot.hour_label ?? slot.time_label}</div>
                                   <div className="text-brand-charcoal-light mt-0.5">
                                     ${slot.price.toFixed(2)}
                                   </div>
@@ -976,7 +988,7 @@ export default function CheckoutPage() {
               <>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-brand-charcoal-light">
-                    Delivery — {formatDayLabel(selectedSlot.date)} @ {selectedSlot.time_label}
+                    Delivery — {formatDayLabel(selectedSlot.date)} @ {selectedSlot.hour_label ?? selectedSlot.time_label}
                   </span>
                   <span>${selectedSlot.price.toFixed(2)}</span>
                 </div>
