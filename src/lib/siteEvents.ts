@@ -116,6 +116,31 @@ function sessionId(): string {
 // Read from window.location directly rather than useSearchParams(), which would
 // opt the whole tree into dynamic rendering — the same reason Analytics.tsx
 // avoids it.
+// PAID CLICKS ARRIVE AS gclid, NOT utm. Google Ads auto-tagging — which is the
+// recommended setup and the one we enabled — appends `gclid` and NO utm_*
+// parameters. Capturing only utm therefore made every auto-tagged ad click look
+// identical to organic search: 380 events with zero utm_source, which reads as
+// "the ads sent nobody" when it actually means "we never looked".
+//
+// A click id is recorded as utm_source='google' / utm_medium='cpc' rather than
+// stored raw: that groups a paid visit with the rest of the source report
+// instead of making every consumer learn a second field, and it answers the
+// only question being asked here — paid or organic.
+//
+// The raw id is deliberately NOT sent. site_events has no column for it, so it
+// would be dropped by buildEventRow anyway, and a field that looks captured but
+// silently isn't is worse than an absent one. If click-level joins to the Ads
+// API are ever wanted, that needs a column and a migration, not a hopeful
+// payload key.
+//
+// Same treatment for Microsoft (msclkid) and Meta (fbclid) — identical problem.
+const CLICK_IDS: Array<[string, string, string]> = [
+  // [param, utm_source, utm_medium]
+  ['gclid',   'google',    'cpc'],
+  ['msclkid', 'bing',      'cpc'],
+  ['fbclid',  'facebook',  'paid_social'],
+];
+
 function utmParams(): Record<string, string> {
   try {
     const stored = window.sessionStorage.getItem(UTM_KEY);
@@ -124,6 +149,16 @@ function utmParams(): Record<string, string> {
     for (const k of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
       const v = current.get(k);
       if (v) fresh[k] = v.slice(0, 200);
+    }
+    // Only fills what an explicit utm_* did NOT set — a hand-tagged campaign URL
+    // is a deliberate statement about attribution and must win over an inferred
+    // one.
+    for (const [param, source, medium] of CLICK_IDS) {
+      const id = current.get(param);
+      if (!id) continue;
+      if (!fresh.utm_source) fresh.utm_source = source;
+      if (!fresh.utm_medium) fresh.utm_medium = medium;
+      break; // one click can only come from one network
     }
     if (Object.keys(fresh).length) {
       window.sessionStorage.setItem(UTM_KEY, JSON.stringify(fresh));
