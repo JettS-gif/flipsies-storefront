@@ -89,8 +89,14 @@ export function visitorId(): string {
   return v;
 }
 
-/** Rolling 30-minute session. Each event pushes the expiry out. */
-function sessionId(): string {
+/**
+ * Rolling 30-minute session. Each event pushes the expiry out.
+ *
+ * Exported so a lead submission can record the SITTING that produced it, not
+ * just the person — the Leads panel wants "what were they looking at when they
+ * asked us", which is a session question.
+ */
+export function sessionId(): string {
   const raw = readStore(SESSION_KEY);
   const now = Date.now();
   if (raw) {

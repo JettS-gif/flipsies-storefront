@@ -1,4 +1,24 @@
+import { visitorId, sessionId } from './siteEvents';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://deliverdesk-backend-production.up.railway.app';
+
+/**
+ * First-party attribution for a browser-originated POST.
+ *
+ * Returns {} on the server. This module is imported by server components
+ * (shop/page.tsx renders with getProducts), and visitorId() reads localStorage
+ * inside a try/catch — so a server-side call does NOT throw, it silently mints a
+ * brand-new id. That would post a visitor who never browsed anything and poison
+ * the very join this exists to enable. No field beats a fabricated one.
+ */
+function browserAttribution(): { visitor_id?: string; session_id?: string } {
+  if (typeof window === 'undefined') return {};
+  try {
+    return { visitor_id: visitorId(), session_id: sessionId() };
+  } catch {
+    return {}; // analytics must never break a lead submission
+  }
+}
 
 interface RequestOptions {
   headers?: Record<string, string>;
@@ -298,7 +318,17 @@ export const api = {
     request<LeadCaptureResponse>(
       'POST',
       '/storefront/leads',
-      payload,
+      // Attach the visit that produced this lead, so the Leads panel can expand
+      // a row into what they looked at and whether they reached checkout.
+      // Attached HERE rather than at each form so a future lead surface cannot
+      // forget it and quietly become unattributable.
+      //
+      // Guarded on `window` because this module is imported by SERVER components
+      // too (shop/page.tsx calls getProducts during render). visitorId() reads
+      // localStorage inside a try/catch, so a server call would not throw — it
+      // would silently MINT a fresh id and post a visitor that never existed.
+      // Omitting the field server-side is the honest answer.
+      { ...payload, ...browserAttribution() },
       { cache: 'no-store' },
     ),
 
