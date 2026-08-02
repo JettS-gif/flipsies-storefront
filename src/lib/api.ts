@@ -163,6 +163,14 @@ export interface Product {
    * split. Null/absent for products that aren't ordered in a fabric library.
    */
   orderable_count?: number | null;
+  /**
+   * Showrooms where this piece is out of box on the floor — derived server-side
+   * from bin data (qty > 0 at a location of type='showroom'). Reserved units
+   * count: a sold floor model keeps standing there with a SOLD tag and is still
+   * viewable. Empty means it is on no floor, and the PDP block renders nothing
+   * rather than announcing "not available to view".
+   */
+  on_display_at?: Array<{ id: string; name: string }>;
   /** Sibling color/finish variants (same variant_group_id OR frame parent), in-stock first. */
   variants?: ProductVariant[];
   /** Orderable fabric library for fabric-graded frames (Chairs America). */

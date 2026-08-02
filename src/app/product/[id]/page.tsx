@@ -17,6 +17,7 @@ import SimilarProducts from '@/components/SimilarProducts';
 import JsonLd from '@/components/JsonLd';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
 import { warrantyForBrand, brandSlug } from '@/lib/warranty';
+import SeeItInPerson from '@/components/SeeItInPerson';
 import { brandByName } from '@/lib/brands';
 
 interface Props {
@@ -308,6 +309,12 @@ export default async function ProductPage({ params }: Props) {
           ? <FabricPicker frame={frame} fabrics={p.fabrics} fromPrice={Number(p.retail_price)} />
           : <FabricSelector frame={frame} fabrics={p.fabrics} fromPrice={Number(p.retail_price)} />;
       })()}
+
+      {/* Where can I see this in person? Sits directly under the buy area:
+          "I want to try it first" is the biggest objection on a sofa, so the
+          answer belongs next to the decision, not buried under the spec table.
+          Renders nothing when the piece is on no floor. */}
+      <SeeItInPerson onDisplayAt={p.on_display_at} />
 
       {/* Product info — below the fabric picker (Jett): description, details,
           financing, warranty. */}
