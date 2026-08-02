@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useReducer, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { isSignedIn, portalGetCart, portalPutCart } from '@/lib/customerSession';
+import { addedToCart } from '@/lib/events';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -223,7 +224,26 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [state.items, state.hydrated]);
 
   const addItem = useCallback((item: Omit<CartItem, 'qty'> & { qty?: number }) => {
-    dispatch({ type: 'ADD_ITEM', item: { ...item, qty: item.qty ?? 1 } as CartItem });
+    const qty = item.qty ?? 1;
+    dispatch({ type: 'ADD_ITEM', item: { ...item, qty } as CartItem });
+
+    // The ONE place a shopper adds to cart, so the one place this belongs.
+    // Deliberately NOT in the reducer: HYDRATE and SET_ITEMS also produce cart
+    // items (restoring a saved cart, syncing from an account) and firing on
+    // those would report a purchase intent that never happened.
+    //
+    // This is the mid-funnel signal Meta optimises on. analytics.ts has mapped
+    // add_to_cart → Meta AddToCart since it was written, but nothing ever
+    // called it, so the mapping was dead and Meta only ever saw Purchase and
+    // InitiateCheckout — too sparse on furniture volume to optimise against.
+    addedToCart({
+      product_id: item.product_id ?? null,
+      sku:        item.sku,
+      name:       item.name,
+      price:      item.price,
+      qty,
+      category:   item.category,
+    });
   }, []);
 
   const removeItem = useCallback((key: string) => {

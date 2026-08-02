@@ -148,7 +148,8 @@ export default async function ProductPage({ params }: Props) {
       <JsonLd id="ld-product" data={[productLd, breadcrumbLd]} />
       {/* First-party product view — feeds the Website dashboard's "what are people
           looking at" panel, and the viewed-a-lot / cannot-buy signal. */}
-      <TrackEvent type="product_view" productId={p.id} sku={p.sku} />
+      <TrackEvent type="product_view" productId={p.id} sku={p.sku} name={displayName}
+        price={p.retail_price} category={p.category} />
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-brand-charcoal-light mb-8">
         <Link href="/shop" className="hover:text-brand-charcoal transition-colors">Shop</Link>

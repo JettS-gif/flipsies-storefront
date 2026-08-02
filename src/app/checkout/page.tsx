@@ -7,6 +7,7 @@ import { canContinueFulfillment } from '@/lib/checkoutReadiness';
 import { addDaysCT } from '@/lib/ct';
 import { trackEvent } from '@/lib/analytics';
 import { visitorId, track } from '@/lib/siteEvents';
+import { purchased } from '@/lib/events';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { getStripe } from '@/lib/stripe';
 import { api, type AvailableSlot, type CheckAvailabilityResponse } from '@/lib/api';
@@ -34,7 +35,18 @@ function firePurchase() {
     const raw = sessionStorage.getItem(PENDING_PURCHASE_KEY);
     if (!raw) return;
     sessionStorage.removeItem(PENDING_PURCHASE_KEY); // fire exactly once
-    trackEvent('purchase', JSON.parse(raw));
+    const payload = JSON.parse(raw);
+    trackEvent('purchase', payload);
+    // First-party half, inside the SAME remove-before-fire guard so it inherits
+    // the exactly-once property rather than needing its own. Deliberately not
+    // routed through lib/events.purchased()'s GA4 path — GA4 is already covered
+    // by the line above, and double-firing would double-count revenue, which is
+    // the one number nobody forgives being wrong.
+    purchased(
+      payload?.transaction_id || '',
+      Number(payload?.value) || 0,
+      Array.isArray(payload?.items) ? payload.items.length : 0,
+    );
   } catch { /* sessionStorage/JSON unavailable — skip */ }
 }
 
