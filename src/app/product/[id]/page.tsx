@@ -314,7 +314,7 @@ export default async function ProductPage({ params }: Props) {
           "I want to try it first" is the biggest objection on a sofa, so the
           answer belongs next to the decision, not buried under the spec table.
           Renders nothing when the piece is on no floor. */}
-      <SeeItInPerson onDisplayAt={p.on_display_at} />
+      <SeeItInPerson onDisplayAt={p.on_display_at} onDisplaySiblings={p.on_display_siblings} />
 
       {/* Product info — below the fabric picker (Jett): description, details,
           financing, warranty. */}

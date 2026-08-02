@@ -29,16 +29,101 @@ function matchShowroom(backendName: string): Showroom | null {
   return SHOWROOMS.find((s) => n.includes(s.slug)) || null;
 }
 
-interface Props {
-  onDisplayAt?: Array<{ id: string; name: string }> | null;
+// Shared by both branches — the "this colour is here" case and the "the model is
+// here in another colour" case render the same store card and hours.
+function ShowroomCard({ s }: { s: Showroom }) {
+  return (
+    <div className="rounded-md border border-brand-border bg-white p-4">
+      <div className="font-medium text-brand-charcoal">{s.city}</div>
+      <address className="mt-1 not-italic text-sm text-brand-charcoal-light">
+        {s.street}
+        <br />
+        {s.city}, {s.state} {s.zip}
+      </address>
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+        <a href={s.mapUrl} target="_blank" rel="noopener noreferrer"
+           className="text-brand-green underline underline-offset-2">
+          Directions
+        </a>
+        {/* tel: rather than plain text — most of this traffic is mobile (57% at
+            time of writing) and the point of the block is to turn a browser into
+            a visit or a call. */}
+        <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`}
+           className="text-brand-green underline underline-offset-2">
+          {s.phone}
+        </a>
+        <Link href={`/locations/${s.slug}`}
+              className="text-brand-charcoal-light underline underline-offset-2">
+          Store details
+        </Link>
+      </div>
+    </div>
+  );
 }
 
-export default function SeeItInPerson({ onDisplayAt }: Props) {
+function Hours() {
+  return (
+    <div className="mt-4 text-xs text-brand-charcoal-light">
+      {HOURS_DISPLAY.map((h) => (
+        <div key={h.days}>
+          {h.days}: {h.time}
+        </div>
+      ))}
+      {/* An invitation, not a guarantee. Floor stock moves during the day and the
+          bin data is only as fresh as the last person to update it — so "call
+          ahead" is both honest and the action we actually want. */}
+      <p className="mt-2">
+        Floor models move — give us a call before you drive out and we&apos;ll make sure it&apos;s ready for you.
+      </p>
+    </div>
+  );
+}
+
+interface Props {
+  onDisplayAt?: Array<{ id: string; name: string }> | null;
+  /** Other colourways of this model that ARE on a floor, when this one isn't. */
+  onDisplaySiblings?: Array<{ id: string; label: string; showrooms: Array<{ id: string; name: string }> }> | null;
+}
+
+export default function SeeItInPerson({ onDisplayAt, onDisplaySiblings }: Props) {
   const matched = (onDisplayAt || [])
     .map((s) => matchShowroom(s.name))
     .filter((s): s is Showroom => Boolean(s));
 
-  if (!matched.length) return null;
+  // Fallback: this exact colourway is on no floor, but the MODEL is. Say so
+  // instead of going quiet — Jett 2026-08-02: "they could still try the chair
+  // out but the custom color would have to be ordered." That is the honest
+  // answer and the better pitch, and it stops the PDP contradicting the
+  // group-level badge on the browse card the shopper just clicked.
+  if (!matched.length) {
+    const sibs = (onDisplaySiblings || []).filter((s) => s.showrooms?.length);
+    if (!sibs.length) return null;
+
+    const rooms = [
+      ...new Map(
+        sibs.flatMap((s) => s.showrooms.map((r) => matchShowroom(r.name)).filter((x): x is Showroom => Boolean(x)))
+          .map((s) => [s.slug, s]),
+      ).values(),
+    ];
+    if (!rooms.length) return null;
+
+    return (
+      <section className="mt-8 rounded-lg border border-brand-border bg-brand-warm-gray/40 p-5">
+        <h2 className="text-base font-semibold text-brand-charcoal">Try this model in person</h2>
+        <p className="mt-1 text-sm text-brand-charcoal-light">
+          This colour is made to order, but the same piece is on the floor in{' '}
+          <span className="text-brand-charcoal">{sibs.map((s) => s.label).filter(Boolean).join(', ')}</span>
+          {' '}at {rooms.map((r) => r.city).join(' and ')} — come sit on it, then pick your fabric.
+        </p>
+        <div className={`mt-4 grid gap-4 ${rooms.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+          {rooms.map((s) => (
+            <ShowroomCard key={s.slug} s={s} />
+          ))}
+        </div>
+        <Hours />
+      </section>
+    );
+  }
 
   const both = matched.length > 1;
 
@@ -55,49 +140,11 @@ export default function SeeItInPerson({ onDisplayAt }: Props) {
 
       <div className={`mt-4 grid gap-4 ${both ? 'sm:grid-cols-2' : ''}`}>
         {matched.map((s) => (
-          <div key={s.slug} className="rounded-md border border-brand-border bg-white p-4">
-            <div className="font-medium text-brand-charcoal">{s.city}</div>
-            <address className="mt-1 not-italic text-sm text-brand-charcoal-light">
-              {s.street}
-              <br />
-              {s.city}, {s.state} {s.zip}
-            </address>
-
-            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <a href={s.mapUrl} target="_blank" rel="noopener noreferrer"
-                 className="text-brand-green underline underline-offset-2">
-                Directions
-              </a>
-              {/* tel: rather than plain text — most of this traffic is mobile
-                  (57% at time of writing), and the whole point of this block is
-                  to convert a browser into a visit or a call. */}
-              <a href={`tel:${s.phone.replace(/[^\d+]/g, '')}`}
-                 className="text-brand-green underline underline-offset-2">
-                {s.phone}
-              </a>
-              <Link href={`/locations/${s.slug}`}
-                    className="text-brand-charcoal-light underline underline-offset-2">
-                Store details
-              </Link>
-            </div>
-          </div>
+          <ShowroomCard key={s.slug} s={s} />
         ))}
       </div>
 
-      <div className="mt-4 text-xs text-brand-charcoal-light">
-        {HOURS_DISPLAY.map((h) => (
-          <div key={h.days}>
-            {h.days}: {h.time}
-          </div>
-        ))}
-        {/* Deliberately worded as an invitation, not a guarantee. Floor stock
-            moves during the day and the bin data is only as fresh as the last
-            person to update it — so "call ahead" is both honest and the action
-            we actually want. */}
-        <p className="mt-2">
-          Floor models move — give us a call before you drive out and we&apos;ll make sure it&apos;s ready for you.
-        </p>
-      </div>
+      <Hours />
     </section>
   );
 }

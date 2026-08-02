@@ -171,6 +171,12 @@ export interface Product {
    * rather than announcing "not available to view".
    */
   on_display_at?: Array<{ id: string; name: string }>;
+  /**
+   * Set only when THIS colourway is on no floor but the model is: other
+   * colourways that are, so the PDP can say "try it in Fig, order yours"
+   * instead of going silent under a group-level badge on the browse card.
+   */
+  on_display_siblings?: Array<{ id: string; label: string; showrooms: Array<{ id: string; name: string }> }>;
   /** Sibling color/finish variants (same variant_group_id OR frame parent), in-stock first. */
   variants?: ProductVariant[];
   /** Orderable fabric library for fabric-graded frames (Chairs America). */
