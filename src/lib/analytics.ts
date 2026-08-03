@@ -25,14 +25,45 @@ declare global {
   }
 }
 
-// GA4 event name → Meta Pixel standard event. Only the conversion-worthy events
-// map to Meta; everything else stays GA-only.
+// GA4 event name → Meta Pixel standard event.
+//
+// view_item → ViewContent was MISSING until 2026-08-03, and it is the one that
+// costs money: ViewContent is what Meta builds a "looked at a product, didn't
+// buy" retargeting audience from, and dynamic/catalog ads cannot run without
+// it. Product views were reaching GA4 and stopping there, so every conversion
+// campaign was optimising against cart/purchase alone — far too sparse on
+// furniture volume, the same handicap events.ts describes for add_to_cart.
+//
+// view_item_list is deliberately NOT mapped. "ViewCategory" is not in Meta's
+// standard event list (it survives only in older DPA docs), so sending it
+// registers as a custom event that no standard optimisation reads — noise on
+// every listing page for no gain.
 const META_EVENT: Record<string, string> = {
-  generate_lead: 'Lead',
+  view_item: 'ViewContent',
+  search: 'Search',
+  add_to_cart: 'AddToCart',
   begin_checkout: 'InitiateCheckout',
   purchase: 'Purchase',
-  add_to_cart: 'AddToCart',
+  generate_lead: 'Lead',
 };
+
+type GaItem = { item_id?: string; quantity?: number };
+
+// Meta's ecommerce parameters are not GA4's. Meta matches a catalog on
+// content_ids, so an event without them can only be counted — it cannot drive
+// a product-view audience, dynamic ads, or product-level ROAS. Derived from the
+// GA4 items array rather than making every call site pass a second shape.
+// Returns {} when there are no usable ids so the spread stays a no-op.
+function metaContentParams(params: GtagParams): Record<string, unknown> {
+  const items = Array.isArray(params.items) ? (params.items as GaItem[]) : [];
+  const withIds = items.filter((i) => i && typeof i.item_id === 'string' && i.item_id);
+  if (!withIds.length) return {};
+  return {
+    content_type: 'product',
+    content_ids: withIds.map((i) => i.item_id),
+    contents: withIds.map((i) => ({ id: i.item_id, quantity: i.quantity ?? 1 })),
+  };
+}
 
 // Fires a pageview to GA4 and Meta on client-side (SPA) route changes. GA4
 // auto-captures utm_* off the landing URL, so channel attribution needs nothing
@@ -55,6 +86,9 @@ export function trackEvent(name: string, params: GtagParams = {}): void {
     window.fbq('track', metaName, {
       ...(typeof params.value === 'number' ? { value: params.value } : {}),
       ...(typeof params.currency === 'string' ? { currency: params.currency } : {}),
+      // GA4 calls it search_term, Meta calls it search_string; same value.
+      ...(typeof params.search_term === 'string' ? { search_string: params.search_term } : {}),
+      ...metaContentParams(params),
     });
   }
 }
