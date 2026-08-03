@@ -210,6 +210,21 @@ export interface CategoriesResponse {
   rooms: string[];
 }
 
+/**
+ * A better phrasing for a search that returned nothing, with the count it would
+ * have found. `suggestion: null` is a real answer, not a failure — it means we
+ * genuinely do not carry the thing, which is the unmet-demand signal the
+ * website panel exists to collect.
+ *
+ * `via` says which mechanism got there: a curated customer-word→our-word map, a
+ * trigram spelling fix, or both.
+ */
+export interface SearchSuggestion {
+  suggestion: string | null;
+  via?: 'synonym' | 'spelling' | 'synonym+spelling' | 'fuzzy-synonym';
+  count?: number;
+}
+
 export const api = {
   getProducts: async (params: Record<string, string | number> = {}) => {
     const p = new URLSearchParams();
@@ -273,6 +288,30 @@ export const api = {
     request<CategoriesResponse>('GET', '/storefront/categories', undefined, {
       next: { revalidate: 300 },
     }),
+
+  /**
+   * Did-you-mean for a search that already came back empty. Call it ONLY on
+   * that path — the endpoint is deliberately separate from /storefront/products
+   * so a working query is never silently reshuffled.
+   *
+   * Swallows its own errors on purpose. This is an enhancement to a page that
+   * has already failed to find anything; a suggestion lookup must not turn a
+   * disappointing search into a broken one. Cached like the other slow-moving
+   * catalog vocabulary — the answer for a given term changes only when the
+   * synonym map or the catalog does.
+   */
+  getSearchSuggestion: async (term: string): Promise<SearchSuggestion> => {
+    try {
+      return await request<SearchSuggestion>(
+        'GET',
+        `/storefront/search-suggest?q=${encodeURIComponent(term)}`,
+        undefined,
+        { next: { revalidate: 300 } },
+      );
+    } catch {
+      return { suggestion: null };
+    }
+  },
 
   getTaxRate: (city?: string) =>
     request<{ rate: number; jurisdiction: string }>('GET', `/storefront/tax-rate${city ? '?city=' + encodeURIComponent(city) : ''}`, undefined, {

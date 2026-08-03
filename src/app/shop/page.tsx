@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import type { Product } from '@/lib/api';
+import type { Product, SearchSuggestion } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
 import SectionalFamilyCards from '@/components/SectionalFamilyCards';
 import ShopFilters from '@/components/ShopFilters';
@@ -62,16 +62,19 @@ export default async function ShopPage({ searchParams }: Props) {
   let facets = null;
   let count = 0;
 
+  // Room browse groups by collection client-side, so fetch enough to cover a
+  // whole room's pieces before the packaged ones are suppressed (no paging yet).
+  // Declared outside the try so the did-you-mean pass below can re-run the same
+  // query under a different term without rebuilding the shopper's filters.
+  const params: Record<string, string | number> = { limit: roomBrowse ? 1000 : 48, exclude_sectionals: 1 };
+  if (search) params.search = search;
+  // Pass filters straight through — the endpoint owns the semantics (colour
+  // forces the base table, availability reads the generated qty, etc).
+  for (const k of ['room', 'brand', 'collection', 'color_family', 'price_min', 'price_max', 'availability', 'sort'] as const) {
+    if (sp[k]) params[k] = sp[k]!;
+  }
+
   try {
-    // Room browse groups by collection client-side, so fetch enough to cover a
-    // whole room's pieces before the packaged ones are suppressed (no paging yet).
-    const params: Record<string, string | number> = { limit: roomBrowse ? 1000 : 48, exclude_sectionals: 1 };
-    if (search) params.search = search;
-    // Pass filters straight through — the endpoint owns the semantics (colour
-    // forces the base table, availability reads the generated qty, etc).
-    for (const k of ['room', 'brand', 'collection', 'color_family', 'price_min', 'price_max', 'availability', 'sort'] as const) {
-      if (sp[k]) params[k] = sp[k]!;
-    }
     const [prodRes, catRes, famList, pkgList, facetRes] = await Promise.all([
       api.getProducts(params),
       api.getCategories(),
@@ -97,14 +100,21 @@ export default async function ShopPage({ searchParams }: Props) {
   // retail filter is on, hide them entirely: the cards are built from the
   // sectional families endpoint, which knows nothing about price/brand/colour —
   // leaving them up would contradict the filter the shopper just set.
+  // Extracted so the did-you-mean pass can re-match on the substituted term.
+  // Sectionals are excluded from the product grid and surface ONLY as these
+  // cards, so a "corner couch" → "sectional" correction that skipped this would
+  // hand back an empty page while holding the right answer.
+  const matchFamilies = (term: string) =>
+    families.filter(
+      (f) =>
+        f.family.toLowerCase().includes(term.toLowerCase()) ||
+        f.colors.some((c) => c.toLowerCase().includes(term.toLowerCase())),
+    );
+
   const shownFamilies = nActive > 0
     ? []
     : search
-      ? families.filter(
-          (f) =>
-            f.family.toLowerCase().includes(search.toLowerCase()) ||
-            f.colors.some((c) => c.toLowerCase().includes(search.toLowerCase())),
-        )
+      ? matchFamilies(search)
       : families;
 
   // Set cards hide the moment the shopper filters — including via a package's
@@ -156,6 +166,70 @@ export default async function ShopPage({ searchParams }: Props) {
       .sort((a, b) => a.collection.localeCompare(b.collection));
     shownProducts = loose; // only uncollected pieces remain as individual tiles
   }
+  // ── Did-you-mean ─────────────────────────────────────────────────────────
+  // Runs ONLY on the dead end: the shopper searched and every surface came back
+  // empty. The two extra round trips are unavoidably sequential — we cannot
+  // know a correction is needed until the first result returns empty — and that
+  // is affordable precisely here, because the alternative on this path is
+  // showing someone a blank page.
+  //
+  // What we log does NOT change. TrackEvent below still records the shopper's
+  // ORIGINAL words and the original zero count. That zero is the unmet-demand
+  // signal the whole website panel is built on; rewriting it to look like a hit
+  // would destroy the data that tells Jett what to stock. Substitution is a
+  // display concern only, and the banner always tells the shopper we did it.
+  let suggestion: SearchSuggestion | null = null;
+  let suggested: {
+    products: Product[];
+    count: number;
+    packages: StorefrontPackage[];
+    families: SectionalFamily[];
+  } | null = null;
+
+  const foundNothing = !!search
+    && shownProducts.length === 0
+    && shownFamilies.length === 0
+    && shownPackages.length === 0
+    && collectionCards.length === 0;
+
+  if (foundNothing) {
+    try {
+      suggestion = await api.getSearchSuggestion(search!);
+      if (suggestion.suggestion) {
+        const term = suggestion.suggestion;
+        const [prodRes, pkgList] = await Promise.all([
+          api.getProducts({ ...params, search: term }),
+          fetchPackages({ search: term, collection: sp.collection, room: sp.room }).catch(() => []),
+        ]);
+        const sFamilies = nActive > 0 ? [] : matchFamilies(term);
+        // The suggestion's own count came from the UNFILTERED published catalog,
+        // so it can promise results the shopper's active filters then remove
+        // ("nightstand" under color_family=Grey). Only swap the view once the
+        // re-run actually produced something under those same filters —
+        // otherwise a banner would announce results that aren't there, which is
+        // worse than the honest empty state.
+        if ((prodRes.data?.length || 0) > 0 || pkgList.length > 0 || sFamilies.length > 0) {
+          suggested = {
+            products: prodRes.data || [],
+            count: prodRes.count || 0,
+            packages: pkgList,
+            families: sFamilies,
+          };
+        }
+      }
+    } catch (e) {
+      // A dead-end search must not also 500.
+      console.error('Did-you-mean lookup failed:', e);
+    }
+  }
+
+  // What the grid actually renders: the substituted set when we found a better
+  // phrasing, otherwise the shopper's own (empty) result.
+  const gridProducts = suggested ? suggested.products : shownProducts;
+  const gridPackages = suggested ? suggested.packages : shownPackages;
+  const gridFamilies = suggested ? suggested.families : shownFamilies;
+  const gridCount    = suggested ? suggested.count    : count;
+
   const catHref = (c: string) => (c === 'Sectional' ? '/sectionals' : `/shop/${encodeURIComponent(c)}`);
 
   const title = search ? `Results for "${search}"` : 'Shop All';
@@ -168,15 +242,33 @@ export default async function ShopPage({ searchParams }: Props) {
           length of the paged slice, so a search that matched nothing records
           results_count = 0. That zero is the most valuable row in the whole
           system: it is a customer naming something we do not carry, or do not
-          call what they call it. */}
+          call what they call it. `count` is deliberately the ORIGINAL query's
+          count, never the did-you-mean substitute's — correcting the words on
+          screen must not erase the fact that the shopper's own words found
+          nothing. */}
       {search && <TrackEvent type="search" query={search} resultsCount={count} />}
 
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-brand-charcoal">{title}</h1>
         <p className="text-brand-charcoal-light mt-1">
-          {count} product{count !== 1 ? 's' : ''}{search ? ' found' : ' available'}
+          {gridCount} product{gridCount !== 1 ? 's' : ''}{search ? ' found' : ' available'}
         </p>
+        {/* Never substitute silently. The shopper sees their words came up empty
+            and exactly what we searched instead — the link makes that
+            substitution the real query, so it is shareable and bookmarkable. */}
+        {suggested && suggestion?.suggestion && (
+          <p className="text-brand-charcoal-light mt-2 text-sm">
+            No matches for <span className="font-semibold">&ldquo;{search}&rdquo;</span> — showing results for{' '}
+            <Link
+              href={buildHref(sp, { search: suggestion.suggestion })}
+              className="font-semibold text-brand-charcoal hover:underline"
+            >
+              {suggestion.suggestion}
+            </Link>{' '}
+            instead.
+          </p>
+        )}
         {search && (
           <Link href="/shop" className="text-sm text-brand-yellow-dark hover:underline mt-2 inline-block">
             Clear search
@@ -231,7 +323,7 @@ export default async function ShopPage({ searchParams }: Props) {
             <div className="text-sm text-brand-charcoal-light">
               {nActive > 0 && (
                 <span>
-                  {count} match{count !== 1 ? 'es' : ''} ·{' '}
+                  {gridCount} match{gridCount !== 1 ? 'es' : ''} ·{' '}
                   <Link href={buildHref({ search }, {})} className="text-brand-yellow-dark hover:underline">
                     Clear filters
                   </Link>
@@ -291,21 +383,21 @@ export default async function ShopPage({ searchParams }: Props) {
           )}
 
           {/* Bundles as set cards, not five near-identical piece tiles */}
-          <PackageCards packages={shownPackages} />
+          <PackageCards packages={gridPackages} />
 
           {/* Non-packaged collections collapsed to one card each (room browse) */}
           <CollectionCards collections={collectionCards} />
 
           {/* Sectionals as family cards (built via the wizard), not piece tiles */}
-          <SectionalFamilyCards families={shownFamilies} />
+          <SectionalFamilyCards families={gridFamilies} />
 
-          {shownProducts.length > 0 ? (
+          {gridProducts.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {shownProducts.map(p => (
+              {gridProducts.map(p => (
                 <ProductCard key={p.id} product={p} />
               ))}
             </div>
-          ) : shownFamilies.length === 0 && shownPackages.length === 0 && collectionCards.length === 0 ? (
+          ) : gridFamilies.length === 0 && gridPackages.length === 0 && collectionCards.length === 0 ? (
             <div className="text-center py-20 text-brand-charcoal-light">
               <div className="text-4xl mb-4">📦</div>
               <p>{search ? `No products match "${search}".` : 'No products found. Check back soon!'}</p>
