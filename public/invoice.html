@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Your Invoice — Flipsies Furniture</title>
+  <style>
+    body { margin:0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+           background:#f6f6f4; color:#222; }
+    .state { max-width:520px; margin:64px auto; padding:0 24px; text-align:center; }
+    .state h1 { font-size:19px; margin:0 0 10px; color:#0C447C; }
+    .state p { font-size:14px; line-height:1.6; color:#555; margin:0; }
+    .spinner { width:26px; height:26px; border:3px solid #dfe3e8; border-top-color:#0C447C;
+               border-radius:50%; animation:spin .8s linear infinite; margin:0 auto 18px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    /* The print document sets its own page styling; it is injected whole. */
+  </style>
+</head>
+<body>
+  <div id="state" class="state">
+    <div class="spinner"></div>
+    <p>Loading your invoice…</p>
+  </div>
+
+  <script type="module">
+    // Customer-facing copy of an invoice, linked from the "text me my invoice"
+    // SMS (2026-08-04).
+    //
+    // This page renders using ./invoice-doc/invoicePrintDoc.js — a VERBATIM copy
+    // of DeliverDeskFrontEnd/src/utils/invoicePrintDoc.js, the exact module the
+    // staff Print button uses. That is the whole point: the customer sees the
+    // same document staff prints, not a second rendering of it. The copies are
+    // locked byte-for-byte by
+    // DeliverDeskBackEnd/utils/__tests__/invoiceDocVendorParity.contract.test.js
+    // — if they drift, `npm test` fails. Do not hand-edit anything in
+    // ./invoice-doc/; edit the frontend source and re-run the sync script.
+    import { buildInvoicePrintHtml } from './invoice-doc/invoicePrintDoc.js';
+
+    const stateEl = document.getElementById('state');
+    const show = (title, msg) => {
+      stateEl.innerHTML =
+        `<h1>${title}</h1><p>${msg}</p>`;
+    };
+
+    const token = new URLSearchParams(location.search).get('token');
+    if (!token) {
+      show('Missing link', 'This link is incomplete. Please check the text message it came from, or call the showroom and we will resend it.');
+    } else {
+      // Same convention as order.html so this page works against a local backend.
+      const BACKEND_URL =
+        location.hostname === 'localhost' || location.hostname === '127.0.0.1'
+          ? 'http://localhost:3000'
+          : 'https://deliverdesk-backend-production.up.railway.app';
+
+      try {
+        const r = await fetch(`${BACKEND_URL}/public/invoice/${encodeURIComponent(token)}`);
+        if (r.status === 404) {
+          show('Invoice not found', 'We could not find that invoice. The link may have been mistyped. Please call the showroom and we will resend it.');
+        } else if (r.status === 429) {
+          show('Please wait a moment', 'Too many requests from your connection. Wait a minute and refresh.');
+        } else if (!r.ok) {
+          throw new Error(`HTTP ${r.status}`);
+        } else {
+          const inv = await r.json();
+          // Replace the whole document with the printed invoice. The template
+          // ships its own <html>/<head>/<style>, so writing it wholesale is what
+          // keeps it identical to the printed page rather than nesting it inside
+          // this shell's styling.
+          const html = buildInvoicePrintHtml(inv);
+          document.open();
+          document.write(html);
+          document.close();
+        }
+      } catch (e) {
+        show('Something went wrong', 'We could not load your invoice just now. Please try again in a moment, or call the showroom.');
+      }
+    }
+  </script>
+</body>
+</html>
