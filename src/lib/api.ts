@@ -225,6 +225,12 @@ export interface SearchSuggestion {
   count?: number;
 }
 
+/** How many results still counts as "thin" — a shelf too sparse to be an answer.
+ *  Measured, not picked: the nine synonym-mapped terms that currently return
+ *  something return 1, 1, 1, 2, 3, 3, 5, 5 and 16. Five sits in the wide gap
+ *  before that 16 ("coffee table", already a real shelf at 16 hits). */
+export const THIN_RESULT_MAX = 5;
+
 export const api = {
   getProducts: async (params: Record<string, string | number> = {}) => {
     const p = new URLSearchParams();
@@ -300,11 +306,11 @@ export const api = {
    * catalog vocabulary — the answer for a given term changes only when the
    * synonym map or the catalog does.
    */
-  getSearchSuggestion: async (term: string): Promise<SearchSuggestion> => {
+  getSearchSuggestion: async (term: string, opts: { thin?: boolean } = {}): Promise<SearchSuggestion> => {
     try {
       return await request<SearchSuggestion>(
         'GET',
-        `/storefront/search-suggest?q=${encodeURIComponent(term)}`,
+        `/storefront/search-suggest?q=${encodeURIComponent(term)}${opts.thin ? '&thin=1' : ''}`,
         undefined,
         { next: { revalidate: 300 } },
       );

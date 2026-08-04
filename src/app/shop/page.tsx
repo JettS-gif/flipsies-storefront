@@ -1,5 +1,6 @@
 import { api } from '@/lib/api';
 import type { Product, SearchSuggestion } from '@/lib/api';
+import { THIN_RESULT_MAX } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
 import SectionalFamilyCards from '@/components/SectionalFamilyCards';
 import ShopFilters from '@/components/ShopFilters';
@@ -192,9 +193,29 @@ export default async function ShopPage({ searchParams }: Props) {
     && shownPackages.length === 0
     && collectionCards.length === 0;
 
-  if (foundNothing) {
+  // THIN — the search worked, but barely. `count` is the server's total for the
+  // shopper's own words, so this is "we answered, with almost nothing".
+  //
+  // Why this exists: the correction layer used to fire only at exactly zero, so
+  // nine known vocabulary gaps never reached it. "sofa bed" returns three
+  // `678 BEDFORD PARK` sofas — matching the token "bed" inside "BEDFORD" — while
+  // 14 actual sleepers sit unshown, and 3 > 0 meant no banner and no correction.
+  //
+  // Deliberately NOT triggered when the shopper has narrowed with filters: three
+  // results under four active facets is a working filter, not a failing search,
+  // and appending a synonym's products would fight the narrowing they just did.
+  const foundThin = !!search
+    && !foundNothing
+    && nActive === 0
+    && count > 0
+    && count <= THIN_RESULT_MAX;
+
+  if (foundNothing || foundThin) {
     try {
-      suggestion = await api.getSearchSuggestion(search!);
+      // The thin path asks for synonyms only — see suggestAlternatives. Their
+      // spelling demonstrably worked, so the trigram speller has nothing to add
+      // and plenty to get wrong on a rare collection or model name.
+      suggestion = await api.getSearchSuggestion(search!, { thin: foundThin });
       if (suggestion.suggestion) {
         const term = suggestion.suggestion;
         const [prodRes, pkgList] = await Promise.all([
@@ -209,12 +230,33 @@ export default async function ShopPage({ searchParams }: Props) {
         // otherwise a banner would announce results that aren't there, which is
         // worse than the honest empty state.
         if ((prodRes.data?.length || 0) > 0 || pkgList.length > 0 || sFamilies.length > 0) {
-          suggested = {
-            products: prodRes.data || [],
-            count: prodRes.count || 0,
-            packages: pkgList,
-            families: sFamilies,
-          };
+          // APPEND on the thin path, REPLACE on the empty one. The shopper's own
+          // hits are real products that matched their words — hiding them to show
+          // a synonym's shelf would be a downgrade, and for some terms the hit is
+          // not in the mapped set at all ("armoire" finds one Michael Amini piece
+          // that is NOT among the 56 accent cabinets). Deduped by id so a product
+          // matching both phrasings is not shown twice, and theirs stay first.
+          const seen = new Set(shownProducts.map((p) => p.id));
+          const extraProducts = (prodRes.data || []).filter((p) => !seen.has(p.id));
+          const seenPkg = new Set(shownPackages.map((p) => p.id));
+          const extraPackages = pkgList.filter((p) => !seenPkg.has(p.id));
+
+          suggested = foundThin
+            ? {
+                products: [...shownProducts, ...extraProducts],
+                // Their total plus what the synonym genuinely added. Using the
+                // suggestion's own count would double-count the overlap and
+                // print a number the grid does not contain.
+                count: count + extraProducts.length,
+                packages: [...shownPackages, ...extraPackages],
+                families: shownFamilies.length ? shownFamilies : sFamilies,
+              }
+            : {
+                products: prodRes.data || [],
+                count: prodRes.count || 0,
+                packages: pkgList,
+                families: sFamilies,
+              };
         }
       }
     } catch (e) {
@@ -259,14 +301,30 @@ export default async function ShopPage({ searchParams }: Props) {
             substitution the real query, so it is shareable and bookmarkable. */}
         {suggested && suggestion?.suggestion && (
           <p className="text-brand-charcoal-light mt-2 text-sm">
-            No matches for <span className="font-semibold">&ldquo;{search}&rdquo;</span> — showing results for{' '}
-            <Link
-              href={buildHref(sp, { search: suggestion.suggestion })}
-              className="font-semibold text-brand-charcoal hover:underline"
-            >
-              {suggestion.suggestion}
-            </Link>{' '}
-            instead.
+            {foundThin ? (
+              <>
+                Only {count} match{count === 1 ? '' : 'es'} for{' '}
+                <span className="font-semibold">&ldquo;{search}&rdquo;</span> — also showing results for{' '}
+                <Link
+                  href={buildHref(sp, { search: suggestion.suggestion })}
+                  className="font-semibold text-brand-charcoal hover:underline"
+                >
+                  {suggestion.suggestion}
+                </Link>
+                .
+              </>
+            ) : (
+              <>
+                No matches for <span className="font-semibold">&ldquo;{search}&rdquo;</span> — showing results for{' '}
+                <Link
+                  href={buildHref(sp, { search: suggestion.suggestion })}
+                  className="font-semibold text-brand-charcoal hover:underline"
+                >
+                  {suggestion.suggestion}
+                </Link>{' '}
+                instead.
+              </>
+            )}
           </p>
         )}
         {search && (
