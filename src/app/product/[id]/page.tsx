@@ -18,10 +18,11 @@ import JsonLd from '@/components/JsonLd';
 import { SITE_URL } from '@/lib/site';
 import { publicDescription } from '@/lib/publicDescription';
 import { productTitle, productMetaDescription } from '@/lib/productTitle';
-import { dimensionSchema, availabilityUrl, priceValidUntil, shippingDetailsSchema } from '@/lib/productSchema';
+import { dimensionSchema, availabilityUrl, priceValidUntil, shippingDetailsSchema, merchantReturnPolicySchema } from '@/lib/productSchema';
 import { warrantyForBrand, brandSlug } from '@/lib/warranty';
 import SeeItInPerson from '@/components/SeeItInPerson';
 import TrustBlock from '@/components/TrustBlock';
+import FitCheck from '@/components/FitCheck';
 import { brandByName } from '@/lib/brands';
 
 interface Props {
@@ -148,6 +149,7 @@ export default async function ProductPage({ params }: Props) {
       itemCondition: 'https://schema.org/NewCondition',
       seller: { '@id': `${SITE_URL}/#organization` },
       ...(shippingDetailsSchema(!!inStock) ?? {}),
+      ...merchantReturnPolicySchema(!!p.clearance),
     },
   };
 
@@ -309,6 +311,7 @@ export default async function ProductPage({ params }: Props) {
             </Link>
           </div>
 
+          <FitCheck dimensions={p.dimensions} />
           <TrustBlock />
 
         </div>

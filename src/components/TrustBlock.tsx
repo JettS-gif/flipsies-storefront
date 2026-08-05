@@ -27,8 +27,9 @@ export default function TrustBlock() {
         ))}
       </ul>
       <p className="mt-3 pt-3 border-t border-brand-border text-xs text-brand-charcoal-light leading-relaxed">
-        Changed your mind? Exchanges come back as {RETURNS.refundType} with a{' '}
-        {RETURNS.restockingFeePercent}% restocking fee.{' '}
+        Changed your mind? {RETURNS.changeOfMindDays} days from delivery, returned as delivered —{' '}
+        {RETURNS.refundType} less a {RETURNS.restockingFastPercent}–{RETURNS.restockingFeePercent}%
+        restocking fee.{' '}
         <Link href="/returns" className="text-brand-yellow-dark hover:underline font-medium">
           Full returns &amp; price-match terms
         </Link>

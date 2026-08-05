@@ -6,7 +6,7 @@
 // is the whole model-level comparison the storefront is trying to win.
 
 import { todayCT, addDaysCT } from '@/lib/ct';
-import { DELIVERY } from '@/lib/policy';
+import { DELIVERY, RETURNS, RETURN_WINDOW_DAYS } from '@/lib/policy';
 
 /** Inches, as schema.org QuantitativeValue expects for a UNECE unit code. */
 const INCH = 'INH';
@@ -82,6 +82,47 @@ export function priceValidUntil(from: string = todayCT()): string {
  * Only emitted for in-stock items — a made-to-order frame runs on the vendor's
  * production queue, and promising 2 business days on it would be false.
  */
+/**
+ * `hasMerchantReturnPolicy` for the Offer.
+ *
+ * Clearance is the one exclusion the catalog can actually express
+ * (products.clearance — 347 active), so those get an explicit
+ * MerchantReturnNotPermitted rather than being silently covered by a policy
+ * that does not apply to them. Floor models and custom orders are the other
+ * two exclusions and have NO product flag; per Jett those stay a
+ * human-in-the-loop call at the counter and do not change the published
+ * policy, so everything else carries the standard one.
+ *
+ * `ReturnInStore`: bringing it back to a showroom is free. Schema has no
+ * "we collect it for a fee" option, and the pickup fee is quoted case-by-case,
+ * so the free path is the one that can be stated as a fact.
+ */
+export function merchantReturnPolicySchema(isClearance: boolean): Record<string, unknown> {
+  if (isClearance) {
+    return {
+      hasMerchantReturnPolicy: {
+        '@type': 'MerchantReturnPolicy',
+        applicableCountry: 'US',
+        returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted',
+      },
+    };
+  }
+  return {
+    hasMerchantReturnPolicy: {
+      '@type': 'MerchantReturnPolicy',
+      applicableCountry: 'US',
+      returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+      merchantReturnDays: RETURN_WINDOW_DAYS,
+      returnMethod: 'https://schema.org/ReturnInStore',
+      returnFees: 'https://schema.org/RestockingFees',
+      // A percentage, applied to every change-of-mind return — there is no
+      // fee-free window to qualify this with.
+      restockingFee: RETURNS.restockingFeePercent,
+      refundType: 'https://schema.org/StoreCreditRefund',
+    },
+  };
+}
+
 export function shippingDetailsSchema(inStock: boolean): Record<string, unknown> | null {
   if (!inStock) return null;
   return {

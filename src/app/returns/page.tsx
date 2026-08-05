@@ -45,12 +45,72 @@ export default function ReturnsPage() {
 
       <Section title="Changed your mind">
         <p>
-          If a piece does not fit the room, or you simply want something else, we will exchange it for{' '}
-          <strong>{RETURNS.refundType}</strong>, less a <strong>{RETURNS.restockingFeePercent}% restocking fee</strong>.
+          If a piece does not fit the room, or you simply want something else, tell us within{' '}
+          <strong>{RETURNS.changeOfMindDays} days of delivery</strong> and we will exchange it for{' '}
+          <strong>{RETURNS.refundType}</strong>, less a restocking fee taken out of the credit.
+        </p>
+
+        <div className="rounded-lg border border-brand-border overflow-hidden my-4">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-brand-warm-gray/60 text-left">
+                <th className="px-3 py-2 font-semibold text-brand-charcoal">When</th>
+                <th className="px-3 py-2 font-semibold text-brand-charcoal">You bring it in</th>
+                <th className="px-3 py-2 font-semibold text-brand-charcoal">We collect it</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-t border-brand-border">
+                <td className="px-3 py-2">Within {RETURNS.restockingFastHours} hours</td>
+                <td className="px-3 py-2"><strong>{RETURNS.restockingFastPercent}%</strong></td>
+                <td className="px-3 py-2">{RETURNS.restockingFastPercent}% + pickup</td>
+              </tr>
+              <tr className="border-t border-brand-border">
+                <td className="px-3 py-2">Days 3–{RETURNS.changeOfMindDays}</td>
+                <td className="px-3 py-2"><strong>{RETURNS.restockingFeePercent}%</strong></td>
+                <td className="px-3 py-2">{RETURNS.restockingFeePercent}% + pickup</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          <strong>Why there is a fee at all.</strong> It is the part that is invisible from your side, so
+          here it is plainly.
         </p>
         <p>
-          If we have to collect the item {RETURNS.redeliveryFeeApplies}, a pickup fee may also apply. Arrange it
-          the same day as the delivery and there is no collection charge.
+          A delivery is a truck and two people for a chunk of a day — and a slot another family could
+          have had. A collection is that again, in reverse. But the larger cost is the piece itself:
+          once it has left our warehouse it is out of the box permanently. It goes back on a warehouse
+          floor where it can be scuffed or soiled before it sells again, and we can never tell the next
+          customer it came straight from the factory — because it did not. On a sectional that is a
+          serious loss, however careful you were with it.
+        </p>
+        <p>
+          The fee covers part of that, not all of it. Bringing the piece back yourself removes the
+          collection trip, which is why that column is cheaper — and if you are exchanging it for
+          something else, we bring the new piece and take the old one on the same trip, so there is no
+          collection charge at all.
+        </p>
+        <p>
+          Furniture is unforgiving this way. A piece that has lived in a home usually cannot go back on
+          the floor at full price — we have had a sofa returned after twelve hours carrying enough smoke
+          and pet odour that we could not resell it at all. We would rather show you the real numbers than
+          advertise a 30-day no-questions window we would have to argue our way out of.
+        </p>
+        <p>
+          The piece has to come back <strong>exactly as it was delivered</strong>. That means no marks,
+          stains or spills, no smoke or pet odour, and no wear. It is not only about breakage — a glass of
+          red wine on a sofa makes it unsellable just as surely as a cracked frame does, and neither is
+          eligible for exchange.
+        </p>
+        <p className="rounded-lg bg-brand-warm-gray/60 px-3 py-2">
+          That is a different thing from a piece that <strong>arrived</strong> damaged or defective — that is
+          on us, it is a free swap, and it is covered above.
+        </p>
+        <p>
+          Bringing it back to either showroom costs nothing. If you need us to collect it, the office will
+          arrange a pickup and quote the fee for that trip.
         </p>
         <p className="text-brand-charcoal">
           <strong>Not eligible:</strong> {RETURNS.excluded.join(', ')}. Custom orders are built to your
