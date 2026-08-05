@@ -13,17 +13,27 @@ import PackageCards from '@/components/PackageCards';
 import CollectionCards, { type CollectionCard } from '@/components/CollectionCards';
 import { buildCollectionCards, normColl } from '@/lib/collectionCards';
 import TrackEvent from '@/components/TrackEvent';
-import { SORTS, buildHref, activeFilterCount, type ShopSearchParams } from '@/lib/shopFilters';
+import { SORTS, buildHref, activeFilterCount, PAGE_SIZE, pageOf, pageCount, type ShopSearchParams } from '@/lib/shopFilters';
+import Pagination from '@/components/Pagination';
+import type { Metadata } from 'next';
 
-// `path` is hardcoded, so every filtered view (/shop?color_family=Grey&…)
-// canonicals back to /shop. That's the point: faceted URLs multiply into
-// thousands of near-duplicates and would otherwise dilute the page we pay to
-// rank. Do not make this dynamic.
-export const metadata = pageMetadata({
-  title: 'Shop All Furniture',
-  description: 'Browse our full collection of sofas, sectionals, bedroom sets, dining furniture, and more at Flipsies Furniture.',
-  path: '/shop',
-});
+// Every FILTERED view (/shop?color_family=Grey&…) still canonicals back to
+// /shop. That's the point: faceted URLs multiply into thousands of
+// near-duplicates and would otherwise dilute the page we pay to rank. Do not
+// make the canonical reflect the filters.
+//
+// The page number is the one exception, and it is not a facet: /shop?page=3
+// holds 48 products that appear nowhere else, so canonicalising it to /shop
+// would declare them duplicates of a page they are absent from. It therefore
+// self-canonicals, and every other param is still discarded.
+export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
+  const page = pageOf(await searchParams);
+  return pageMetadata({
+    title: page > 1 ? `Shop All Furniture — Page ${page}` : 'Shop All Furniture',
+    description: 'Browse our full collection of sofas, sectionals, bedroom sets, dining furniture, and more at Flipsies Furniture.',
+    path: page > 1 ? `/shop?page=${page}` : '/shop',
+  });
+}
 
 const CATEGORY_MAP: Record<string, { label: string; icon: string }> = {
   'Sofa':           { label: 'Sofas', icon: '🛋' },
@@ -50,6 +60,7 @@ interface Props {
 export default async function ShopPage({ searchParams }: Props) {
   const sp = await searchParams;
   const { search } = sp;
+  const page = pageOf(sp);
   const nActive = activeFilterCount(sp);
   // Room browse (e.g. ?room=Bedroom) is a "show me the collections" intent, not a
   // piece-level query — so it KEEPS the collapsed set cards instead of hiding
@@ -68,7 +79,11 @@ export default async function ShopPage({ searchParams }: Props) {
   // whole room's pieces before the packaged ones are suppressed (no paging yet).
   // Declared outside the try so the did-you-mean pass below can re-run the same
   // query under a different term without rebuilding the shopper's filters.
-  const params: Record<string, string | number> = { limit: roomBrowse ? 1000 : 48, exclude_sectionals: 1 };
+  // Room browse fetches the whole room because it collapses to one card per
+  // collection; every other view is a flat product list and pages 48 at a time.
+  const params: Record<string, string | number> = roomBrowse
+    ? { limit: 1000, exclude_sectionals: 1 }
+    : { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, exclude_sectionals: 1 };
   if (search) params.search = search;
   // Pass filters straight through — the endpoint owns the semantics (colour
   // forces the base table, availability reads the generated qty, etc).
@@ -420,11 +435,23 @@ export default async function ShopPage({ searchParams }: Props) {
           <SectionalFamilyCards families={gridFamilies} />
 
           {gridProducts.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {gridProducts.map(p => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                {gridProducts.map(p => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
+              {/* Room browse shows the whole room already, and a did-you-mean
+                  substitution is displaying a DIFFERENT query's results — paging
+                  either would page a set the URL does not describe. */}
+              {!roomBrowse && !suggested && (
+                <Pagination
+                  page={page}
+                  total={pageCount(count)}
+                  hrefFor={(n) => buildHref(sp, { page: n > 1 ? String(n) : null })}
+                />
+              )}
+            </>
           ) : gridFamilies.length === 0 && gridPackages.length === 0 && collectionCards.length === 0 ? (
             <div className="text-center py-20 text-brand-charcoal-light">
               <div className="text-4xl mb-4">📦</div>

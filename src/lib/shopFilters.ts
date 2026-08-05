@@ -11,7 +11,22 @@ export type ShopSearchParams = {
   price_max?: string;
   availability?: string;
   sort?: string;
+  page?: string;
 };
+
+// Matches the limit the category and shop routes have always requested. It is
+// exported so the page size and the paging arithmetic can never disagree.
+export const PAGE_SIZE = 48;
+
+/** Current page from the URL. Anything not a positive integer means page 1. */
+export function pageOf(sp: Pick<ShopSearchParams, 'page'>): number {
+  const n = Number.parseInt(sp.page ?? '', 10);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
+export function pageCount(total: number): number {
+  return Math.max(1, Math.ceil(total / PAGE_SIZE));
+}
 
 export type FacetOption = { value: string; count: number; label?: string };
 export type Facets = {
@@ -58,10 +73,17 @@ export function activeFilterCount(sp: ShopSearchParams): number {
 export function buildHref(sp: ShopSearchParams, patch: Partial<Record<keyof ShopSearchParams, string | undefined | null>>): string {
   const next: Record<string, string> = {};
   for (const [k, v] of Object.entries(sp)) if (v) next[k] = String(v);
+  // Changing any filter invalidates the page number: someone on page 4 of the
+  // sofas who then picks Grey must land on page 1 of the new result set, not on
+  // a page 4 that may no longer exist.
+  if (Object.keys(patch).some((k) => k !== 'page')) delete next.page;
   for (const [k, v] of Object.entries(patch)) {
     if (v === null || v === undefined || v === '') delete next[k];
     else next[k] = String(v);
   }
+  // `?page=1` is the same page as no param at all; emitting both would create a
+  // duplicate URL for every list on the site.
+  if (next.page === '1') delete next.page;
   const qs = new URLSearchParams(next).toString();
   return qs ? `/shop?${qs}` : '/shop';
 }

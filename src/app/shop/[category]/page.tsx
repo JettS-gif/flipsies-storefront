@@ -9,12 +9,31 @@ import type { Metadata } from 'next';
 import JsonLd from '@/components/JsonLd';
 import { SITE_URL, pageMetadata } from '@/lib/site';
 import { resolveCatalogSlug, categoryPath, type Resolved } from '@/lib/catalogSlugs';
+import Pagination from '@/components/Pagination';
+import { PAGE_SIZE, pageOf, pageCount } from '@/lib/shopFilters';
 import { buildCollectionCards, normColl } from '@/lib/collectionCards';
 import { fetchPackages, type StorefrontPackage } from '@/lib/packages';
 
 interface Props {
   params: Promise<{ category: string }>;
+  searchParams: Promise<{ page?: string }>;
 }
+
+// A paginated page canonicals to ITSELF, never back to page 1 — pointing page 3
+// at page 1 tells Google the 48 products only on page 3 are duplicates of a set
+// they do not appear in, which is how you lose them from the index entirely.
+// (This is the opposite of the /shop facet policy in shop/page.tsx, which
+// deliberately collapses filtered views onto /shop. Different problem.)
+const pagedPath = (base: string, page: number) => (page > 1 ? `${base}?page=${page}` : base);
+
+// Built in one place so generateMetadata and the page issue the IDENTICAL
+// request — Next memoizes fetches within a render pass, so asking twice costs
+// one round trip, and metadata that disagreed with the body would be worse than
+// the extra call anyway.
+const productQueryFor = (label: string, isRoom: boolean, page: number): Record<string, string | number> =>
+  isRoom
+    ? { room: label, limit: 1000, exclude_sectionals: 1 }
+    : { category: label, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
 
 // A name with a literal % (none today, but a category is free text) would make
 // decodeURIComponent throw and take the whole route down.
@@ -51,9 +70,11 @@ async function resolveSegment(segment: string) {
   return { decoded, categories, catsOk, resolved };
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { category } = await params;
   const { decoded, resolved } = await resolveSegment(category);
+  const page = pageOf(await searchParams);
+  const suffix = page > 1 ? ` — Page ${page}` : '';
 
   if (resolved.kind === 'none') return { title: 'Not Found', robots: { index: false, follow: false } };
 
@@ -67,16 +88,35 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     });
   }
 
+  // An out-of-range page renders the not-found UI, which injects its own
+  // noindex. Without this check the category metadata would ALSO emit
+  // "index, follow" and a canonical pointing at the bogus page — two
+  // contradictory robots tags on one document.
+  if (page > 1) {
+    // A throw counts as empty, deliberately. The backend answers an out-of-range
+    // offset with HTTP 500 "Requested range not satisfiable" rather than an empty
+    // 200, so the error IS the out-of-range signal. And if it throws for any
+    // other reason the page body catches it, ends up with no products, and
+    // notFound()s regardless — so noindex is the honest description of what
+    // renders either way.
+    const empty = await api
+      .getProducts(productQueryFor(resolved.value, false, page))
+      .then((r) => !(r.data || []).length)
+      .catch(() => true);
+    if (empty) return { title: 'Not Found', robots: { index: false, follow: false } };
+  }
+
   return pageMetadata({
-    title: `${resolved.value} — Shop`,
+    title: `${resolved.value} — Shop${suffix}`,
     description: `Browse ${decoded} at Flipsies Furniture. Quality furniture at honest prices.`,
-    path: resolved.canonical,
+    path: pagedPath(resolved.canonical, page),
   });
 }
 
-export default async function CategoryPage({ params }: Props) {
+export default async function CategoryPage({ params, searchParams }: Props) {
   const { category } = await params;
   const { categories, resolved } = await resolveSegment(category);
+  const page = pageOf(await searchParams);
 
   // The guard this route never had. Any string used to render an indexable page
   // with the slug echoed as the <h1> — an unbounded space of crawlable thin
@@ -102,9 +142,10 @@ export default async function CategoryPage({ params }: Props) {
     // A room browse fetches the whole room so it can collapse to one card per
     // collection — the same 1000 the /shop?room= path uses (the endpoint caps
     // there anyway, and the largest room is 941).
-    const productQuery: Record<string, string | number> = isRoom
-      ? { room: label, limit: 1000, exclude_sectionals: 1 }
-      : { category: label, limit: 48 };
+    // A room browse is NOT paginated: it fetches the whole room and collapses it
+    // to one card per collection, so nothing is hidden to begin with — the 48-cap
+    // problem this pagination solves only ever existed on category pages.
+    const productQuery = productQueryFor(label, isRoom, page);
 
     const [prodRes, pkgList] = await Promise.all([
       api.getProducts(productQuery),
@@ -135,6 +176,11 @@ export default async function CategoryPage({ params }: Props) {
       { '@type': 'ListItem', position: 2, name: label, item: url },
     ],
   };
+
+  // An out-of-range page is a made-up URL, and leaving it as a 200 would rebuild
+  // exactly the unbounded thin-page space the notFound() guard above closed —
+  // ?page=9999 is as arbitrary a string as /shop/zzz.
+  if (!isRoom && page > 1 && loose.length === 0) notFound();
 
   const nothingToShow = loose.length === 0 && cards.length === 0 && packages.length === 0;
 
@@ -210,11 +256,20 @@ export default async function CategoryPage({ params }: Props) {
           <CollectionCards collections={cards} />
 
           {loose.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
-              {loose.map(p => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                {loose.map(p => (
+                  <ProductCard key={p.id} product={p} />
+                ))}
+              </div>
+              {!isRoom && (
+                <Pagination
+                  page={page}
+                  total={pageCount(count)}
+                  hrefFor={(n) => pagedPath(resolved.canonical, n)}
+                />
+              )}
+            </>
           ) : nothingToShow ? (
             <div className="text-center py-20 text-brand-charcoal-light">
               <div className="text-4xl mb-4">📦</div>

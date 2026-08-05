@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { activeFilterCount, buildHref, PRICE_BUCKETS, FILTER_KEYS, SORTS } from './shopFilters';
+import { activeFilterCount, buildHref, PRICE_BUCKETS, FILTER_KEYS, SORTS, pageOf, pageCount, PAGE_SIZE } from './shopFilters';
 
 // /shop keeps every filter in the URL so a filtered view is shareable,
 // back-button-able and server-rendered. That makes buildHref the single point
@@ -104,5 +104,61 @@ describe('SORTS', () => {
   it('has unique values', () => {
     const vals = SORTS.map(s => s.value);
     expect(new Set(vals).size).toBe(vals.length);
+  });
+});
+
+describe('pageOf', () => {
+  it('defaults to page 1 when absent', () => {
+    expect(pageOf({})).toBe(1);
+  });
+
+  it('reads a positive integer', () => {
+    expect(pageOf({ page: '3' })).toBe(3);
+  });
+
+  it('treats anything not a positive integer as page 1', () => {
+    // These arrive straight off the URL, so they are attacker-controlled and
+    // must not turn into a negative offset or a NaN in the API query.
+    for (const page of ['abc', '', '0', '-3', '1.5e9', 'NaN', '٣']) {
+      expect(pageOf({ page }), page).toBeGreaterThanOrEqual(1);
+    }
+    expect(pageOf({ page: '-3' })).toBe(1);
+    expect(pageOf({ page: 'abc' })).toBe(1);
+  });
+});
+
+describe('pageCount', () => {
+  it('is always at least one page, even for an empty result set', () => {
+    expect(pageCount(0)).toBe(1);
+  });
+
+  it('rounds a partial last page up', () => {
+    expect(pageCount(PAGE_SIZE)).toBe(1);
+    expect(pageCount(PAGE_SIZE + 1)).toBe(2);
+    expect(pageCount(147)).toBe(4); // Recliner, the real worst case
+  });
+});
+
+describe('buildHref — pagination', () => {
+  it('drops the page when any filter changes', () => {
+    // A shopper on page 4 of the sofas who picks Grey must land on page 1 of the
+    // new result set, not on a page 4 that may not exist.
+    expect(buildHref({ page: '4' }, { color_family: 'Grey' })).toBe('/shop?color_family=Grey');
+  });
+
+  it('keeps the other filters when only the page changes', () => {
+    const href = buildHref({ color_family: 'Grey', sort: 'price_asc' }, { page: '2' });
+    expect(href).toContain('color_family=Grey');
+    expect(href).toContain('sort=price_asc');
+    expect(href).toContain('page=2');
+  });
+
+  it('never emits ?page=1 — it is a duplicate URL of the unparamed page', () => {
+    expect(buildHref({}, { page: '1' })).toBe('/shop');
+    expect(buildHref({ color_family: 'Grey' }, { page: '1' })).toBe('/shop?color_family=Grey');
+  });
+
+  it('removes the page when passed null', () => {
+    expect(buildHref({ page: '5' }, { page: null })).toBe('/shop');
   });
 });
