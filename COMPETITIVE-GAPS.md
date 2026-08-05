@@ -88,30 +88,47 @@ clicks on 62 texts, ~32%.**
 | Package / "complete the room" cards | ✅ on browse | RTG core | Cart cross-sell still open |
 | Footer social links | ✅ shipped | All | — |
 | **Reviews & ratings** | ❌ none | All comps | **Deferred — see correction above** |
-| **Email/SMS marketing capture** | ❌ none anywhere | All, with incentive | **Now the #1 open item** |
-| **PDP trust block** (price-match, returns) | ❌ absent | Standard | Blocked on terms |
+| Email/SMS marketing capture | ✅ shipped 2026-08-05 | All, with incentive | List + unsubscribe live; **no SENDER yet** |
+| PDP trust block (price-match, returns) | ✅ shipped 2026-08-05 | Standard | + `/returns` policy page |
+| Abandoned-checkout capture | ✅ shipped 2026-08-05 | Standard | Was losing every checkout visitor |
+| `/accessibility` page | ✅ shipped 2026-08-05 | Standard for retail | No conformance claim — no audit done |
 | Protection-plan attach | ❌ | Bob's Goof Proof, LS Care Free | Tier 2 |
-| Cart cross-sell | ❌ | RTG core | Tier 2 |
+| Cart cross-sell | ❌ | RTG core | **Dropped — no cart traffic** |
 | Live chat / SMS concierge | ❌ | LS, Bob's, RTG | Tier 2 |
 | Shop by Style | ❌ | LS 12+ styles | Tier 2 |
-| `/accessibility` page | ❌ 308s to `/contact` | Standard for retail | Tier 2 |
+| **Brand / vendor search** | ❌ **structurally dead** | Standard | `jofran` → 0 against 266 published |
 | 3D room designer / AR | ❌ | LS 3D | Tier 3 |
 | Product Q&A | ❌ | Some | Tier 3 |
 | Loyalty / rewards | ❌ | Some | Tier 3 |
 
 ## To-do list
 
-### Blocked on a decision — these are the bottleneck
-1. **PDP trust block** — needs the actual return window + price-match terms. Best value per answer:
-   it also unblocks `hasMerchantReturnPolicy` + `shippingDetails` in the Product schema.
-2. **Email/SMS capture** — needs a decision on where the list lives (Klaviyo / Mailchimp /
-   DeliverDesk). **This is now the highest-value open item**: it is the owned-audience flywheel the
-   site exists to build, and with ~$28k/mo of ad spend attributed to `in_store` a UTM-stamped
-   capture is also the measurement fix.
+### Shipped 2026-08-05 (was the top of this list)
+The trust block, `/returns`, the full returns policy, `hasMerchantReturnPolicy` + `shippingDetails`,
+compare-at removal, the email/SMS capture with a compliant unsubscribe, abandoned-checkout capture,
+and `/accessibility` all landed. See `docs/inbox/2026-08-05-*` for the detail.
+
+### Blocked on a decision — these are the bottleneck now
+1. **How marketing email SENDS.** The list and unsubscribe exist; nothing sends to them. Outlook/
+   Graph works and already polls the inbox (so NDR handling has a precedent), but Exchange Online
+   caps at 30 msg/min and 10k recipients/day, and — the deciding risk — sending marketing from the
+   same mailbox as transactional mail couples their sender reputation. Recommendation: own the list,
+   rent the sending, and send from a **subdomain** so reputation is isolated.
+2. **The 4,054 existing customers.** 1,785 have an email but there is no consent record anywhere.
+   Email needs only an unsubscribe (CAN-SPAM); marketing SMS needs express written consent (TCPA) and
+   must not be sent. A re-permission email would convert maybe 10–30% into a list we can legally use.
+   **Blocked on #1** — you need a sender before you can ask.
 3. **Three Meta pixels** fire on every page with no consent banner — confirm which are intentional.
-   Duplicates double-count conversions and distort the ROAS work.
-4. **`/accessibility`** — needs real policy text, not generated filler.
-5. **Cart cross-sell** — needs merchandising calls and whether a protection plan exists.
+   Duplicates double-count conversions and distort the ROAS work. Check Events Manager → Data
+   Sources for events received in the last 30 days, and check Audiences BEFORE deleting anything.
+4. **Cart cross-sell** — dropped rather than parked. There is no cart traffic to optimise; one
+   completed web order exists and it was a $4.37 test.
+
+### The gap that outranks most of Tier 2
+**Brand/vendor search returns nothing.** `jofran` finds 0 against 266 published Jofran products,
+because public search covers name/sku/collection/color/category and never joins `vendors`. No brand
+name is searchable at all — on a site whose whole SEO play is model-level and brand-led. Found
+2026-08-05; see `docs/inbox/2026-08-05-unmet-demand-recheck-and-jasmine-reprice.md`.
 
 ### Content backfill — the office lane, ranked by leverage
 6. **`type` is blank on 63%** of the catalog and feeds every product title. Highest-return field.
@@ -142,13 +159,17 @@ clicks on 62 texts, ~32%.**
 
 ## The three that matter most now
 
-The 2026-07-15 version named four: email/SMS, financing, reviews, delivery-date. **Financing and
-delivery-date have shipped, and reviews have been correctly demoted** on the sales-distribution
-evidence. What is left:
+The 2026-07-15 version named four: email/SMS, financing, reviews, delivery-date. All four are
+resolved — financing and delivery-date shipped, email/SMS capture shipped 2026-08-05, and reviews
+were correctly demoted on the sales-distribution evidence. What is left is different and more basic:
 
-1. **Email/SMS capture** — the owned audience, and the fix for $28k/mo of blind attribution.
-2. **The PDP trust block** — price-match and returns are the exact contrast against the
-   discounters' weakness, it is static copy, and it is blocked only on you naming the terms.
+1. **Find out whether anyone CAN buy.** Three web orders exist in the site's history; the only
+   completed one is a $4.37 internal test. Two real customers — $82.50 and $2,000.83 — generated
+   invoices and both auto-voided unpaid. That is not proof checkout is broken, but it is the largest
+   unknown on the site and it outranks every feature below it.
+2. **Fix brand search.** 266 published products are unreachable by their own brand name, on a site
+   whose SEO strategy is brand- and model-led.
 3. **Let the SEO work land.** Navigation was completely broken until 2026-08-05, so the site has
-   never actually been crawlable. Give it a quarter before judging whether PDP traffic justifies
-   the Tier-2 build-out — the traffic baseline you have today was measured against a broken site.
+   never actually been crawlable. Give it a quarter before judging whether PDP traffic justifies the
+   Tier-2 build-out — every traffic number you have was measured against a site Google could not
+   properly crawl.

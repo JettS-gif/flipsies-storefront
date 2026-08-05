@@ -22,6 +22,24 @@ export const SITE_DESCRIPTION =
 
 export const STORE_EMAIL = 'jett@flipsiesfurniture.com';
 
+/**
+ * Accessibility accommodation contact (Jett, 2026-08-05).
+ *
+ * A named person and a stated response time, deliberately — an unattended
+ * "accessibility@" alias is worse than nothing, because the page becomes a
+ * promise nobody is keeping. Anyone changing the 72 hours should be sure it is
+ * still true; the whole value of the page is that it is honest.
+ */
+export const ACCESSIBILITY = {
+  contactName:  'Jett Schencker',
+  phone:        '(205) 764-3741',
+  phoneHref:    '+12057643741',
+  email:        STORE_EMAIL,
+  responseTime: '72 hours',
+  /** No formal audit has been done. See the page for why that is SAID, not hidden. */
+  audited: false,
+} as const;
+
 // Brand palette — mirrors globals.css :root. The next/og ImageResponse
 // routes run outside the DOM and can't resolve CSS custom properties, so
 // the hex values live here too.

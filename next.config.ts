@@ -52,9 +52,9 @@ const nextConfig: NextConfig = {
       { source: "/shop-brands", destination: "/shop", permanent: true },
       // NOTE: /brands is now a real page (brand profiles) — the old
       // /brands → /shop migration redirect was removed 2026-07-18.
-      // Old site had a standalone accessibility page; fold to /contact until a
-      // dedicated page ships, so the indexed legal URL doesn't 404.
-      { source: "/accessibility", destination: "/contact", permanent: true },
+      // /accessibility used to 308 to /contact as a placeholder. The real page
+      // shipped 2026-08-05, so the redirect is gone — a 308 away from an
+      // accessibility statement is exactly what a plaintiff firm screenshots.
     ];
   },
 };
