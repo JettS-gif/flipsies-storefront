@@ -364,6 +364,30 @@ export function fmtShiftDisplay(start, end) {
 }
 
 /**
+ * A time-off request → when it covers, in one line.
+ *
+ *   whole day    → "Aug 12, 2026"
+ *   several days → "Aug 12, 2026 – Aug 14, 2026"
+ *   part of a day→ "Aug 12, 2026 · 1:00 PM – 3:00 PM"
+ *
+ * Lives here rather than in the time-off view because four screens render the
+ * same sentence (My Schedule, the Time Off board's pending cards + history
+ * table, and the schedule grid) and a partial request that renders as a bare
+ * date on any one of them is indistinguishable from a whole day off.
+ */
+export function fmtTimeOffWhen(r) {
+  if (!r?.request_date) return '';
+  const day = ds => new Date(ds + 'T12:00:00')
+    .toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  const from = day(r.request_date);
+  if (r.start_time && r.end_time) {
+    return `${from} · ${fmtShiftDisplay(r.start_time, r.end_time)}`;
+  }
+  const to = r.end_date && r.end_date !== r.request_date ? day(r.end_date) : null;
+  return to ? `${from} – ${to}` : from;
+}
+
+/**
  * "9:30 AM" or "09:30" → minutes since midnight (e.g. 570)
  * Returns null for unparseable input.
  */
