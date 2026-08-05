@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCart, cartKey } from '@/context/CartContext';
+import { summarizeCartAvailability } from '@/lib/cartAvailability';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   Sofas: '🛋', Sectionals: '🛋', Chairs: '🪑', Tables: '🪑',
@@ -19,6 +20,10 @@ export default function CartPage() {
   const taxRate = 0.10; // Estimated — final rate calculated at checkout based on delivery destination
   const estimatedTax = subtotal * taxRate;
   const total = subtotal + estimatedTax;
+
+  // Rule lives in src/lib/cartAvailability.ts so it is unit-tested — same
+  // reason checkoutReadiness.ts is not inline here.
+  const { inStockLines, mixed: mixedCart, longestLead } = summarizeCartAvailability(items);
 
   if (items.length === 0) {
     return (
@@ -40,6 +45,35 @@ export default function CartPage() {
       <h1 className="text-2xl font-bold text-brand-charcoal mb-8">
         Your Cart ({itemCount} {itemCount === 1 ? 'item' : 'items'})
       </h1>
+
+      {/* MIXED CART — some now, some made to order.
+          The whole order waits on its slowest line, and a customer who only
+          learns that at the delivery step goes back to the cart and leaves
+          (Barrett Ottoman, 2026-08-04: in-stock sofa alongside a 4-6 week
+          ottoman, 71 seconds on checkout, gone). Said here it is a choice
+          rather than a surprise.
+          Deliberately COPY, not a split-order button. Splitting one cart into
+          two fulfilments touches pricing, delivery-fee allocation and the
+          oversell guard; the phone call it prompts is worth more than the
+          feature is, at least until the volume argues otherwise. */}
+      {mixedCart && (
+        <div className="mb-6 rounded-lg border border-brand-yellow bg-brand-warm-gray p-4">
+          <p className="text-sm font-semibold text-brand-charcoal">
+            Part of your order is made to order.
+          </p>
+          <p className="text-sm text-brand-charcoal-light mt-1">
+            {inStockLines} {inStockLines === 1 ? 'item is' : 'items are'} in stock now
+            {longestLead ? `, and the rest ships in ${longestLead}` : ', and the rest is made to order'}.
+            Ordered together, delivery is scheduled once every piece has arrived — so you
+            will not pick a date at checkout.
+          </p>
+          <p className="text-sm text-brand-charcoal-light mt-2">
+            Want the in-stock pieces sooner? Order them now and we will place the rest
+            on order — <Link href="/contact" className="text-brand-yellow-dark font-medium hover:underline">call or message us</Link>{' '}
+            and we will split it for you.
+          </p>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-10">
         {/* Cart items */}
@@ -73,6 +107,19 @@ export default function CartPage() {
                 <p className="text-sm font-semibold text-brand-charcoal mt-2">
                   ${Number(item.price).toFixed(2)}
                 </p>
+
+                {/* Per-line availability. `in_stock === false` and not merely
+                    falsy: the field is absent on lines added before it shipped,
+                    and treating unknown as out-of-stock would put a made-to-order
+                    warning on items sitting in the warehouse. */}
+                {item.in_stock === false && (
+                  <p className="text-xs text-brand-yellow-dark font-medium mt-1">
+                    {item.lead_label ? `Made to order — ships in ${item.lead_label}` : 'Made to order'}
+                  </p>
+                )}
+                {item.in_stock === true && (
+                  <p className="text-xs text-brand-green font-medium mt-1">In stock now</p>
+                )}
 
                 {/* Qty controls */}
                 <div className="flex items-center gap-2 mt-3">

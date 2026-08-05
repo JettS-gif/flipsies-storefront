@@ -230,10 +230,27 @@ export default async function ProductPage({ params }: Props) {
             <Link href="/financing" className="text-brand-yellow-dark hover:underline">0% financing</Link>
           </p>
 
-          {/* Availability */}
+          {/* Availability.
+              "Ask about lead time" was the old out-of-stock line, and it asked
+              the customer a question we already know the answer to. Every one of
+              the 527 published-but-unstocked products has vendor lead weeks on
+              file — checked 2026-08-04, zero missing — and this page already
+              computes `leadLabel` from them for the made-to-order colourway
+              copy below. So the number was on the page the whole time; the
+              availability badge just was not using it.
+              Why it matters here specifically: this is the moment someone
+              decides. A shopper who reaches checkout and only THEN discovers a
+              4-6 week wait goes back to the cart and leaves, which is exactly
+              the session that prompted this (Barrett Ottoman, 2026-08-04).
+              The vague fallback survives for anything genuinely missing lead
+              data — better to ask than to invent a date. */}
           <div className="mt-4">
             {inStock ? (
               <span className="text-sm text-brand-green font-medium">In Stock — Ready for delivery</span>
+            ) : leadLabel ? (
+              <span className="text-sm text-brand-yellow-dark font-medium">
+                Made to Order — ships in {leadLabel}
+              </span>
             ) : (
               <span className="text-sm text-brand-yellow-dark font-medium">Special Order — Ask about lead time</span>
             )}
@@ -267,6 +284,11 @@ export default async function ProductPage({ params }: Props) {
               retail_price: p.retail_price,
               image_url: p.image_url,
               category: p.category,
+              // Same two values the availability badge above renders, carried
+              // into the cart line so the wait follows the item instead of
+              // being discovered at the delivery step.
+              in_stock: inStock,
+              lead_label: leadLabel,
             }} />
             <WishlistButton productId={p.id} />
             <Link href="/locations" className="btn-outline text-base px-8 py-3 text-center">

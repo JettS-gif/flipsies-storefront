@@ -13,6 +13,9 @@ interface Props {
     retail_price: number;
     image_url?: string | null;
     category: string | null;
+    /** Carried into the cart line so the cart can show the wait per item. */
+    in_stock?: boolean;
+    lead_label?: string | null;
   };
 }
 
@@ -31,6 +34,10 @@ export default function AddToCartButton({ product }: Props) {
       price: product.retail_price,
       image_url: product.image_url ?? null,
       category: product.category,
+      // Snapshot, not a lookup — see CartItem.in_stock for why staleness is
+      // acceptable here and where the real oversell guard lives.
+      in_stock: product.in_stock,
+      lead_label: product.lead_label ?? null,
     };
     addItem(item);
     setAdded(true);
