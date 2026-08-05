@@ -6,6 +6,7 @@ import JsonLd from '@/components/JsonLd';
 import AddPackageToCartButton from '@/components/AddPackageToCartButton';
 import { fetchPackage } from '@/lib/packages';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
+import { publicDescription } from '@/lib/publicDescription';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -42,6 +43,9 @@ export default async function PackagePage({ params }: Props) {
   const url = `${SITE_URL}/package/${pkg.id}`;
   const hero = pkg.images?.[0] || null;
   const absImages = (pkg.images || []).map((u) => (u.startsWith('http') ? u : `${SITE_URL}${u}`));
+  // Most package descriptions are buying notes carrying our own cost and the
+  // vendor's price break — see lib/publicDescription.
+  const pkgDesc = publicDescription(pkg.description);
 
   // The price the customer pays is the BUNDLE price, and it is the price the
   // offer must advertise — the components' individual retail is the strike-
@@ -54,7 +58,7 @@ export default async function PackagePage({ params }: Props) {
     name: pkg.name,
     ...(pkg.sku ? { sku: pkg.sku } : {}),
     ...(absImages.length ? { image: absImages } : {}),
-    ...(pkg.description ? { description: pkg.description } : {}),
+    ...(pkgDesc ? { description: pkgDesc } : {}),
     ...(pkg.category ? { category: pkg.category } : {}),
     offers: {
       '@type': 'Offer',
@@ -123,8 +127,8 @@ export default async function PackagePage({ params }: Props) {
             {pkg.in_stock ? 'In stock — all pieces available' : 'Special order'}
           </p>
 
-          {pkg.description && (
-            <p className="text-sm text-brand-charcoal-light mt-4 leading-relaxed">{pkg.description}</p>
+          {pkgDesc && (
+            <p className="text-sm text-brand-charcoal-light mt-4 leading-relaxed">{pkgDesc}</p>
           )}
 
           <AddPackageToCartButton

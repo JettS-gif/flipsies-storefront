@@ -16,6 +16,7 @@ import RelatedProducts from '@/components/RelatedProducts';
 import SimilarProducts from '@/components/SimilarProducts';
 import JsonLd from '@/components/JsonLd';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
+import { publicDescription } from '@/lib/publicDescription';
 import { warrantyForBrand, brandSlug } from '@/lib/warranty';
 import SeeItInPerson from '@/components/SeeItInPerson';
 import { brandByName } from '@/lib/brands';
@@ -34,7 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const product = await getProduct(id);
     const name = [product.collection, product.color].filter(Boolean).join(' — ') || product.name;
     const description =
-      `${name} — $${Number(product.retail_price).toFixed(2)} at ${SITE_NAME}. ${product.description || ''}`.trim();
+      `${name} — $${Number(product.retail_price).toFixed(2)} at ${SITE_NAME}. ${publicDescription(product.description) || ''}`.trim();
     const path = `/product/${id}`;
     return {
       title: name,
@@ -60,6 +61,9 @@ export default async function ProductPage({ params }: Props) {
 
   const p = product;
   const displayName = [p.collection, p.color].filter(Boolean).join(' — ') || p.name;
+  // Staff use `description` as a scratch field during inventory counts, so it
+  // is not safe to render unfiltered — see lib/publicDescription.
+  const publicDesc = publicDescription(p.description);
   const hasDiscount = p.compare_at_price && p.compare_at_price > p.retail_price;
   const inStock = p.in_stock;
 
@@ -117,7 +121,7 @@ export default async function ProductPage({ params }: Props) {
     name: displayName,
     ...(p.sku ? { sku: p.sku } : {}),
     ...(absImages.length ? { image: absImages } : {}),
-    ...(p.description ? { description: p.description } : {}),
+    ...(publicDesc ? { description: publicDesc } : {}),
     ...(p.vendor?.name ? { brand: { '@type': 'Brand', name: p.vendor.name } } : {}),
     ...(p.material ? { material: p.material } : {}),
     ...(p.category ? { category: p.category } : {}),
@@ -342,10 +346,10 @@ export default async function ProductPage({ params }: Props) {
           financing, warranty. */}
       <div className="mt-10 max-w-3xl">
         {/* Description */}
-        {p.description && (
+        {publicDesc && (
           <div>
             <h2 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wider mb-3">Description</h2>
-            <p className="text-sm text-brand-charcoal-light leading-relaxed">{p.description}</p>
+            <p className="text-sm text-brand-charcoal-light leading-relaxed">{publicDesc}</p>
           </div>
         )}
 
