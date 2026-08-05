@@ -15,8 +15,9 @@ import CustomizeWizard from '@/components/CustomizeWizard';
 import RelatedProducts from '@/components/RelatedProducts';
 import SimilarProducts from '@/components/SimilarProducts';
 import JsonLd from '@/components/JsonLd';
-import { SITE_URL, SITE_NAME } from '@/lib/site';
+import { SITE_URL } from '@/lib/site';
 import { publicDescription } from '@/lib/publicDescription';
+import { productTitle, productMetaDescription } from '@/lib/productTitle';
 import { warrantyForBrand, brandSlug } from '@/lib/warranty';
 import SeeItInPerson from '@/components/SeeItInPerson';
 import { brandByName } from '@/lib/brands';
@@ -33,9 +34,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   try {
     const product = await getProduct(id);
-    const name = [product.collection, product.color].filter(Boolean).join(' — ') || product.name;
-    const description =
-      `${name} — $${Number(product.retail_price).toFixed(2)} at ${SITE_NAME}. ${publicDescription(product.description) || ''}`.trim();
+    const name = productTitle(product);
+    const description = productMetaDescription(product, publicDescription(product.description));
     const path = `/product/${id}`;
     return {
       title: name,
@@ -60,7 +60,10 @@ export default async function ProductPage({ params }: Props) {
   }
 
   const p = product;
-  const displayName = [p.collection, p.color].filter(Boolean).join(' — ') || p.name;
+  // Feeds the <h1>, breadcrumb, gallery alt text, JSON-LD name and the
+  // TrackEvent label — see lib/productTitle for why it is no longer
+  // `collection — color`.
+  const displayName = productTitle(p);
   // Staff use `description` as a scratch field during inventory counts, so it
   // is not safe to render unfiltered — see lib/publicDescription.
   const publicDesc = publicDescription(p.description);
