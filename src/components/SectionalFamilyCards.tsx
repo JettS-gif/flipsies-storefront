@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { thumb } from '@/lib/img';
 import type { SectionalFamily } from '@/lib/sectional';
 
 // Family cards for the shop — one "Build your [Family] Sectional" tile per
@@ -43,7 +44,7 @@ export default function SectionalFamilyCards({
               )}
               {f.sample_image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={f.sample_image} alt={`${f.family} sectional`} className="w-full h-full object-contain p-2" />
+                <img src={thumb(f.sample_image, { width: 600 })} alt={`${f.family} sectional`} className="w-full h-full object-contain p-2" loading="lazy" />
               ) : (
                 <span className="text-4xl opacity-30">🛋</span>
               )}

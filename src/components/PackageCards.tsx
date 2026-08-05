@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { thumb } from '@/lib/img';
 import type { StorefrontPackage } from '@/lib/packages';
 
 const money = (n: number) =>
@@ -40,7 +41,7 @@ export default function PackageCards({
                 <div className="relative aspect-[4/3] bg-brand-warm-gray flex items-center justify-center overflow-hidden">
                   {hero ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={hero} alt={p.name} className="w-full h-full object-cover" />
+                    <img src={thumb(hero, { width: 600 })} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     <span className="text-4xl opacity-30">🛏</span>
                   )}

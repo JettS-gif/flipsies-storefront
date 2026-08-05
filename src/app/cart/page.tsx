@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCart, cartKey } from '@/context/CartContext';
 import { summarizeCartAvailability } from '@/lib/cartAvailability';
+import { thumb } from '@/lib/img';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   Sofas: '🛋', Sectionals: '🛋', Chairs: '🪑', Tables: '🪑',
@@ -87,7 +88,7 @@ export default function CartPage() {
               <div className="w-20 h-20 sm:w-24 sm:h-24 bg-brand-warm-gray rounded-lg flex items-center justify-center shrink-0 overflow-hidden">
                 {item.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                  <img src={thumb(item.image_url, { width: 200 })} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
                 ) : (
                   <span className="text-3xl opacity-20">{fallbackEmoji(item.category)}</span>
                 )}

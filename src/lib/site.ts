@@ -12,6 +12,10 @@ export const SITE_URL = (
 ).replace(/\/$/, '');
 
 export const SITE_NAME = 'Flipsies Furniture';
+
+// The file-convention OG image at app/opengraph-image.tsx. Referenced by path so
+// pages that declare their own openGraph still get a preview image.
+export const OG_IMAGE = '/opengraph-image';
 export const SITE_TAGLINE = 'Quality Furniture at Honest Prices';
 export const SITE_DESCRIPTION =
   'Shop sofas, sectionals, bedroom sets, dining furniture and more at Flipsies Furniture. Visit our showrooms in Hoover and Irondale, Alabama.';
@@ -100,9 +104,16 @@ export const SOCIAL_PROFILES: string[] = SHOWROOMS
   .filter(Boolean);
 
 // Per-page metadata helper. Canonical + openGraph.url are RELATIVE — the
-// root layout's metadataBase resolves them to absolute URLs. siteName,
-// locale and the default og:image (app/opengraph-image) are inherited from
-// the root, so each page only declares what's page-specific.
+// root layout's metadataBase resolves them to absolute URLs.
+//
+// siteName and locale ARE inherited from the root. The og:image is NOT: a page
+// that declares its own `openGraph` replaces the parent's object wholesale, so
+// every page using this helper — /shop, /deals, /brands, /locations, /about-us,
+// /delivery, /financing, /warranty, /privacy, /terms, /sectionals and all
+// category and room pages — was sharing with NO preview image at all. Measured
+// 2026-08-05: the homepage emitted 5 og:image tags and every one of those pages
+// emitted zero. Hence the explicit default below; do not remove it on the
+// assumption that inheritance covers it.
 export function pageMetadata(opts: {
   title: string;
   description?: string;
@@ -110,6 +121,7 @@ export function pageMetadata(opts: {
   images?: string[];
 }): Metadata {
   const { title, description, path, images } = opts;
+  const og = images ?? [OG_IMAGE];
   return {
     title,
     description,
@@ -118,12 +130,12 @@ export function pageMetadata(opts: {
       title,
       description,
       url: path,
-      ...(images ? { images } : {}),
+      images: og,
     },
     twitter: {
       title,
       description,
-      ...(images ? { images } : {}),
+      images: og,
     },
   };
 }

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { thumb } from '@/lib/img';
 
 const money = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -46,7 +47,7 @@ export default function CollectionCards({
             <div className="relative aspect-[4/3] bg-brand-warm-gray flex items-center justify-center overflow-hidden">
               {c.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={c.image} alt={c.collection} className="w-full h-full object-cover" />
+                <img src={thumb(c.image, { width: 600 })} alt={c.collection} className="w-full h-full object-cover" loading="lazy" />
               ) : (
                 <span className="text-4xl opacity-30">🛏</span>
               )}
