@@ -6,7 +6,12 @@ export default function ProductCard({ product }: { product: Product }) {
   const p = product;
   const displayName = [p.collection, p.color].filter(Boolean).join(' — ') || p.name;
   const subtitle = [p.type, p.category].filter(Boolean).join(' · ');
-  const hasDiscount = p.compare_at_price && p.compare_at_price > p.retail_price;
+  // No `compare_at_price` strikethrough anywhere online (Jett, 2026-08-05).
+  // A struck-through anchor is Hi-Lo "was/now" framing, which contradicts the
+  // everyday-low-price position the homepage leads with — and it was on a third
+  // of the catalog. The column is NOT going away: printed floor tags still show
+  // it, and those render from DeliverDeskFrontEnd (printTagsCore.js /
+  // bulkPrintTags.js / inventoryTagPrices.js), a different codebase entirely.
   const inStock = p.in_stock;
   // Vendor-exited sell-through: genuine liquidation of remaining stock, not a
   // Hi-Lo "sale" (EDLP intact). It's not reorderable, so never show it as a
@@ -105,12 +110,6 @@ export default function ProductCard({ product }: { product: Product }) {
           <span className="text-lg font-bold text-brand-charcoal">
             ${Number(p.retail_price).toFixed(2)}
           </span>
-          {hasDiscount && (
-            <span className="text-xs text-brand-charcoal-light">
-              Compare at{" "}
-              <span className="line-through">${Number(p.compare_at_price).toFixed(2)}</span>
-            </span>
-          )}
         </div>
       </div>
     </Link>

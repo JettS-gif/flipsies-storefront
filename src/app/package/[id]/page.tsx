@@ -124,6 +124,16 @@ export default async function PackagePage({ params }: Props) {
             )}
           </div>
 
+          {/* States what the struck-through number IS. The product-level
+              "Compare at" anchor was removed sitewide as Hi-Lo framing; this
+              one survives only because it compares against our own a-la-carte
+              piece prices, and that has to be said rather than implied. */}
+          {pkg.compare_at_price > pkg.price && (
+            <p className="text-xs text-brand-charcoal-light mt-1.5">
+              compared with buying the {pkg.item_count} pieces individually
+            </p>
+          )}
+
           <p className="text-sm text-brand-charcoal-light mt-2">
             {pkg.in_stock ? 'In stock — all pieces available' : 'Special order'}
           </p>

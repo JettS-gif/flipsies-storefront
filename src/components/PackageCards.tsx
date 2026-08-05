@@ -65,8 +65,14 @@ export default function PackageCards({
                 </Link>
                 <div className="mt-1.5 flex items-baseline gap-2">
                   <span className="text-base font-bold text-brand-charcoal">{money(p.price)}</span>
+                  {/* A struck-through number with no stated basis reads as a
+                      Hi-Lo "was" price, which is exactly what came off the
+                      product cards. Here it is the sum of our OWN a-la-carte
+                      piece prices, so the label has to say so. */}
                   {p.compare_at_price > p.price && (
-                    <span className="text-xs text-brand-charcoal-light line-through">{money(p.compare_at_price)}</span>
+                    <span className="text-xs text-brand-charcoal-light">
+                      <span className="line-through">{money(p.compare_at_price)}</span> as pieces
+                    </span>
                   )}
                 </div>
                 <p className="text-xs text-brand-charcoal-light mt-1">{p.item_count} pieces</p>

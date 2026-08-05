@@ -68,7 +68,6 @@ export default async function ProductPage({ params }: Props) {
   // Staff use `description` as a scratch field during inventory counts, so it
   // is not safe to render unfiltered — see lib/publicDescription.
   const publicDesc = publicDescription(p.description);
-  const hasDiscount = p.compare_at_price && p.compare_at_price > p.retail_price;
   const inStock = p.in_stock;
 
   const details = [
@@ -232,12 +231,6 @@ export default async function ProductPage({ params }: Props) {
             <span className="text-3xl font-bold text-brand-charcoal">
               ${Number(p.retail_price).toFixed(2)}
             </span>
-            {hasDiscount && (
-              <span className="text-sm text-brand-charcoal-light">
-                Compare at{" "}
-                <span className="line-through">${Number(p.compare_at_price).toFixed(2)}</span>
-              </span>
-            )}
           </div>
 
           {/* 12-month 0% monthly estimate — the Synchrony everyday program. */}
