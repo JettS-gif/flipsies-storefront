@@ -24,15 +24,29 @@ const nextConfig: NextConfig = {
       ...room("/bedroom", "/shop/bedroom"),
       ...room("/dining-room", "/shop/dining-room"),
       ...room("/mattress", "/shop/mattresses"),
-      ...room("/home-office", "/shop/home-office"),
+      // The DB room is "Office"; /shop/home-office resolves but 308s onward, so
+      // point straight at the canonical slug rather than chaining two redirects.
+      ...room("/home-office", "/shop/office"),
+      // These now have a real room to land on instead of the full catalog.
+      ...room("/home-accents", "/shop/accessories"),
+      ...room("/home-decor", "/shop/accessories"),
+      ...room("/outdoor-furniture", "/shop/outdoor"),
       // No 1:1 new department — send to the full catalog.
       ...room("/home-entertainment", "/shop"),
-      ...room("/home-accents", "/shop"),
-      ...room("/home-decor", "/shop"),
-      ...room("/outdoor-furniture", "/shop"),
       ...room("/home-appliances", "/shop"),
       ...room("/miscellaneous", "/shop"),
       ...room("/miscellaneous-furniture", "/shop"),
+      // Nav slugs that a different route owns. These have to be config-level
+      // redirects rather than redirect() inside /shop/[category]: there is a
+      // loading.tsx above that segment, so it streams, and once streaming has
+      // started the status code can no longer be set — an in-page redirect
+      // degrades to a client-side meta tag on an HTTP 200 and passes no link
+      // equity. A config redirect runs before rendering and emits a real 308.
+      // "Sectional" is the DB category name; the lowercase form is the nav slug.
+      { source: "/shop/sectionals", destination: "/sectionals", permanent: true },
+      { source: "/shop/sectional", destination: "/sectionals", permanent: true },
+      { source: "/shop/Sectional", destination: "/sectionals", permanent: true },
+      { source: "/shop/deals", destination: "/deals", permanent: true },
       // Info / brand paths.
       { source: "/locations/flipsies-furniture", destination: "/locations", permanent: true },
       { source: "/shop-brands", destination: "/shop", permanent: true },

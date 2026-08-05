@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { api } from '@/lib/api';
 import { SITE_URL, SHOWROOMS } from '@/lib/site';
 import { BRANDS } from '@/lib/brands';
+import { ROOM_SLUGS, categoryPath, slugify } from '@/lib/catalogSlugs';
 
 // Cached route handler — refresh daily. The catalog moves, but a day-stale
 // sitemap is harmless and keeps us off the backend on every crawl.
@@ -55,12 +56,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  // Category landing pages (/shop/[category]).
+  // Room landing pages (/shop/living-room, …) — the head terms ("bedroom
+  // furniture Birmingham"), and the destination of every legacy old-site 308,
+  // so they outrank the piece-level category pages in priority. Derived from
+  // ROOM_SLUGS values so the home-office → Office alias emits once.
+  for (const room of new Set(Object.values(ROOM_SLUGS))) {
+    entries.push({
+      url: `${SITE_URL}/shop/${slugify(room)}`,
+      lastModified: now,
+      changeFrequency: 'daily',
+      priority: 0.8,
+    });
+  }
+
+  // Category landing pages (/shop/[category]) — canonical lowercase-hyphen
+  // slugs, matching what the route now 308s every %20-encoded form to.
   try {
     const { categories } = await api.getCategories();
     for (const c of categories) {
       entries.push({
-        url: `${SITE_URL}/shop/${encodeURIComponent(c)}`,
+        url: `${SITE_URL}${categoryPath(c, categories)}`,
         lastModified: now,
         changeFrequency: 'daily',
         priority: 0.7,
@@ -79,6 +94,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (;;) {
       const { data } = await api.getProducts({ limit: PAGE, offset });
       for (const p of data) {
+        // An imageless PDP cannot convert and cannot rank, so submitting it
+        // just spends crawl budget on a page we'd rather Google didn't judge
+        // us by. It stays live and searchable — this only withdraws the
+        // invitation, and each product re-enters the moment a photo lands.
+        if (!p.images?.length && !p.image_url) continue;
         entries.push({
           url: `${SITE_URL}/product/${p.id}`,
           lastModified: now,

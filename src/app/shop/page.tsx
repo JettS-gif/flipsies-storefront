@@ -11,6 +11,7 @@ import { fetchFacets } from '@/lib/facets';
 import { fetchPackages, type StorefrontPackage } from '@/lib/packages';
 import PackageCards from '@/components/PackageCards';
 import CollectionCards, { type CollectionCard } from '@/components/CollectionCards';
+import { buildCollectionCards, normColl } from '@/lib/collectionCards';
 import TrackEvent from '@/components/TrackEvent';
 import { SORTS, buildHref, activeFilterCount, type ShopSearchParams } from '@/lib/shopFilters';
 
@@ -124,48 +125,17 @@ export default async function ShopPage({ searchParams }: Props) {
   // An intent-driven query ("chest") must never be answered with a set tile.
   const shownPackages = (roomBrowse || nActive === 0) ? packages : [];
 
-  // Room browse collapses to ONE card per collection. A collection with a
-  // published set shows its PackageCard; every other collection is collapsed into
-  // a synthesized CollectionCard (rep image + from-price + piece count) instead
-  // of spilling its dresser/nightstand/chest/mirror as separate tiles — that's
-  // the noise we're cutting. normColl mirrors the server's projectPackage
-  // trailing-punctuation scrub (it derives "Rhett" from a "Rhett:" component) so
-  // package and product collections actually match.
-  const normColl = (s?: string | null) => (s || '').trim().toLowerCase().replace(/[\s:·—-]+$/, '');
+  // Room browse collapses to ONE card per collection — see lib/collectionCards.
+  // Shared with /shop/<room-slug>, which is the canonical room URL we ask Google
+  // to index; two implementations of "what is a room browse" would drift.
   const packagedCollections = new Set(shownPackages.map((p) => normColl(p.collection)).filter(Boolean));
 
   let collectionCards: CollectionCard[] = [];
   let shownProducts = products;
   if (roomBrowse) {
-    // Loose bed components (rails / HB-FB / drawers) sell via the bed, never as a
-    // standalone tile — keep them out of the room grid entirely. They stay
-    // reachable via an explicit /shop/[category] "Bed Parts" browse.
-    const PART_CATEGORIES = new Set(['Bed Parts', 'Parts']);
-    const groups = new Map<string, { name: string; items: Product[] }>();
-    const loose: Product[] = [];
-    for (const p of products) {
-      if (p.category && PART_CATEGORIES.has(p.category)) continue;
-      const key = normColl(p.collection);
-      if (packagedCollections.has(key)) continue; // its PackageCard represents it
-      if (!key) { loose.push(p); continue; }       // no collection → keep as its own tile
-      const g = groups.get(key) ?? { name: p.collection as string, items: [] };
-      g.items.push(p);
-      groups.set(key, g);
-    }
-    collectionCards = [...groups.values()]
-      .map((g) => {
-        const withImg = g.items.find((i) => i.image_url || i.images?.length);
-        const prices = g.items.map((i) => Number(i.retail_price)).filter((n) => n > 0);
-        return {
-          collection: g.name,
-          image: withImg?.image_url ?? withImg?.images?.[0] ?? null,
-          fromPrice: prices.length ? Math.min(...prices) : 0,
-          count: g.items.length,
-          inStock: g.items.some((i) => i.in_stock),
-        };
-      })
-      .sort((a, b) => a.collection.localeCompare(b.collection));
-    shownProducts = loose; // only uncollected pieces remain as individual tiles
+    const collapsed = buildCollectionCards(products, packagedCollections);
+    collectionCards = collapsed.cards;
+    shownProducts = collapsed.loose; // only uncollected pieces remain as individual tiles
   }
   // ── Did-you-mean ─────────────────────────────────────────────────────────
   // Runs ONLY on the dead end: the shopper searched and every surface came back
