@@ -6,10 +6,27 @@
 // empty or the tag script hasn't loaded.
 export const GA_ID = process.env.NEXT_PUBLIC_GA_ID || 'G-YPDRKDY8VM';
 
-// Two active pixels (two ad accounts). fbq('track') fires to EVERY initialized
-// pixel, so both receive the same events. Comma-separated env override wins.
+// THREE active pixels, one per ad account. fbq('track') fires to EVERY
+// initialized pixel, so all three receive the same events — PageView,
+// ViewContent, AddToCart, Purchase, the lot — with no per-pixel wiring.
+//
+// 1647344162308893 added 2026-08-04: an ad account was serving traffic against
+// a pixel this site never initialised, so its campaigns had no ViewContent, no
+// AddToCart and no Purchase to optimise against. Nothing was mis-attributed —
+// there was simply no signal at all on that account.
+//
+// Splitting audiences across pixels is not ideal (Jett said as much) and the
+// long-run answer is one pixel with the ad accounts sharing it. Until then,
+// initialising all three is strictly better than an account flying blind, and
+// costs one extra init on page load.
+//
+// ⚠️ THE ENV OVERRIDE WINS. If NEXT_PUBLIC_META_PIXEL_ID is set in Vercel, this
+// default is dead code and the new id must be added THERE too. As of 2026-08-04
+// the live site initialises exactly the two ids below, so either the var is
+// unset or it matches — verified by fetching the rendered homepage, not assumed.
 export const META_PIXEL_IDS = (
-  process.env.NEXT_PUBLIC_META_PIXEL_ID || '566032973955511,1503664690977139'
+  process.env.NEXT_PUBLIC_META_PIXEL_ID
+  || '566032973955511,1503664690977139,1647344162308893'
 )
   .split(',')
   .map((s) => s.trim())
