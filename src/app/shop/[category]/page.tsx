@@ -177,6 +177,23 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     ],
   };
 
+  // Google supports ItemList on a listing page to describe the products it links
+  // to. Positions continue across pages rather than restarting at 1 on every
+  // page, so the list describes the whole category, not just this slice.
+  const itemListLd = loose.length
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name: label,
+        numberOfItems: count,
+        itemListElement: loose.map((prod, i) => ({
+          '@type': 'ListItem',
+          position: (page - 1) * PAGE_SIZE + i + 1,
+          url: `${SITE_URL}/product/${prod.id}`,
+        })),
+      }
+    : null;
+
   // An out-of-range page is a made-up URL, and leaving it as a 200 would rebuild
   // exactly the unbounded thin-page space the notFound() guard above closed —
   // ?page=9999 is as arbitrary a string as /shop/zzz.
@@ -187,6 +204,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <JsonLd id="ld-category" data={breadcrumbLd} />
+      {itemListLd && <JsonLd id="ld-category-items" data={itemListLd} />}
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-brand-charcoal-light mb-6">
         <Link href="/shop" className="hover:text-brand-charcoal transition-colors">Shop</Link>

@@ -18,6 +18,7 @@ import JsonLd from '@/components/JsonLd';
 import { SITE_URL } from '@/lib/site';
 import { publicDescription } from '@/lib/publicDescription';
 import { productTitle, productMetaDescription } from '@/lib/productTitle';
+import { dimensionSchema, availabilityUrl, priceValidUntil } from '@/lib/productSchema';
 import { warrantyForBrand, brandSlug } from '@/lib/warranty';
 import SeeItInPerson from '@/components/SeeItInPerson';
 import { brandByName } from '@/lib/brands';
@@ -123,17 +124,27 @@ export default async function ProductPage({ params }: Props) {
     '@id': `${productUrl}#product`,
     name: displayName,
     ...(p.sku ? { sku: p.sku } : {}),
+    // The vendor's own part number ("101-113-14" is Southern Motion's), which is
+    // how Google decides our listing and a discounter's listing are the same
+    // physical product. Without it we cannot win the shared-SKU comparison at
+    // all. A true `gtin` would be better still, but no UPC exists on the record
+    // — sourcing those from vendors is the outstanding data task.
+    ...(p.sku ? { mpn: p.sku } : {}),
     ...(absImages.length ? { image: absImages } : {}),
     ...(publicDesc ? { description: publicDesc } : {}),
     ...(p.vendor?.name ? { brand: { '@type': 'Brand', name: p.vendor.name } } : {}),
     ...(p.material ? { material: p.material } : {}),
     ...(p.category ? { category: p.category } : {}),
+    // Parsed out of the free-text `dimensions` string that 43% of the catalog
+    // carries; blank axes are omitted rather than guessed.
+    ...dimensionSchema(p.dimensions),
     offers: {
       '@type': 'Offer',
       url: productUrl,
       priceCurrency: 'USD',
       price: Number(p.retail_price).toFixed(2),
-      availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/PreOrder',
+      priceValidUntil: priceValidUntil(),
+      availability: availabilityUrl(!!inStock),
       itemCondition: 'https://schema.org/NewCondition',
       seller: { '@id': `${SITE_URL}/#organization` },
     },
