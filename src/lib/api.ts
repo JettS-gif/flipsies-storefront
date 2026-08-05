@@ -421,6 +421,26 @@ export const api = {
     ),
 
   /**
+   * Abandoned-checkout lead. Fired when the shopper finishes the CONTACT step
+   * and moves toward payment — before an invoice exists, because the invoice
+   * only appears at the Stripe step and most people who leave, leave earlier.
+   *
+   * NOT a marketing signup: no consent is given by buying something, so this
+   * writes no marketing_status. See POST /storefront/checkout-lead.
+   *
+   * Callers MUST treat this as fire-and-forget. Nothing here may ever delay or
+   * block a checkout — a lost lead costs a phone call, a blocked checkout costs
+   * the sale.
+   */
+  captureCheckoutLead: (payload: { name?: string; email: string; phone?: string }) =>
+    request<{ ok: true; lead_id?: string; repeat?: boolean }>(
+      'POST',
+      '/storefront/checkout-lead',
+      { ...payload, ...browserAttribution() },
+      { cache: 'no-store' },
+    ),
+
+  /**
    * Self-service order tracking. Returns 404 on either an unknown
    * invoice_number OR an email mismatch — the storefront page treats
    * both as the same "couldn't find your order" UX.

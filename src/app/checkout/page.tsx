@@ -163,6 +163,8 @@ export default function CheckoutPage() {
   const { items, subtotal, clearCart, itemCount } = useCart();
 
   const [step, setStep] = useState(0);
+  // Fire-once guard for the abandoned-checkout lead — see handleInfoSubmit.
+  const leadCaptured = useRef(false);
 
   // Customer info
   const [name, setName] = useState('');
@@ -304,6 +306,26 @@ export default function CheckoutPage() {
   // Step 1: Customer info
   function handleInfoSubmit(e: FormEvent) {
     e.preventDefault();
+
+    // Capture the lead HERE, at the moment they commit their details and move
+    // toward payment. The invoice is not created until the Stripe step, so
+    // anyone who leaves before that previously vanished without trace —
+    // measured 2026-08-05: 2 shoppers reached checkout, 0 invoices, 0 leads.
+    //
+    // Deliberately NOT awaited and deliberately swallowing every error. This is
+    // the money path: a lost lead costs a phone call, a blocked checkout costs
+    // the sale. Nothing below may delay setStep.
+    //
+    // Guarded by a ref rather than by step, because going Back and forward
+    // again is the same lead — the server upserts too, but not firing twice is
+    // cheaper than relying on it.
+    if (!leadCaptured.current && email.trim()) {
+      leadCaptured.current = true;
+      api
+        .captureCheckoutLead({ name: name.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined })
+        .catch(() => { /* fire-and-forget — never surface, never block */ });
+    }
+
     setStep(1);
   }
 
