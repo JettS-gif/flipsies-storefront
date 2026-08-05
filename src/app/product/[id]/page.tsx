@@ -18,9 +18,10 @@ import JsonLd from '@/components/JsonLd';
 import { SITE_URL } from '@/lib/site';
 import { publicDescription } from '@/lib/publicDescription';
 import { productTitle, productMetaDescription } from '@/lib/productTitle';
-import { dimensionSchema, availabilityUrl, priceValidUntil } from '@/lib/productSchema';
+import { dimensionSchema, availabilityUrl, priceValidUntil, shippingDetailsSchema } from '@/lib/productSchema';
 import { warrantyForBrand, brandSlug } from '@/lib/warranty';
 import SeeItInPerson from '@/components/SeeItInPerson';
+import TrustBlock from '@/components/TrustBlock';
 import { brandByName } from '@/lib/brands';
 
 interface Props {
@@ -146,6 +147,7 @@ export default async function ProductPage({ params }: Props) {
       availability: availabilityUrl(!!inStock),
       itemCondition: 'https://schema.org/NewCondition',
       seller: { '@id': `${SITE_URL}/#organization` },
+      ...(shippingDetailsSchema(!!inStock) ?? {}),
     },
   };
 
@@ -306,6 +308,8 @@ export default async function ProductPage({ params }: Props) {
               Visit Showroom
             </Link>
           </div>
+
+          <TrustBlock />
 
         </div>
       </div>

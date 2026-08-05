@@ -6,6 +6,7 @@
 // is the whole model-level comparison the storefront is trying to win.
 
 import { todayCT, addDaysCT } from '@/lib/ct';
+import { DELIVERY } from '@/lib/policy';
 
 /** Inches, as schema.org QuantitativeValue expects for a UNECE unit code. */
 const INCH = 'INH';
@@ -66,4 +67,43 @@ export function availabilityUrl(inStock: boolean): string {
  */
 export function priceValidUntil(from: string = todayCT()): string {
   return addDaysCT(365, from);
+}
+
+/**
+ * `shippingDetails` for the Offer. Google surfaces this in Shopping, so it is a
+ * published commitment rather than marketing — only what we will actually
+ * stand behind goes in.
+ *
+ * No `shippingRate`: the fee is computed per address by the delivery engine
+ * (marginal detour cost, plus overflow and Saturday surcharges), so there is no
+ * single honest number to publish. Omitting it is valid; inventing a flat rate
+ * would be a claim we would have to break.
+ *
+ * Only emitted for in-stock items — a made-to-order frame runs on the vendor's
+ * production queue, and promising 2 business days on it would be false.
+ */
+export function shippingDetailsSchema(inStock: boolean): Record<string, unknown> | null {
+  if (!inStock) return null;
+  return {
+    shippingDetails: {
+      '@type': 'OfferShippingDetails',
+      shippingDestination: {
+        '@type': 'DefinedRegion',
+        addressCountry: 'US',
+        addressRegion: 'AL',
+      },
+      deliveryTime: {
+        '@type': 'ShippingDeliveryTime',
+        // The 2-business-day promise is end to end, so it is expressed as
+        // transit time with same-day handling rather than split across both.
+        handlingTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 0, unitCode: 'DAY' },
+        transitTime: {
+          '@type': 'QuantitativeValue',
+          minValue: 1,
+          maxValue: DELIVERY.inStockBusinessDays,
+          unitCode: 'DAY',
+        },
+      },
+    },
+  };
 }

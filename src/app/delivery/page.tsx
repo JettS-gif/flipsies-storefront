@@ -32,7 +32,11 @@ export default function DeliveryPage() {
               'Packaging removal and cleanup',
               'Flexible scheduling — choose your date and time window',
               'Real-time delivery tracking and ETA notifications',
-              'Assembly available for select items',
+              // Was "Assembly available for select items", which understated the
+              // offer and contradicted the policy: assembly is included and is
+              // never charged separately. It is also the whole basis of the
+              // like-for-like clause in the price match — see lib/policy.
+              'Assembly included — never charged separately',
             ].map(f => (
               <li key={f} className="flex items-start gap-2 text-sm">
                 <span className="text-brand-green mt-0.5 shrink-0">✓</span>

@@ -19,6 +19,7 @@ const STATIC_PATHS: { path: string; priority: number; changeFrequency: ChangeFre
   { path: '/warranty',   priority: 0.6, changeFrequency: 'monthly' },
   { path: '/locations',  priority: 0.7, changeFrequency: 'monthly' },
   { path: '/delivery',   priority: 0.6, changeFrequency: 'monthly' },
+  { path: '/returns',    priority: 0.6, changeFrequency: 'monthly' },
   { path: '/financing',  priority: 0.6, changeFrequency: 'monthly' },
   { path: '/about-us',   priority: 0.5, changeFrequency: 'monthly' },
   { path: '/contact',    priority: 0.5, changeFrequency: 'monthly' },
