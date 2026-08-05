@@ -392,6 +392,35 @@ export const api = {
     ),
 
   /**
+   * Marketing-list signup. Lands in the same storefront_leads table as
+   * createLead above, distinguished by `source` and by carrying a
+   * marketing_status — so the office works one surface, not two.
+   *
+   * `sms_opt_in` is a separate flag on purpose and must only ever be true
+   * because the visitor ticked a box that said so. Marketing texts need express
+   * written consent, which typing an email address is not.
+   *
+   * UTM params are read from the URL by the caller rather than here: this
+   * module is imported by server components, where there is no location to read.
+   */
+  subscribe: (payload: {
+    email: string;
+    name?: string;
+    phone?: string;
+    sms_opt_in?: boolean;
+    source?: string;
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+  }) =>
+    request<{ ok: true; lead_id?: string; already_subscribed?: boolean }>(
+      'POST',
+      '/storefront/subscribe',
+      { ...payload, ...browserAttribution() },
+      { cache: 'no-store' },
+    ),
+
+  /**
    * Self-service order tracking. Returns 404 on either an unknown
    * invoice_number OR an email mismatch — the storefront page treats
    * both as the same "couldn't find your order" UX.

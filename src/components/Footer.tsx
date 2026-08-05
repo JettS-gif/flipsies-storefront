@@ -1,11 +1,18 @@
 import Link from 'next/link';
 import SocialLinks from '@/components/SocialLinks';
+import NewsletterSignup from '@/components/NewsletterSignup';
 import { SHOWROOMS } from '@/lib/site';
 
 export default function Footer() {
   return (
     <footer className="bg-brand-charcoal text-white mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        {/* Its own band rather than a fifth grid column — Locations carries two
+            full showroom addresses and a fifth column squeezes them. */}
+        <div className="pb-10 mb-10 border-b border-gray-700">
+          <NewsletterSignup />
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
           {/* Brand */}
           <div>
