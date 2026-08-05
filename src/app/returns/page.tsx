@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { pageMetadata } from '@/lib/site';
-import { RETURNS, PRICE_MATCH, DELIVERY } from '@/lib/policy';
+import { RETURNS, PRICE_MATCH, DELIVERY, GOODWILL } from '@/lib/policy';
 
 export const metadata = pageMetadata({
   title: 'Returns, Exchanges & Price Match',
@@ -50,29 +50,42 @@ export default function ReturnsPage() {
           <strong>{RETURNS.refundType}</strong>, less a restocking fee taken out of the credit.
         </p>
 
+        <p>
+          There are only two questions, and you can check both yourself:
+        </p>
+
         <div className="rounded-lg border border-brand-border overflow-hidden my-4">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-brand-warm-gray/60 text-left">
-                <th className="px-3 py-2 font-semibold text-brand-charcoal">When</th>
-                <th className="px-3 py-2 font-semibold text-brand-charcoal">You bring it in</th>
-                <th className="px-3 py-2 font-semibold text-brand-charcoal">We collect it</th>
+                <th className="px-3 py-2 font-semibold text-brand-charcoal">The piece is…</th>
+                <th className="px-3 py-2 font-semibold text-brand-charcoal">Restocking fee</th>
               </tr>
             </thead>
             <tbody>
               <tr className="border-t border-brand-border">
-                <td className="px-3 py-2">Within {RETURNS.restockingFastHours} hours</td>
-                <td className="px-3 py-2"><strong>{RETURNS.restockingFastPercent}%</strong></td>
-                <td className="px-3 py-2">{RETURNS.restockingFastPercent}% + pickup</td>
+                <td className="px-3 py-2">Still sealed in its factory packaging</td>
+                <td className="px-3 py-2"><strong>None</strong></td>
               </tr>
               <tr className="border-t border-brand-border">
-                <td className="px-3 py-2">Days 3–{RETURNS.changeOfMindDays}</td>
+                <td className="px-3 py-2">Out of the box</td>
                 <td className="px-3 py-2"><strong>{RETURNS.restockingFeePercent}%</strong></td>
-                <td className="px-3 py-2">{RETURNS.restockingFeePercent}% + pickup</td>
               </tr>
             </tbody>
           </table>
         </div>
+
+        <p>
+          If it never came out of the box we can still sell it as new, so there is nothing to charge
+          you for. Once it is opened we cannot, and that is what the fee covers.
+        </p>
+        <p>
+          <strong>Getting it back to us is priced separately.</strong> Bring it to either showroom and
+          there is no charge. If you need us to collect it, that is quoted by{' '}
+          {RETURNS.collectionPricedBy} — a pickup is the same truck over the same distance, so it is
+          the same maths. And if you are <strong>exchanging</strong> it for something else, we bring
+          the new piece and take the old one on the same trip, so there is no collection charge at all.
+        </p>
 
         <p>
           <strong>Why there is a fee at all.</strong> It is the part that is invisible from your side, so
@@ -87,10 +100,8 @@ export default function ReturnsPage() {
           serious loss, however careful you were with it.
         </p>
         <p>
-          The fee covers part of that, not all of it. Bringing the piece back yourself removes the
-          collection trip, which is why that column is cheaper — and if you are exchanging it for
-          something else, we bring the new piece and take the old one on the same trip, so there is no
-          collection charge at all.
+          The fee covers part of that, not all of it — and it is why a sealed box costs you nothing
+          while an opened one does not.
         </p>
         <p>
           Furniture is unforgiving this way. A piece that has lived in a home usually cannot go back on
@@ -107,10 +118,6 @@ export default function ReturnsPage() {
         <p className="rounded-lg bg-brand-warm-gray/60 px-3 py-2">
           That is a different thing from a piece that <strong>arrived</strong> damaged or defective — that is
           on us, it is a free swap, and it is covered above.
-        </p>
-        <p>
-          Bringing it back to either showroom costs nothing. If you need us to collect it, the office will
-          arrange a pickup and quote the fee for that trip.
         </p>
         <p className="text-brand-charcoal">
           <strong>Not eligible:</strong> {RETURNS.excluded.join(', ')}. Custom orders are built to your
@@ -132,6 +139,39 @@ export default function ReturnsPage() {
         </p>
         <p className="text-brand-charcoal">
           <strong>Not eligible:</strong> {PRICE_MATCH.excluded.join(', ')}.
+        </p>
+      </Section>
+
+      <Section title={GOODWILL.heading}>
+        <p>
+          Some things genuinely cannot come back — a piece damaged after we delivered it, an item you
+          asked us to force through a doorway we advised against, a custom order built to your
+          specification. We would rather tell you that plainly than pretend otherwise.
+        </p>
+        <p>
+          But <strong>not returnable does not have to mean nothing we can do</strong>. In most of those
+          cases {GOODWILL.offer}. You will not get the full price back, because the piece is not worth
+          the full price any more — but you are not left with something you cannot use and nothing to
+          show for it.
+        </p>
+        <p>
+          Ask. This is written here rather than kept in reserve because it is our standing position,
+          not something you should have to argue for.
+        </p>
+      </Section>
+
+      <Section title="If it will not fit">
+        <p>
+          Our crews measure before they force anything. If a piece will not go through a doorway or
+          stairwell, they will tell you, and the safest outcome is usually to swap it for something
+          that fits — we would much rather do that than damage your home.
+        </p>
+        <p>
+          If you would like us to attempt it anyway, we will ask you to sign a short waiver first. It
+          says two things, and the second one matters: we are not liable for damage to your home or to
+          the product, and <strong>a piece damaged in the attempt cannot be returned or refunded</strong>
+          — it is no longer sellable, so it stays yours at full price. The crew will read that to you
+          before you sign it.
         </p>
       </Section>
 
