@@ -45,7 +45,7 @@ const CAP = {
  * wants plain text — so control characters go, and the field is collapsed to
  * single spaces.
  */
-function clean(v: unknown, cap?: number): string {
+export function clean(v: unknown, cap?: number): string {
   if (v === null || v === undefined) return '';
   // Control characters (tab and newline among them) become spaces, then runs of
   // whitespace collapse, so no field can ever split a row or a column.
@@ -134,7 +134,7 @@ export function validGtin(upc?: string | null): string {
 }
 
 /** Absolute URL for an image path that may already be absolute. */
-function absUrl(u: string): string {
+export function absUrl(u: string): string {
   return u.startsWith('http') ? u : `${SITE_URL}${u}`;
 }
 
