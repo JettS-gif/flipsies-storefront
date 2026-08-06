@@ -74,6 +74,37 @@ export function feedAvailability(p: Pick<Product, 'in_stock' | 'clearance'>): st
 }
 
 /**
+ * The colourways (or sizes) this listing stands for, as the spec's variant_dict.
+ *
+ * We submit ONE listing per model rather than one per colourway: furniture
+ * queries are model-level ("a power reclining sofa", not "the Wynn Blue one"),
+ * the grid's representative is already chosen to prefer in-stock AND imaged, and
+ * nine near-duplicate rows would compete with each other rather than multiply
+ * our reach.
+ *
+ * The cost of collapsing is that the listing claims `listing_has_variations`
+ * and then never says WHAT varies — so a shopper asking "does it come in grey?"
+ * gets no answer from a row that could have given one. This closes that: the
+ * siblings are already on the record.
+ *
+ * `variant_axis` decides the key, because the same field means different things
+ * by vendor — colourway groups (Jofran/Fusion) vs mattress size groups (MLily).
+ */
+export function variantDict(p: Product): string {
+  const axis = p.variant_axis === 'size' ? 'size' : 'color';
+  const values = (p.variants ?? [])
+    .map((v) => (axis === 'size' ? v.size : v.color))
+    .map((v) => clean(v))
+    .filter(Boolean);
+
+  const unique = [...new Set(values)];
+  if (unique.length < 2) return '';
+  // JSON, since the spec types this field as an object. Capped: a 40-colourway
+  // fabric library would otherwise dwarf every other cell on the row.
+  return JSON.stringify({ [axis]: unique.slice(0, 25) });
+}
+
+/**
  * The GTIN, but only if it really is one.
  *
  * A GTIN is 8, 12, 13 or 14 digits — nothing else is a GTIN, and a value that
@@ -163,6 +194,7 @@ export const FEED_COLUMNS = [
   'dimensions_unit',
   'group_id',
   'listing_has_variations',
+  'variant_dict',
   'seller_name',
   'seller_url',
   'seller_privacy_policy',
@@ -225,6 +257,7 @@ export function feedRow(p: Product): string {
     dimensions_unit: dims.width !== undefined || dims.depth !== undefined || dims.height !== undefined ? 'in' : '',
     group_id: clean(p.variant_group_id),
     listing_has_variations: variantCount > 1 ? 'true' : 'false',
+    variant_dict: variantDict(p),
     seller_name: clean(SITE_NAME, CAP.seller_name),
     seller_url: SITE_URL,
     seller_privacy_policy: `${SITE_URL}/privacy`,

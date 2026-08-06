@@ -173,6 +173,35 @@ describe('feedRow', () => {
     expect(cellsOf(base).listing_has_variations).toBe('false');
   });
 
+  // A collapsed listing that claims variations but never names them cannot
+  // answer "does it come in grey?" — which is the whole point of collapsing.
+  it('names the colourways a collapsed listing stands for', () => {
+    const v = (color: string, id: string) => ({ id, color, size: null, in_stock: true, image_url: null, retail_price: 699.97 });
+    const c = cellsOf({ ...base, variant_count: 3, variants: [v('Charcoal', '1'), v('Wynn Blue', '2'), v('Hayride Greystone', '3')] });
+    expect(JSON.parse(c.variant_dict)).toEqual({ color: ['Charcoal', 'Wynn Blue', 'Hayride Greystone'] });
+  });
+
+  it('keys variant_dict on size for a size-axis group', () => {
+    const v = (size: string, id: string) => ({ id, color: null, size, in_stock: true, image_url: null, retail_price: 699.97 });
+    const c = cellsOf({ ...base, variant_axis: 'size' as const, variant_count: 2, variants: [v('Queen', '1'), v('King', '2')] });
+    expect(JSON.parse(c.variant_dict)).toEqual({ size: ['Queen', 'King'] });
+  });
+
+  it('leaves variant_dict empty when there is nothing to choose between', () => {
+    expect(cellsOf(base).variant_dict).toBe('');
+    const one = [{ id: '1', color: 'Charcoal', size: null, in_stock: true, image_url: null, retail_price: 699.97 }];
+    expect(cellsOf({ ...base, variants: one }).variant_dict).toBe('');
+  });
+
+  // variant_dict is JSON inside a TSV cell — its braces and quotes must not
+  // disturb the row, and a huge fabric library must not dwarf every other cell.
+  it('keeps variant_dict from breaking the row or running away', () => {
+    const many = Array.from({ length: 40 }, (_, i) => ({ id: String(i), color: `Colour ${i}`, size: null, in_stock: true, image_url: null, retail_price: 1 }));
+    const p = { ...base, variant_count: 40, variants: many };
+    expect(feedRow(p).split('\t')).toHaveLength(FEED_COLUMNS.length);
+    expect(JSON.parse(cellsOf(p).variant_dict).color).toHaveLength(25);
+  });
+
   it('emits size for flat goods', () => {
     expect(cellsOf({ ...base, size: "8' x 10'" }).size).toBe("8' x 10'");
   });

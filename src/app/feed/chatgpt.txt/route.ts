@@ -17,7 +17,13 @@ async function allProducts(): Promise<Product[]> {
   const out: Product[] = [];
   let offset = 0;
   for (;;) {
-    const { data } = await api.getProducts({ limit: PAGE, offset });
+    // include_never_stock: the default browse deliberately hides special-order
+    // items with nothing on hand and nothing on order, because they pollute a
+    // wall of tiles. A feed is a catalog manifest, not a browse grid, and that
+    // rule was silently withholding 281 priced, imaged, buyable products from
+    // every shopping surface while their PDPs stayed live. They list honestly
+    // as `backorder`.
+    const { data } = await api.getProducts({ limit: PAGE, offset, include_never_stock: 1 });
     out.push(...data);
     if (data.length < PAGE || out.length >= MAX_PRODUCTS) break;
     offset += PAGE;
