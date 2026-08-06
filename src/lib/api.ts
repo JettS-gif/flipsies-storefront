@@ -135,6 +135,15 @@ export interface Product {
   clearance?: boolean;
   vendor?: { name: string };
   attributes?: string | null;
+  /**
+   * The dimension shoppers actually search on for flat goods — "8' x 10'" on a
+   * rug, a mattress size. Distinct from `dimensions`, which is the free-text
+   * W/D/H string on box furniture; a rug has no meaningful depth. Populated on
+   * 37 of the 122 Surya products and every mattress. The product feed emits it
+   * as `size`, which is the field ChatGPT Shopping matches a "9x12 rug" query
+   * against.
+   */
+  size?: string | null;
   sectional_piece_type: string | null;
   sectional_family: string | null;
   images?: string[] | null;
