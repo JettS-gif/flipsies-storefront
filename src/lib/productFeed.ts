@@ -92,10 +92,16 @@ export function feedAvailability(p: Pick<Product, 'in_stock' | 'clearance'>): st
  */
 export function variantDict(p: Product): string {
   const axis = p.variant_axis === 'size' ? 'size' : 'color';
-  const values = (p.variants ?? [])
-    .map((v) => (axis === 'size' ? v.size : v.color))
-    .map((v) => clean(v))
-    .filter(Boolean);
+  // `variant_colors` is the collapsed view's window-aggregated sibling list and
+  // the only source available here: the LIST endpoint carries variant_count but
+  // not the sibling rows, which exist solely on the single-product endpoint, and
+  // the feed cannot afford a per-product fetch across ~2,500 products. It
+  // arrives with duplicates (a colourway can span several sizes) because
+  // Postgres has no DISTINCT for window functions — deduped below.
+  // `variants` is preferred when present, so a single-product caller still works.
+  const fromSiblings = (p.variants ?? []).map((v) => (axis === 'size' ? v.size : v.color));
+  const source = fromSiblings.length ? fromSiblings : (p.variant_colors ?? []);
+  const values = source.map((v) => clean(v)).filter(Boolean);
 
   const unique = [...new Set(values)];
   if (unique.length < 2) return '';

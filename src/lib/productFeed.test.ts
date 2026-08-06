@@ -187,6 +187,31 @@ describe('feedRow', () => {
     expect(JSON.parse(c.variant_dict)).toEqual({ size: ['Queen', 'King'] });
   });
 
+  // The list endpoint the feed actually pages carries variant_colors, not the
+  // sibling rows — so this is the path that runs in production.
+  it('builds variant_dict from the view-aggregated variant_colors', () => {
+    const c = cellsOf({ ...base, variant_count: 3, variant_colors: ['Fluff Daddy Alabaster', 'Delray Linen', 'Nomad Snow'] });
+    expect(JSON.parse(c.variant_dict)).toEqual({ color: ['Fluff Daddy Alabaster', 'Delray Linen', 'Nomad Snow'] });
+  });
+
+  // Postgres has no DISTINCT for window functions, so the aggregate repeats a
+  // colourway once per size in it.
+  it('dedupes the repeats variant_colors necessarily carries', () => {
+    const c = cellsOf({ ...base, variant_count: 4, variant_colors: ['Oatmeal', 'Oatmeal', 'Cheerio Cloud', 'Oatmeal'] });
+    expect(JSON.parse(c.variant_dict)).toEqual({ color: ['Oatmeal', 'Cheerio Cloud'] });
+  });
+
+  it('tolerates a null variant_colors', () => {
+    expect(cellsOf({ ...base, variant_count: 2, variant_colors: null }).variant_dict).toBe('');
+  });
+
+  // A single-product caller has the real sibling rows; they win.
+  it('prefers real sibling rows over the aggregate when both are present', () => {
+    const v = (color: string, id: string) => ({ id, color, size: null, in_stock: true, image_url: null, retail_price: 1 });
+    const c = cellsOf({ ...base, variant_count: 2, variants: [v('Ash', '1'), v('Noir', '2')], variant_colors: ['Wrong', 'Also Wrong'] });
+    expect(JSON.parse(c.variant_dict)).toEqual({ color: ['Ash', 'Noir'] });
+  });
+
   it('leaves variant_dict empty when there is nothing to choose between', () => {
     expect(cellsOf(base).variant_dict).toBe('');
     const one = [{ id: '1', color: 'Charcoal', size: null, in_stock: true, image_url: null, retail_price: 699.97 }];

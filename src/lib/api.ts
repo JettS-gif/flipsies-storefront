@@ -169,6 +169,17 @@ export interface Product {
    */
   variant_axis?: 'color' | 'size';
   /**
+   * Every colourway in this tile's variant group, aggregated in the same window
+   * as `variant_count` — so it survives the DISTINCT ON that discards the
+   * siblings. Present ONLY on the collapsed browse view, like variant_count.
+   *
+   * Carries duplicates (a colourway can span several sizes): Postgres has no
+   * DISTINCT for window functions, so the consumer dedupes. Feeds the product
+   * feed's `variant_dict`, which is what lets a single collapsed listing answer
+   * "does it come in grey?".
+   */
+  variant_colors?: (string | null)[] | null;
+  /**
    * How many published colourways this tile stands for. Only meaningful on the
    * collapsed browse grid, where one tile represents the whole variant group;
    * the endpoint defaults it to 1 on search/colour-filtered paths, which
