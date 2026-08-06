@@ -116,6 +116,15 @@ export interface Mechanism {
 export interface Product {
   id: string;
   sku: string;
+  /**
+   * The vendor's printed GTIN/UPC, digits only. Null for most of the catalog
+   * and that is normal — it records the ones we can prove, it does not assert
+   * that a product without one is incomplete. Emitted as `gtin` in the product
+   * feed and the PDP's Product JSON-LD, both of which validate it first: a
+   * malformed GTIN identifies the WRONG product to every shopping surface that
+   * reads it, which is worse than sending none.
+   */
+  upc?: string | null;
   name: string;
   collection: string | null;
   color: string | null;

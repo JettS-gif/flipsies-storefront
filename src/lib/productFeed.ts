@@ -73,6 +73,29 @@ export function feedAvailability(p: Pick<Product, 'in_stock' | 'clearance'>): st
   return p.clearance ? 'out_of_stock' : 'backorder';
 }
 
+/**
+ * The GTIN, but only if it really is one.
+ *
+ * A GTIN is 8, 12, 13 or 14 digits — nothing else is a GTIN, and a value that
+ * merely looks like an identifier is actively harmful here: unlike a missing
+ * field, a malformed or wrong-length one asserts a specific product identity to
+ * every shopping surface that reads the feed, and it will be matched against
+ * somebody else's listing. Silence is the honest answer when we cannot prove it.
+ *
+ * `mpn` still carries the vendor part number regardless, so model-level matching
+ * does not depend on this.
+ */
+export function validGtin(upc?: string | null): string {
+  // Whitespace is trimmed, but separators are NOT stripped, and that is the
+  // load-bearing part. Stripping them MANUFACTURES GTINs out of hyphenated part
+  // numbers: Southern Motion's "101-113-14" collapses to "10111314", which is
+  // eight digits and therefore a structurally valid GTIN-8 belonging to somebody
+  // else entirely. A UPC is stored digits-only (see products.upc), so anything
+  // carrying punctuation is a SKU that reached the wrong column.
+  const raw = String(upc ?? '').trim();
+  return /^(\d{8}|\d{12,14})$/.test(raw) ? raw : '';
+}
+
 /** Absolute URL for an image path that may already be absolute. */
 function absUrl(u: string): string {
   return u.startsWith('http') ? u : `${SITE_URL}${u}`;
@@ -192,10 +215,7 @@ export function feedRow(p: Product): string {
     material: clean(p.material, CAP.material),
     color: clean(p.color, CAP.color),
     size: clean(p.size, CAP.size),
-    // No UPC on the catalog record today, so this stays empty rather than
-    // carrying the vendor part number — gtin is defined as a real GTIN-8/12/13,
-    // and a made-up one is worse than an absent one. mpn below covers matching.
-    gtin: '',
+    gtin: validGtin(p.upc),
     mpn: clean(p.sku, CAP.mpn),
     // Spec orders these L x W x H; our free-text dimensions parse to
     // width/depth/height, and depth IS length.

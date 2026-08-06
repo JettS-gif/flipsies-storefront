@@ -19,6 +19,7 @@ import { SITE_URL } from '@/lib/site';
 import { publicDescription } from '@/lib/publicDescription';
 import { productTitle, productMetaDescription } from '@/lib/productTitle';
 import { dimensionSchema, availabilityUrl, priceValidUntil, shippingDetailsSchema, merchantReturnPolicySchema } from '@/lib/productSchema';
+import { validGtin } from '@/lib/productFeed';
 import { warrantyForBrand, brandSlug } from '@/lib/warranty';
 import SeeItInPerson from '@/components/SeeItInPerson';
 import TrustBlock from '@/components/TrustBlock';
@@ -128,9 +129,12 @@ export default async function ProductPage({ params }: Props) {
     // The vendor's own part number ("101-113-14" is Southern Motion's), which is
     // how Google decides our listing and a discounter's listing are the same
     // physical product. Without it we cannot win the shared-SKU comparison at
-    // all. A true `gtin` would be better still, but no UPC exists on the record
-    // — sourcing those from vendors is the outstanding data task.
+    // all.
     ...(p.sku ? { mpn: p.sku } : {}),
+    // Better still where we have it. Validated rather than trusted: a
+    // wrong-length GTIN does not fail closed, it matches us to somebody else's
+    // product. Sourced from vendor APIs, so most of the catalog has none.
+    ...(validGtin(p.upc) ? { gtin: validGtin(p.upc) } : {}),
     ...(absImages.length ? { image: absImages } : {}),
     ...(publicDesc ? { description: publicDesc } : {}),
     ...(p.vendor?.name ? { brand: { '@type': 'Brand', name: p.vendor.name } } : {}),

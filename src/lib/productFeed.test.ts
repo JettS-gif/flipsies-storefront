@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Product } from '@/lib/api';
-import { buildFeed, feedRow, feedAvailability, feedDescription, isFeedEligible, FEED_COLUMNS } from '@/lib/productFeed';
+import { buildFeed, feedRow, feedAvailability, feedDescription, isFeedEligible, validGtin, FEED_COLUMNS } from '@/lib/productFeed';
 
 const base: Product = {
   id: 'abc-123',
@@ -43,6 +43,40 @@ describe('feedAvailability', () => {
   // restock that will never come.
   it('maps out-of-stock clearance to out_of_stock, not backorder', () => {
     expect(feedAvailability({ in_stock: false, clearance: true })).toBe('out_of_stock');
+  });
+});
+
+describe('validGtin', () => {
+  it('accepts the four real GTIN lengths', () => {
+    for (const n of [8, 12, 13, 14]) {
+      const digits = '1'.repeat(n);
+      expect(validGtin(digits)).toBe(digits);
+    }
+  });
+
+  // A wrong-length value does not fail closed — it asserts a specific product
+  // identity and gets matched against somebody else's listing.
+  it('rejects wrong-length digit strings', () => {
+    for (const n of [7, 9, 10, 11, 15]) expect(validGtin('1'.repeat(n))).toBe('');
+  });
+
+  it('trims surrounding whitespace', () => {
+    expect(validGtin('  888473805366 ')).toBe('888473805366');
+  });
+
+  // The regression this function exists for. Stripping separators would collapse
+  // Southern Motion's "101-113-14" to "10111314" — eight digits, a structurally
+  // valid GTIN-8, and somebody else's product.
+  it('never manufactures a GTIN out of a hyphenated SKU', () => {
+    expect(validGtin('101-113-14')).toBe('');
+    expect(validGtin('888-4738-05366')).toBe('');
+    expect(validGtin('CAE-1195')).toBe('');
+  });
+
+  it('treats null/undefined/empty as no GTIN', () => {
+    expect(validGtin(null)).toBe('');
+    expect(validGtin(undefined)).toBe('');
+    expect(validGtin('')).toBe('');
   });
 });
 
@@ -105,10 +139,14 @@ describe('feedRow', () => {
 
   // A fabricated GTIN is worse than an absent one; mpn carries the vendor part
   // number that does the model-level matching.
-  it('leaves gtin empty and puts the vendor SKU in mpn', () => {
+  it('leaves gtin empty when no UPC is recorded, and puts the vendor SKU in mpn', () => {
     const c = cellsOf(base);
     expect(c.gtin).toBe('');
     expect(c.mpn).toBe('101-113-14');
+  });
+
+  it('emits a recorded UPC as gtin', () => {
+    expect(cellsOf({ ...base, upc: '888473805366' }).gtin).toBe('888473805366');
   });
 
   it('ships discovery-only', () => {
