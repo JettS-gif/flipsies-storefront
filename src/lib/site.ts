@@ -66,6 +66,14 @@ export interface Showroom {
   facebook: string;
   instagram: string;
   placeId: string;     // Google Place ID (for live reviews via Places API)
+  /**
+   * Google Business Profile store code, as shown in Business Profile Manager.
+   * This is what a LOCAL product inventory feed keys on — it is how Google ties
+   * "in stock nearby" to a specific floor. Null until the profile is linked to
+   * Merchant Center; Hoover is blocked on a Business Manager org conflict
+   * (2026-08-07), so it stays out of the local feed until that clears.
+   */
+  googleStoreCode: string | null;
 }
 
 // Source of truth mirrors locations/page.tsx LOCATIONS. Kept here so the
@@ -84,6 +92,7 @@ export const SHOWROOMS: Showroom[] = [
     facebook: 'https://www.facebook.com/profile.php?id=61588037572879',
     instagram: 'https://www.instagram.com/flipsies_furniture_hoover/',
     placeId: 'ChIJWUoEX4kjiYgRgwbX6-dbcRY',
+    googleStoreCode: null, // blocked: claimed by a different Business Manager org
   },
   {
     name: 'Flipsies Furniture — Irondale',
@@ -98,6 +107,7 @@ export const SHOWROOMS: Showroom[] = [
     facebook: 'https://www.facebook.com/flipsiesfurniture/',
     instagram: 'https://www.instagram.com/flipsies_furniture_irondale/',
     placeId: 'ChIJfTugpW4jiYgRVYvbfQjE4w4',
+    googleStoreCode: '8761534273338357514',
   },
 ];
 

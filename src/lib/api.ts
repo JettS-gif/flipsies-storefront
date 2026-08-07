@@ -319,6 +319,16 @@ export const api = {
       },
     }),
 
+  /**
+   * Which published products are physically on a showroom floor, per store.
+   * Feeds the LOCAL product inventory feed. Per-SKU, not the group-aware badge
+   * lookup — a local listing names one product to someone about to drive over.
+   */
+  getShowroomInventory: () =>
+    request<{ locations: Array<{ id: string; name: string }>; data: Array<{ product_id: string; location_id: string; location_name: string }>; count: number }>(
+      'GET', '/storefront/showroom-inventory', undefined, { next: { revalidate: 900 } },
+    ),
+
   getCategories: () =>
     request<CategoriesResponse>('GET', '/storefront/categories', undefined, {
       next: { revalidate: 300 },
