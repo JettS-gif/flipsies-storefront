@@ -19,6 +19,7 @@ import { productTitle } from '@/lib/productTitle';
 import { publicDescription } from '@/lib/publicDescription';
 import { parseDimensions } from '@/lib/productSchema';
 import { RETURN_WINDOW_DAYS, RETURNS } from '@/lib/policy';
+import { todayCT, addDaysCT } from '@/lib/ct';
 
 // Tab-delimited rather than CSV. Furniture copy is full of commas and inch
 // marks ('58"W, tufted'), and every CSV quoting bug we would have to get right
@@ -71,6 +72,30 @@ export function clean(v: unknown, cap?: number): string {
 export function feedAvailability(p: Pick<Product, 'in_stock' | 'clearance'>): string {
   if (p.in_stock) return 'in_stock';
   return p.clearance ? 'out_of_stock' : 'backorder';
+}
+
+/**
+ * How far out a made-to-order piece is promised, as an ISO date.
+ *
+ * REQUIRED whenever availability is `backorder` — Google disapproves the offer
+ * without it, and that single missing field accounted for 342 of our 529
+ * rejections (`missing_related_attribute` / `availability_date`). It was the
+ * largest cause by a wide margin.
+ *
+ * The catalog's per-product `lead` window is not carried on the list endpoint
+ * the feed pages, so this uses the OUTER edge of the vendor range rather than a
+ * midpoint. Same reasoning as every other estimate here: promising sooner than
+ * we can deliver is the failure that costs a customer, promising later is the
+ * one that costs nothing. If `lead` ever reaches the feed, prefer it.
+ *
+ * Dated in Central like every other business date on the site — this renders in
+ * a server component, which runs UTC on Vercel, so after 7pm CT a raw
+ * `new Date()` would already be stamping tomorrow.
+ */
+export const MADE_TO_ORDER_DAYS = 56; // 8 weeks — the far end of the usual 6-8
+
+export function availabilityDate(from: string = todayCT()): string {
+  return addDaysCT(MADE_TO_ORDER_DAYS, from);
 }
 
 /**
@@ -138,6 +163,43 @@ export function absUrl(u: string): string {
   return u.startsWith('http') ? u : `${SITE_URL}${u}`;
 }
 
+// Formats the shopping surfaces will actually accept. AVIF is NOT among them —
+// Google rejects it outright, and 135 of our products lead with one.
+const SUPPORTED_IMAGE = /\.(jpe?g|png|gif|bmp|tiff?|webp)(\?|$)/i;
+const SUPABASE_OBJECT = '/storage/v1/object/public/';
+
+/**
+ * An image URL a shopping feed can actually use.
+ *
+ * 141 products were disapproved as `image_link_broken` and the URLs return HTTP
+ * 200 — they are perfectly good images in a format Google will not take. Only
+ * FOUR of the 135 have a supported image elsewhere in the gallery, so picking a
+ * different one from the array does not solve it.
+ *
+ * Rather than convert and re-upload 131 files, this routes them through
+ * Supabase's transform endpoint, which re-encodes to JPEG on the fly (verified:
+ * an .avif source returns `image/jpeg`). No storage migration, no duplicate
+ * assets, and nothing for a human to maintain.
+ *
+ * Only UNSUPPORTED formats are rewritten. A working JPEG is left exactly as it
+ * is — the transform is a fix, not a policy.
+ *
+ * The transformer does not upscale, so a small source stays small: about one in
+ * ten of these is under Google's 250px minimum and will still be rejected. That
+ * is a photo problem, not a format one, and needs a better source image.
+ */
+export function feedImageUrl(raw: string): string {
+  const url = absUrl(raw);
+  if (SUPPORTED_IMAGE.test(url)) return url;
+  const i = url.indexOf(SUPABASE_OBJECT);
+  // Not a Supabase object (so not ours to transform) — pass it through and let
+  // the surface reject it, rather than inventing a URL that will 404.
+  if (i === -1) return url;
+  const origin = url.slice(0, i);
+  const path = url.slice(i + SUPABASE_OBJECT.length);
+  return `${origin}/storage/v1/render/image/public/${path}?width=1600&height=1600&resize=contain&quality=85`;
+}
+
 /**
  * The feed description.
  *
@@ -187,6 +249,7 @@ export const FEED_COLUMNS = [
   'brand',
   'price',
   'availability',
+  'availability_date',
   'condition',
   'product_category',
   'material',
@@ -230,7 +293,7 @@ export function isFeedEligible(p: Product): boolean {
 
 /** One TSV row, ordered to FEED_COLUMNS. */
 export function feedRow(p: Product): string {
-  const images = (p.images?.length ? p.images : p.image_url ? [p.image_url] : []).map(absUrl);
+  const images = (p.images?.length ? p.images : p.image_url ? [p.image_url] : []).map(feedImageUrl);
   const dims = parseDimensions(p.dimensions);
   const variantCount = p.variant_count ?? 1;
 
@@ -247,6 +310,8 @@ export function feedRow(p: Product): string {
     // ISO 4217 is required alongside the number.
     price: `${Number(p.retail_price).toFixed(2)} USD`,
     availability: feedAvailability(p),
+    // Required by both surfaces whenever availability is backorder.
+    availability_date: feedAvailability(p) === 'backorder' ? availabilityDate() : '',
     condition: 'new',
     // '>' is the spec's hierarchy separator.
     product_category: clean([p.room, p.category].filter(Boolean).join(' > ')),

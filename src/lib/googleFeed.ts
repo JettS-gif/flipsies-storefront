@@ -11,17 +11,19 @@
 // almost certainly a larger surface today than ChatGPT Shopping.
 //
 // SHIPPING IS NOT IN THIS FILE, on purpose. Google takes shipping from
-// ACCOUNT-level settings, and ours is a flat rate bound to a 50-mile radius
-// region around the Hoover showroom — a per-row `shipping` attribute would have
-// to restate that on 2,500 rows and would silently override the account rule if
-// it ever drifted. The delivery fee is marginal detour cost, not a per-item
-// rate, so there is nothing product-specific to say.
+// ACCOUNT-level settings, and ours is three distance bands of postal codes
+// measured from the Irondale origin ($199 / $300 / $400, then no shipping) —
+// see DeliverDeskBackEnd/scripts/set-google-shipping.js. A per-row `shipping`
+// attribute would have to restate all of that on 2,500 rows and would silently
+// override the account rule if the two ever drifted. The delivery fee is
+// marginal detour cost, not a per-item rate, so there is nothing
+// product-specific to say here.
 
 import type { Product } from '@/lib/api';
 import { SITE_URL } from '@/lib/site';
 import { productTitle } from '@/lib/productTitle';
 import { parseDimensions } from '@/lib/productSchema';
-import { clean, absUrl, feedAvailability, feedDescription, validGtin, isFeedEligible } from '@/lib/productFeed';
+import { clean, feedImageUrl, feedAvailability, availabilityDate, feedDescription, validGtin, isFeedEligible } from '@/lib/productFeed';
 
 const SEP = '\t';
 
@@ -55,6 +57,7 @@ export const GOOGLE_FEED_COLUMNS = [
   'image_link',
   'additional_image_link',
   'availability',
+  'availability_date',
   'price',
   'brand',
   'gtin',
@@ -72,7 +75,7 @@ export const GOOGLE_FEED_COLUMNS = [
 
 /** One TSV row, ordered to GOOGLE_FEED_COLUMNS. */
 export function googleRow(p: Product): string {
-  const images = (p.images?.length ? p.images : p.image_url ? [p.image_url] : []).map(absUrl);
+  const images = (p.images?.length ? p.images : p.image_url ? [p.image_url] : []).map(feedImageUrl);
   const dims = parseDimensions(p.dimensions);
   // Google wants the unit inline on dimension attributes ("35 in"), unlike the
   // ChatGPT spec which carries a separate dimensions_unit column.
@@ -87,6 +90,9 @@ export function googleRow(p: Product): string {
     // Google takes up to 10 extras, comma-separated.
     additional_image_link: images.slice(1, 11).join(','),
     availability: feedAvailability(p),
+    // Google DISAPPROVES a backorder offer with no availability_date — 342 of
+    // our 529 rejections were exactly this one missing field.
+    availability_date: feedAvailability(p) === 'backorder' ? availabilityDate() : '',
     price: `${Number(p.retail_price).toFixed(2)} USD`,
     brand: clean(p.vendor?.name, CAP.brand),
     gtin: validGtin(p.upc),

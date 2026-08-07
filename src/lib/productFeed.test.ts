@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Product } from '@/lib/api';
-import { buildFeed, feedRow, feedAvailability, feedDescription, isFeedEligible, validGtin, FEED_COLUMNS } from '@/lib/productFeed';
+import { buildFeed, feedRow, feedAvailability, feedDescription, isFeedEligible, validGtin, feedImageUrl, FEED_COLUMNS } from '@/lib/productFeed';
 
 const base: Product = {
   id: 'abc-123',
@@ -279,5 +279,62 @@ describe('buildFeed', () => {
 
   it('produces a header-only feed when nothing is eligible', () => {
     expect(buildFeed([{ ...base, retail_price: 0 }]).trim().split('\n')).toHaveLength(1);
+  });
+});
+
+// Google DISAPPROVES a backorder offer that carries no availability_date. That
+// single missing field was 342 of our 529 rejections — the largest cause by far.
+describe('availability_date', () => {
+  const cell = (p: Product) => {
+    const v = feedRow(p).split('\t');
+    return Object.fromEntries(FEED_COLUMNS.map((c, i) => [c, v[i]]))['availability_date'];
+  };
+
+  it('is emitted for a made-to-order (backorder) product', () => {
+    expect(cell({ ...base, in_stock: false })).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('is absent when the product is in stock', () => {
+    expect(cell(base)).toBe('');
+  });
+
+  // Clearance out-of-stock is `out_of_stock`, not `backorder` — it will never be
+  // restocked, so there is no date to promise.
+  it('is absent for out-of-stock clearance', () => {
+    expect(cell({ ...base, in_stock: false, clearance: true })).toBe('');
+  });
+
+  it('is in the future', () => {
+    expect(new Date(cell({ ...base, in_stock: false })).getTime()).toBeGreaterThan(Date.now());
+  });
+});
+
+// 141 products were rejected as `image_link_broken` while returning HTTP 200 —
+// they are good images in a format Google will not accept.
+describe('feedImageUrl', () => {
+  const SB = 'https://abc.supabase.co/storage/v1/object/public/product-images/products/x/1.';
+
+  it('leaves a supported format completely alone', () => {
+    for (const ext of ['jpg', 'jpeg', 'png', 'webp', 'gif']) {
+      expect(feedImageUrl(SB + ext)).toBe(SB + ext);
+    }
+  });
+
+  it('routes an unsupported format through the transform endpoint', () => {
+    const out = feedImageUrl(SB + 'avif');
+    expect(out).toContain('/storage/v1/render/image/public/');
+    expect(out).toContain('product-images/products/x/1.avif');
+    expect(out).toMatch(/width=\d+/);
+  });
+
+  // Inventing a transform URL for a host that has no transformer would 404 —
+  // worse than letting the surface reject a format it cannot read.
+  it('passes a non-Supabase URL through untouched', () => {
+    const foreign = 'https://cdn.example.com/a.avif';
+    expect(feedImageUrl(foreign)).toBe(foreign);
+  });
+
+  it('makes a relative path absolute before deciding', () => {
+    expect(feedImageUrl('/uploads/a.jpg')).toMatch(/^https:\/\/.+\/uploads\/a\.jpg$/);
   });
 });
