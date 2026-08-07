@@ -319,14 +319,41 @@ export default function CheckoutPage() {
     // Guarded by a ref rather than by step, because going Back and forward
     // again is the same lead — the server upserts too, but not firing twice is
     // cheaper than relying on it.
-    if (!leadCaptured.current && email.trim()) {
-      leadCaptured.current = true;
-      api
-        .captureCheckoutLead({ name: name.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined })
-        .catch(() => { /* fire-and-forget — never surface, never block */ });
-    }
-
+    captureLeadOnce();
     setStep(1);
+  }
+
+  /**
+   * Send the abandoned-checkout lead, at most once.
+   *
+   * Called from BOTH the Continue handler and the email field's onBlur, and the
+   * blur is the one that matters. Firing only on submit meant we captured
+   * nobody who typed their address in and then hesitated — measured 2026-08-06:
+   * three shoppers reached checkout after this shipped, two left without a
+   * trace, and one of those had already reached checkout twice on a Shari
+   * table set. A finished email field is intent; a clicked button is a
+   * different, later thing.
+   *
+   * The ref makes it idempotent, so blur-then-submit, or tabbing back and
+   * forth, still sends one lead. The server upserts too, but not firing twice
+   * is cheaper than relying on it.
+   *
+   * NOT a marketing signup. Reaching checkout is not consent to be marketed to
+   * — that is what /storefront/subscribe and marketing_status are for. This
+   * lands as a lead the office can call, nothing more.
+   *
+   * Fire-and-forget and swallows everything: this is the money path, and a lost
+   * lead costs a phone call while a blocked checkout costs the sale.
+   */
+  function captureLeadOnce() {
+    const trimmed = email.trim();
+    // A half-typed address is worse than none — it cannot be contacted and it
+    // burns the one-shot ref. Require something that at least looks deliverable.
+    if (leadCaptured.current || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return;
+    leadCaptured.current = true;
+    api
+      .captureCheckoutLead({ name: name.trim() || undefined, email: trimmed, phone: phone.trim() || undefined })
+      .catch(() => { /* fire-and-forget — never surface, never block */ });
   }
 
   // A made-to-order cart has no slot to pick: delivery is quoted and billed when
@@ -590,6 +617,10 @@ export default function CheckoutPage() {
               required
               value={email}
               onChange={e => setEmail(e.target.value)}
+              // Capture the moment they finish the field, not when they click
+              // Continue. Someone who types their email and then stalls on the
+              // delivery step is exactly the lead we were losing.
+              onBlur={captureLeadOnce}
               className="w-full border border-brand-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow"
               placeholder="john@example.com"
             />

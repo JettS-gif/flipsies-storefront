@@ -32,7 +32,27 @@ function formatDayLabel(dateStr: string): string {
   });
 }
 
-export default function CheckDelivery() {
+interface CheckDeliveryProps {
+  /**
+   * Which surface this instance sits on. Lands in storefront_leads.source, so
+   * the office can tell a homepage tyre-kicker from someone who already has a
+   * cart — and so we can measure whether the cart placement earns its keep.
+   *
+   * Defaults to 'home_widget', which is where this component has always lived
+   * and which produced 16 of the first 18 leads the site ever captured.
+   */
+  source?: string;
+  /** Heading override, so the cart copy can speak to a cart. */
+  heading?: string;
+  /** Sub-heading override. */
+  blurb?: string;
+}
+
+export default function CheckDelivery({
+  source = 'home_widget',
+  heading,
+  blurb,
+}: CheckDeliveryProps = {}) {
   // Form fields
   const [name, setName]       = useState('');
   const [email, setEmail]     = useState('');
@@ -76,13 +96,13 @@ export default function CheckDelivery() {
         email:   trimmedEmail || undefined,
         phone:   trimmedPhone || undefined,
         address: trimmedAddress,
-        source:  'home_widget',
+        source,
       });
       setResult(resp);
       // GA4 conversion — the live-at-launch lead funnel. availability status
       // lets us segment in-range vs out-of-range leads by channel/campaign.
       trackEvent('generate_lead', {
-        source: 'home_widget',
+        source,
         availability: resp.availability.status,
       });
     } catch (err) {
@@ -123,11 +143,15 @@ export default function CheckDelivery() {
       >
         <div className="mb-5">
           <h2 className="text-2xl font-bold text-brand-charcoal">
-            Can we deliver to you?
+            {heading ?? 'Can we deliver to you?'}
           </h2>
           <p className="text-sm text-brand-charcoal-light mt-1">
-            Enter your address and we&apos;ll show you available delivery dates and pricing.
-            Outside our standard range? We&apos;ll still reach out to help.
+            {blurb ?? (
+              <>
+                Enter your address and we&apos;ll show you available delivery dates and pricing.
+                Outside our standard range? We&apos;ll still reach out to help.
+              </>
+            )}
           </p>
         </div>
 

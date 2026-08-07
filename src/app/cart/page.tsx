@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCart, cartKey } from '@/context/CartContext';
 import { summarizeCartAvailability } from '@/lib/cartAvailability';
 import { thumb } from '@/lib/img';
+import CheckDelivery from '@/components/CheckDelivery';
 
 const CATEGORY_EMOJI: Record<string, string> = {
   Sofas: '🛋', Sectionals: '🛋', Chairs: '🪑', Tables: '🪑',
@@ -198,6 +199,28 @@ export default function CartPage() {
             </Link>
           </div>
         </div>
+      </div>
+
+      {/* ── Delivery check ────────────────────────────────────────────────
+          The same widget the home page runs, which produced 16 of the first
+          18 leads the site ever captured — by far the best-converting capture
+          surface we have, because it trades an answer for the contact details
+          rather than just asking for them.
+
+          It belongs here more than on the home page: someone holding a cart
+          has a real reason to ask whether we reach them. Measured 2026-08-06,
+          the gap it fills is stark — of six shoppers who added to a cart that
+          day, five left no way to contact them, and one of those reached
+          checkout twice.
+
+          A distinct `source` so this placement can be judged on its own
+          numbers rather than blurred into the home-page total. */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
+        <CheckDelivery
+          source="cart"
+          heading="Can we deliver this to you?"
+          blurb="Enter your address and we'll show you delivery dates and pricing for this cart. Further out? We'll quote it rather than turn you away."
+        />
       </div>
     </div>
   );
