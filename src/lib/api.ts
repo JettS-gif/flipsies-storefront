@@ -535,6 +535,18 @@ export interface AvailableSlot {
 export type CheckAvailabilityResponse =
   | { status: 'in_range'; slots: AvailableSlot[]; lead_hours: number }
   | { status: 'out_of_range'; distance_miles: number; store_phone: string; message: string }
+  /**
+   * Past the 50-mile range but inside the freight threshold, so the sale can
+   * still happen: the backend quotes $2 per mile of round-trip travel and we
+   * schedule by hand afterwards.
+   *
+   * `fee_is_estimate` is always true and must reach the shopper as the word
+   * "estimated". The same Tuscaloosa route has actually cost between $231 and
+   * $300, so a firm number here is one we might have to break — the same reason
+   * productSchema omits shippingRate from the JSON-LD.
+   */
+  | { status: 'extended_delivery'; distance_miles: number; delivery_fee: number;
+      fee_is_estimate: true; store_phone: string; message: string }
   | { status: 'geocode_failed'; message: string }
   | { status: 'unavailable'; message: string; store_phone?: string }
   /**

@@ -332,6 +332,9 @@ export default function CheckoutPage() {
   // A made-to-order cart has no slot to pick: delivery is quoted and billed when
   // the item arrives, so "has a selected slot" is the wrong readiness test for it.
   const deliveryOnArrival = availability?.status === 'delivery_on_arrival';
+  // Past 50 miles but inside the freight threshold: the backend has quoted a
+  // round-trip estimate, so there is no slot to pick and the sale may proceed.
+  const extendedDelivery = availability?.status === 'extended_delivery';
 
   // SINGLE SOURCE for "may this cart continue to payment" — the submit handler
   // and the button's `disabled` prop both read this. The rule itself lives in
@@ -340,6 +343,7 @@ export default function CheckoutPage() {
     fulfillmentType,
     hasSelectedSlot:   !!selectedSlot,
     deliveryOnArrival,
+    extendedDelivery,
     hasPickupStore:    !!pickupStore,
     hasPickupDate:     !!pickupDate,
   });
@@ -763,7 +767,41 @@ export default function CheckoutPage() {
                 );
               })()}
 
-              {/* ── out_of_range: call us dead end ──────────────────── */}
+              {/* ── extended_delivery: past 50mi, still sellable ─────────
+                  This case used to fall into out_of_range below and end the
+                  sale. It is now a quote: $2 per mile of round-trip travel,
+                  scheduled by hand. Says ESTIMATED deliberately — the same
+                  route has cost between $231 and $300, so a firm number is one
+                  we might have to break. */}
+              {availability?.status === 'extended_delivery' && (
+                <div className="rounded-lg border-2 border-brand-yellow bg-brand-yellow-light px-4 py-5 text-sm">
+                  <p className="font-semibold text-brand-charcoal mb-2">
+                    We can deliver — it&apos;s a little further out
+                  </p>
+                  <p className="text-brand-charcoal-light mb-3">
+                    Your address is about {availability.distance_miles} miles from our Irondale
+                    store, past our standard 50-mile range. We can still bring it to you for an
+                    estimated{' '}
+                    <span className="font-semibold text-brand-charcoal">
+                      ${availability.delivery_fee}
+                    </span>
+                    . We&apos;ll confirm that figure and agree a delivery day with you before
+                    anything is scheduled.
+                  </p>
+                  <p className="text-brand-charcoal-light">
+                    Place your order now and we&apos;ll be in touch. Questions first? Call{' '}
+                    <a
+                      href={`tel:${availability.store_phone.replace(/\D/g, '')}`}
+                      className="font-semibold underline"
+                    >
+                      {availability.store_phone}
+                    </a>
+                    .
+                  </p>
+                </div>
+              )}
+
+              {/* ── out_of_range: beyond the freight threshold, call us ── */}
               {availability?.status === 'out_of_range' && (
                 <div className="rounded-lg border-2 border-brand-yellow bg-brand-yellow-light px-4 py-5 text-sm">
                   <p className="font-semibold text-brand-charcoal mb-2">

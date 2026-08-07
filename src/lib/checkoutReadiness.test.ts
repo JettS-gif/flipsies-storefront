@@ -5,6 +5,7 @@ const base: FulfillmentReadinessInput = {
   fulfillmentType:   'delivery',
   hasSelectedSlot:   false,
   deliveryOnArrival: false,
+  extendedDelivery: false,
   hasPickupStore:    false,
   hasPickupDate:     false,
 };
@@ -52,5 +53,33 @@ describe('canContinueFulfillment — pickup', () => {
   // without a store and date.
   it('deliveryOnArrival does not unlock the pickup path', () => {
     expect(p({ deliveryOnArrival: true })).toBe(false);
+  });
+});
+
+// Extended range: past 50 miles but inside the freight threshold. The backend
+// has quoted a round-trip estimate, so there is no slot to pick — and requiring
+// one is what turned a willing buyer into a dead end on 2026-08-06.
+describe('extendedDelivery', () => {
+  it('unlocks delivery with no slot selected', () => {
+    expect(at({ extendedDelivery: true, hasSelectedSlot: false })).toBe(true);
+  });
+
+  it('still allows a slot to be chosen alongside it', () => {
+    expect(at({ extendedDelivery: true, hasSelectedSlot: true })).toBe(true);
+  });
+
+  // The regression this whole change exists to prevent.
+  it('without it, an out-of-range delivery is still blocked', () => {
+    expect(at({ extendedDelivery: false, deliveryOnArrival: false, hasSelectedSlot: false })).toBe(false);
+  });
+
+  // A pickup is collected in person, so an extended-range DELIVERY quote must
+  // not wave it through without a store and date.
+  it('does not unlock the pickup path', () => {
+    expect(at({ fulfillmentType: 'pickup', extendedDelivery: true })).toBe(false);
+  });
+
+  it('composes with deliveryOnArrival rather than conflicting', () => {
+    expect(at({ extendedDelivery: true, deliveryOnArrival: true, hasSelectedSlot: false })).toBe(true);
   });
 });
