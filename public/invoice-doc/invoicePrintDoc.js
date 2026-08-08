@@ -393,8 +393,18 @@ export function buildInvoicePrintHtml(inv) {
     </table>
   </div>
 
+  <!-- padding-right:10px is load-bearing, not cosmetic. Measured in Chrome at
+       Letter with the @page margins below: every figure in this stack — Total,
+       Balance due, Amount paid — landed at x=694, which IS the content-box edge.
+       Zero slack. The items table's money column has 10px of cell padding and
+       ends at 684, so the two were never aligned AND this one had nothing to
+       give: any printer hardware margin, a "Minimum margins" dialog choice, or
+       sub-pixel rounding clipped the last digit ("cutting off the right margin,
+       last digit only partially displayed" — operator, 2026-08-06).
+       width 260 -> 270 with box-sizing:border-box keeps the label column at its
+       original 260px, so only the gutter changes. -->
   <div style="display:flex;justify-content:flex-end;margin-bottom:24px;">
-    <div style="width:260px;">
+    <div style="width:270px;padding-right:10px;">
       <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;">
         <span style="color:#888;">Subtotal</span><span>$${subtotal.toFixed(2)}</span>
       </div>
