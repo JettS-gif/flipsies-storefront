@@ -350,6 +350,22 @@ export function drawPiece(
     }
   });
 
+  // TEXT IS COUNTER-ROTATED so it stays upright at any piece rotation.
+  //
+  // Everything above draws inside the piece's rotated frame, which is correct for
+  // geometry — but text inherits that rotation, so a piece at 180 renders its
+  // label and dimensions UPSIDE DOWN, and at 90/270 sideways. That became visible
+  // the moment SECT_DEFAULT_ROT made 180 the starting position: every piece on
+  // the board read upside down.
+  //
+  // Undo the rotation about the piece centre, so the glyphs sit level while the
+  // furniture stays turned. A label is an annotation of the piece, not part of
+  // the drawing of it.
+  c.save();
+  c.translate(rw / 2, rh / 2);
+  c.rotate(-rot * Math.PI / 180);
+  c.translate(-rw / 2, -rh / 2);
+
   c.fillStyle = '#085041';
   c.font = `500 ${Math.min(11, rw / 8)}px sans-serif`;
   c.textAlign = 'center'; c.textBaseline = 'middle';
@@ -369,7 +385,8 @@ export function drawPiece(
     }
   }
 
-  c.restore();
+  c.restore(); // ends the text counter-rotation
+  c.restore(); // ends the piece transform
 
   if (isSel) {
     c.save(); c.strokeStyle = '#1D9E75'; c.lineWidth = 1.5; c.setLineDash([4, 3]);
