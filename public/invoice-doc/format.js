@@ -356,6 +356,26 @@ export function fmtShiftTime(t) {
 }
 
 /**
+ * "HH:MM:SS" → "8a" / "8:30a" / "12p" — the narrowest honest rendering.
+ *
+ * For the 7-across week strip, where a cell is ~38px of usable width on a
+ * 390px phone. fmtShiftTime's "8:00 AM" is ~38px at 10px type and was being
+ * stacked over a lone "–" over the end time: three lines that overflowed the
+ * cell and forced the whole page to scroll sideways. Minutes are dropped only
+ * when they are zero, so a 8:30 start never silently reads as 8.
+ */
+export function fmtShiftTimeShort(t) {
+  if (!t) return '';
+  const [hStr, mStr] = t.split(':');
+  let h = parseInt(hStr);
+  const m = parseInt(mStr);
+  const ampm = h >= 12 ? 'p' : 'a';
+  if (h > 12) h -= 12;
+  if (h === 0) h = 12;
+  return m ? `${h}:${String(m).padStart(2, '0')}${ampm}` : `${h}${ampm}`;
+}
+
+/**
  * Two shift time strings → "8:00 AM – 4:00 PM"
  */
 export function fmtShiftDisplay(start, end) {
