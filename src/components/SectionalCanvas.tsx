@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import {
-  CANVAS_PIECES, DEFS_BY_ID, GROUP_ORDER_CANVAS, SECT_U,
+  CANVAS_PIECES, DEFS_BY_ID, GROUP_ORDER_CANVAS, SECT_U, SECT_DEFAULT_ROT,
   type PlacedPiece, type Dim,
   drawGrid, drawPiece, hitTest, placementXY, snapGrid,
   computeFootprint, formatFootprint,
@@ -103,7 +103,9 @@ export default function SectionalCanvas({ placed, onChange, allowedTypes, dimsBy
         const pd = DEFS_BY_ID[act]; if (!pd) return;
         const { gx, gy } = placementXY(pd, mx, my);
         const nextId = placedRef.current.reduce((m, p) => Math.max(m, p.id), 0) + 1;
-        const next = [...placedRef.current, { id: nextId, defId: pd.id, x: gx, y: gy, rot: 0 }];
+        // Tap-to-place must start facing the viewer too, or the two ways of
+        // adding a piece would disagree about which way it points.
+        const next = [...placedRef.current, { id: nextId, defId: pd.id, x: gx, y: gy, rot: SECT_DEFAULT_ROT }];
         placedRef.current = next;
         selectedRef.current = nextId;
         setActive(null);

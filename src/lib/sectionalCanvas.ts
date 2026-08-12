@@ -11,6 +11,38 @@
 
 export const SECT_U = 64; // grid unit px (storefront canvas is a touch tighter than the admin 68)
 
+// Starting rotation for a newly placed piece.
+//
+// The piece geometry is authored with the seat back along the TOP edge — drawn
+// as if you were standing BEHIND the sectional looking down. On screen that puts
+// an LSF piece's arm on the right, so reading a layout means mentally mirroring
+// every piece against its own label. 180° turns each piece to face the viewer,
+// which is how you look at a sectional on a showroom floor.
+//
+// PORTED FROM THE ADMIN BUILDER, which got this on 2026-08-10
+// (DeliverDeskFrontEnd cf2fde8, `SECT_DEFAULT_ROT` in src/sectional/builder.js).
+// Chris G: the arm on RSF/LSF should be on the correct side when you look at it.
+// Jett: rotate every piece twice for its starting position. The storefront canvas
+// shares the geometry convention but was never given the same default, so the two
+// builders disagreed about which way a sectional faces — the same rule landing in
+// one place and not its sibling.
+//
+// A taste call, not a correctness one: the piece names, the matcher and the order
+// that comes out the far end were never wrong, only the picture was awkward to read.
+//
+// Safe by construction, same as the admin change:
+//   • rotatedDims() returns identical w/h for 0 and 180 (only 90/270 swap), so
+//     footprint, grid snapping and hit-testing are untouched — only facing changes.
+//   • drawPiece() rotates about the piece centre, so 180° turns in place rather
+//     than displacing it.
+//   • Layouts live in component state for the life of the page and are never
+//     persisted, so there are no stored rot values to migrate.
+// The ↻ Rotate button still cycles +90 from this new starting point.
+//
+// One named constant rather than a literal at each site, so the auto-place path
+// and the tap-to-place path cannot drift to different defaults.
+export const SECT_DEFAULT_ROT = 180;
+
 export type Side = 'left' | 'right' | 'top' | 'bottom';
 export interface Connector { side: Side; pos: number }
 export interface Zone { type: 'front' | 'back' | 'arm' | 'cushion'; side: Side; from: number; to: number }
@@ -207,7 +239,7 @@ export function autoPlace(placed: PlacedPiece[], defId: string): PlacedPiece {
   }
   const nextId = placed.reduce((m, p) => Math.max(m, p.id), 0) + 1;
   const gy = def && def.snapEdge === 'bottom' ? y - ((def.h - 1) * SECT_U) : y;
-  return { id: nextId, defId, x: snapGrid(maxRight + (placed.length ? SECT_U * 0.25 : 0)), y: gy, rot: 0 };
+  return { id: nextId, defId, x: snapGrid(maxRight + (placed.length ? SECT_U * 0.25 : 0)), y: gy, rot: SECT_DEFAULT_ROT };
 }
 
 /** Remove the most-recently-added piece of a type (list decrement). */
