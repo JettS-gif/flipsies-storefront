@@ -46,7 +46,13 @@ export default async function SectionalsPage({ searchParams }: SectionalsPagePro
           </p>
         </div>
 
-        <SectionalWizard seedFamily={family} seedColor={color} />
+        {/* Anchor for the wizard's step-change scroll. The wizard renders a
+            different subtree per step with no shared root of its own, so it
+            scrolls to this instead of to itself. See SectionalWizard's
+            step-change effect for why that scroll exists. */}
+        <div id="sectional-wizard-top" className="scroll-mt-24">
+          <SectionalWizard seedFamily={family} seedColor={color} />
+        </div>
 
         {/* Help callout */}
         <div className="mt-10 max-w-2xl mx-auto bg-white rounded-xl border border-brand-border p-5 text-center">

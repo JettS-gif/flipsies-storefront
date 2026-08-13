@@ -6,7 +6,7 @@
 // Pieces/prices/SKUs come pre-resolved from GET /storefront/sectional-families
 // and /:family, so there's no client-side SKU guessing.
 
-import { useState, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import {
   fetchSectionalFamilies,
   fetchSectionalFamily,
@@ -56,6 +56,34 @@ export default function SectionalWizard({ seedFamily, seedColor }: Props) {
     return c;
   }, [placed]);
   const [step, setStep] = useState<Step>(seedFamily ? 'pick-color' : 'pick-family');
+
+  // Put the shopper at the top of the new step.
+  //
+  // THE BUG THIS FIXES. Each step renders a completely different subtree in the
+  // same place, and the steps differ enormously in height — pick-pieces carries
+  // the full piece list AND the canvas, while review is a short summary. The
+  // browser preserves the scroll OFFSET across the swap, so tapping "Review
+  // configuration" from the bottom of a long pick-pieces step left that offset
+  // pointing past the end of the now-much-shorter page, and the shopper landed
+  // in the FOOTER instead of on their configuration. Choosing a collection did
+  // the same thing for the same reason (Jett, 2026-08-12) — one cause, two
+  // symptoms, which is why this is fixed at the step transition rather than on
+  // the Review button.
+  //
+  // Scrolls to a page-level anchor rather than to the wizard: the component
+  // returns a different root per step and has no stable element of its own.
+  //
+  // Skips the first render. Scrolling on mount would yank a shopper who deep-
+  // linked in with ?family=&color= — and would fight the browser's own restore
+  // when someone navigates back.
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    if (!didMountRef.current) { didMountRef.current = true; return; }
+    const top = document.getElementById('sectional-wizard-top');
+    if (!top) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    top.scrollIntoView({ block: 'start', behavior: reduced ? 'auto' : 'smooth' });
+  }, [step]);
 
   const [detail, setDetail] = useState<SectionalFamilyDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
