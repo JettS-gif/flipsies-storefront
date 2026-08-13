@@ -20,6 +20,20 @@
 export interface StoredSlot {
   /** Normalized address string used to fetch the slot */
   address: string;
+  /**
+   * The same address as discrete parts (2026-08-12). Checkout captures street /
+   * city / state / ZIP separately now, and `address` above is composed FROM
+   * these — kept because the availability API and every existing reader take a
+   * single string.
+   *
+   * All optional so a slot saved before this shipped still rehydrates; readers
+   * fall back to splitting `address` on commas. Same forward-compat shape as
+   * `hour_label` below.
+   */
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
   /** YYYY-MM-DD in server-local timezone */
   date: string;
   /**

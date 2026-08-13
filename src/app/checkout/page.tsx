@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, type FormEvent } from 'react';
+import { useState, useEffect, useRef, useMemo, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart, type CartItem } from '@/context/CartContext';
 import { canContinueFulfillment } from '@/lib/checkoutReadiness';
@@ -173,7 +173,55 @@ export default function CheckoutPage() {
 
   // Fulfillment
   const [fulfillmentType, setFulfillmentType] = useState<'delivery' | 'pickup'>('delivery');
-  const [address, setAddress] = useState('');
+  // Delivery address captured as DISCRETE FIELDS (2026-08-12, Jett: "separate
+  // the fields ... this makes sure we capture all the data we need for a real
+  // pairing").
+  //
+  // It used to be one freeform box, and routes/store.js ran decomposeAddress()
+  // over whatever the customer typed — which works when they put the commas in
+  // the right places and silently yields a NULL city/ZIP when they don't. That
+  // is not a cosmetic gap: a partial address does not error, Google resolves it
+  // to a street centroid and returns HTTP 200, so a truck routes to roughly the
+  // right neighbourhood. 16 of 498 delivery orders carry no city or ZIP today.
+  //
+  // `address` below stays as a COMPOSED string because the availability API,
+  // the stored-slot helper and the order payload all take one. The parts are
+  // now the source of truth and the string is derived from them, rather than
+  // the reverse.
+  const [street, setStreet] = useState('');
+  const [city, setCity]     = useState('');
+  const [stateCode, setStateCode] = useState('AL'); // in-range deliveries are all AL
+  const [zip, setZip]       = useState('');
+
+  /**
+   * The composed single-line address every existing consumer still expects:
+   * the availability check, the stored slot, and the order payload's `address`.
+   * Built in the canonical "street, city, ST zip" shape so decomposeAddress on
+   * the backend parses it cleanly even for callers that only read the string.
+   */
+  const address = useMemo(() => {
+    const tail = [stateCode.trim(), zip.trim()].filter(Boolean).join(' ');
+    return [street.trim(), city.trim(), tail].filter(Boolean).join(', ');
+  }, [street, city, stateCode, zip]);
+
+  /** Every part present — what the backend's delivery guard requires. */
+  const addressComplete =
+    street.trim().length >= 4 && city.trim().length >= 2 &&
+    stateCode.trim().length === 2 && /^\d{5}(-\d{4})?$/.test(zip.trim());
+
+  // Invalidate a previously-checked slot whenever any part of the address
+  // changes — otherwise a slot priced for the old address could be submitted
+  // against the new one. Previously wired to the single input's onChange; it
+  // has to watch all four now or editing just the ZIP would slip through.
+  const addressKey = `${street}|${city}|${stateCode}|${zip}`;
+  const lastAddressKeyRef = useRef(addressKey);
+  useEffect(() => {
+    if (lastAddressKeyRef.current === addressKey) return;
+    lastAddressKeyRef.current = addressKey;
+    setAvailability(null);
+    setSelectedSlot(null);
+    clearStoredSlot();
+  }, [addressKey]);
 
   // Pickup state (Phase 2.B). Store defaults to Hoover because it's the
   // higher-traffic showroom; customers can switch to Irondale. The date
@@ -221,7 +269,21 @@ export default function CheckoutPage() {
   useEffect(() => {
     const stored = loadStoredSlot();
     if (stored) {
-      setAddress(stored.address);
+      // Prefer the discrete parts. A slot saved before 2026-08-12 only has the
+      // composed string, so fall back to splitting it — best-effort, and the
+      // customer can correct any field before checking availability again.
+      if (stored.street || stored.city || stored.zip) {
+        setStreet(stored.street || '');
+        setCity(stored.city || '');
+        setStateCode(stored.state || 'AL');
+        setZip(stored.zip || '');
+      } else if (stored.address) {
+        const parts = stored.address.split(',').map(s => s.trim()).filter(Boolean);
+        setStreet(parts[0] || '');
+        setCity(parts[1] || '');
+        const tail = (parts[2] || '').match(/^([A-Za-z]{2})\s*(\d{5}(?:-\d{4})?)?$/);
+        if (tail) { setStateCode(tail[1].toUpperCase()); setZip(tail[2] || ''); }
+      }
       const rehydrated: AvailableSlot = {
         date:               stored.date,
         time_label:         stored.time_label,
@@ -458,6 +520,12 @@ export default function CheckoutPage() {
     setSelectedSlot(slot);
     saveStoredSlot({
       address:            address.trim(),
+      // Persist the parts too, so returning to checkout refills the four
+      // inputs instead of re-parsing the composed string.
+      street:             street.trim(),
+      city:               city.trim(),
+      state:              stateCode.trim(),
+      zip:                zip.trim(),
       date:               slot.date,
       time_label:         slot.time_label,
       hour_label:         slot.hour_label,
@@ -520,6 +588,17 @@ export default function CheckoutPage() {
               : (pickupStore === 'Hoover'
                   ? '1709 Montgomery Hwy S, Hoover, AL 35244 (in-store pickup)'
                   : '1811 Crestwood Blvd, Irondale, AL 35210 (in-store pickup)'),
+            // The same address as discrete parts. `address` above stays for
+            // every existing reader; these let routes/store.js populate
+            // customer_street/city/state/zip from what the customer actually
+            // entered instead of parsing them back out of a string. Sent for
+            // deliveries only — a pickup has no customer address.
+            ...(fulfillmentType === 'delivery' ? {
+              street: street.trim(),
+              city:   city.trim(),
+              state:  stateCode.trim(),
+              zip:    zip.trim(),
+            } : {}),
             // Delivery path uses the slot's date + time_window.
             // Pickup path uses the picker + preset time preference.
             ...(selectedSlot && fulfillmentType === 'delivery' ? {
@@ -688,34 +767,67 @@ export default function CheckoutPage() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-brand-charcoal mb-1">Delivery Address *</label>
-                <div className="flex gap-2">
+
+                {/* Discrete fields, not one freeform box. The backend needs
+                    city and ZIP as their own columns to route a truck and to
+                    quote a fee; parsing them back out of a typed string only
+                    works when the customer punctuates it the way we hope. */}
+                <div className="space-y-2">
                   <input
                     type="text"
                     required
-                    value={address}
-                    onChange={e => {
-                      setAddress(e.target.value);
-                      // Invalidate any previous check when the address
-                      // changes — prevents a stale slot from being
-                      // submitted with a new address.
-                      if (availability || selectedSlot) {
-                        setAvailability(null);
-                        setSelectedSlot(null);
-                        clearStoredSlot();
-                      }
-                    }}
-                    className="flex-1 border border-brand-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow"
-                    placeholder="123 Main St, Birmingham, AL 35201"
+                    autoComplete="address-line1"
+                    value={street}
+                    onChange={e => setStreet(e.target.value)}
+                    className="w-full border border-brand-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+                    placeholder="Street address"
+                    aria-label="Street address"
                   />
+                  <div className="grid grid-cols-[1fr_5rem_7rem] gap-2">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="address-level2"
+                      value={city}
+                      onChange={e => setCity(e.target.value)}
+                      className="border border-brand-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+                      placeholder="City"
+                      aria-label="City"
+                    />
+                    <input
+                      type="text"
+                      required
+                      autoComplete="address-level1"
+                      maxLength={2}
+                      value={stateCode}
+                      onChange={e => setStateCode(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))}
+                      className="border border-brand-border rounded-lg px-3 py-2.5 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+                      placeholder="ST"
+                      aria-label="State"
+                    />
+                    <input
+                      type="text"
+                      required
+                      inputMode="numeric"
+                      autoComplete="postal-code"
+                      maxLength={10}
+                      value={zip}
+                      onChange={e => setZip(e.target.value.replace(/[^\d-]/g, ''))}
+                      className="border border-brand-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+                      placeholder="ZIP"
+                      aria-label="ZIP code"
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={runAvailabilityCheck}
-                    disabled={checkingAvail || address.trim().length < 10}
-                    className="btn-brand px-4 py-2.5 text-sm whitespace-nowrap disabled:opacity-50"
+                    disabled={checkingAvail || !addressComplete}
+                    className="btn-brand w-full px-4 py-2.5 text-sm disabled:opacity-50"
                   >
                     {checkingAvail ? 'Checking…' : 'Check Availability'}
                   </button>
                 </div>
+
                 <p className="text-xs text-brand-charcoal-light mt-1">
                   We need at least 48 hours notice. Delivery is limited to addresses within 50 miles of Irondale.
                 </p>
