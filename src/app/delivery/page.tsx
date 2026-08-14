@@ -48,8 +48,12 @@ export default function DeliveryPage() {
           <div className="bg-brand-warm-gray rounded-lg p-4">
             <p className="text-sm text-brand-charcoal">
               <span className="font-semibold">Delivery and assembly are charged separately</span> from the
-              product price, based on distance from our warehouse and quoted at checkout. Typical range:{' '}
-              <span className="font-semibold">${DELIVERY.feeFromUsd} – ${DELIVERY.feeToUsd}</span>.
+              product price and quoted at checkout:{' '}
+              <span className="font-semibold">${DELIVERY.feeFlatUnder50Usd} flat</span> within 50 miles of our
+              Irondale warehouse, then by distance up to{' '}
+              <span className="font-semibold">${DELIVERY.feeMaxQuotedUsd}</span> at{' '}
+              {DELIVERY.quotedMaxMiles} miles. Further out than that, give us a call — we will arrange freight
+              rather than quote you a number we cannot stand behind.
             </p>
           </div>
         </div>

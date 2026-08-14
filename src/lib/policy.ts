@@ -160,12 +160,27 @@ export const DELIVERY = {
    */
   includedInProductPrice: false,
   /**
-   * Quoted at checkout off distance from the warehouse. Lives here, not as a
-   * literal on /delivery, because that page and the trust block drifted apart
-   * for exactly as long as the number had only one home.
+   * SOURCE OF TRUTH: DeliverDeskBackEnd/utils/extendedDelivery.js + the bands
+   * pushed to Merchant Center by scripts/set-google-shipping.js. These are a
+   * MIRROR — if the rate moves there, move it here in the same change.
+   *
+   * The rate (Jett, 2026-08-06): $199 flat inside 50 miles of Irondale, then $2
+   * per mile of ROUND-TRIP travel (so `distance * 4`) out to 100 miles, and
+   * beyond 100 it is not quoted at all — that is a freight conversation, and a
+   * wrong number is worse than "call us" because the wrong number is a promise.
+   * Continuous at the boundary: 50 miles yields $200 against the $199 flat.
+   *
+   * ⚠ This page previously read "$99 – $249", written 2026-04-06 (8995f51) and
+   * never updated when the rate changed on 2026-08-06 — stale by four months.
+   * On 2026-08-14 that stale $99 was propagated into the trust block next to
+   * Add to Cart, i.e. quoted to every shopper on every product page at roughly
+   * half the real floor, while fixing a different misleading-price bug. Hence
+   * the mirror note above: this number reaches customers, so it gets checked
+   * against the engine, not copied from whatever the nearest page happens to say.
    */
-  feeFromUsd: 99,
-  feeToUsd: 249,
+  feeFlatUnder50Usd: 199,
+  feeMaxQuotedUsd: 400,
+  quotedMaxMiles: 100,
   /**
    * Included WITHIN white-glove service — never a separate line on top of the
    * delivery fee. NOT "free": the delivery fee itself still applies. This is
@@ -215,7 +230,7 @@ export const TRUST_POINTS = [
   // policy (Jett, 2026-08-14: "Pick up should be free. Delivery has a charge") —
   // so the block that breaks the news should also carry the way out of it.
   // Kept to four lines; a fifth point dilutes the block.
-  { icon: '🛋', text: `White-glove in-home delivery and assembly — priced separately, from $${DELIVERY.feeFromUsd}. Warehouse pickup is free.` },
+  { icon: '🛋', text: `White-glove in-home delivery and assembly — priced separately, from $${DELIVERY.feeFlatUnder50Usd}. Warehouse pickup is free.` },
   { icon: '🏷', text: `Price match — any competitor within ${PRICE_MATCH.radiusMiles} miles, ${PRICE_MATCH.withinDays} days` },
   { icon: '🔁', text: `Arrived damaged? Swapped within ${RETURNS.defectiveSwapHours} hours` },
 ] as const;

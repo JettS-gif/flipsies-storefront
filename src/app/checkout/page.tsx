@@ -12,6 +12,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { getStripe } from '@/lib/stripe';
 import { api, type AvailableSlot, type CheckAvailabilityResponse } from '@/lib/api';
 import { loadStoredSlot, saveStoredSlot, clearStoredSlot } from '@/lib/deliverySlot';
+import { DELIVERY } from '@/lib/policy';
 import Link from 'next/link';
 
 // GA4 purchase must survive the Stripe redirect-return, which reloads the
@@ -746,7 +747,11 @@ export default function CheckoutPage() {
             >
               <span className="text-lg">🚚</span>
               <p className="font-semibold text-brand-charcoal mt-1">Delivery</p>
-              <p className="text-xs text-brand-charcoal-light">Starting at $99</p>
+              {/* Read from policy, never a literal. This said "Starting at $99"
+                  from 2026-04-06 until 2026-08-14 — stale from the moment the
+                  rate moved to $199 on 2026-08-06, and shown at the exact
+                  moment of purchase. */}
+              <p className="text-xs text-brand-charcoal-light">Starting at ${DELIVERY.feeFlatUnder50Usd}</p>
             </button>
             <button
               type="button"
