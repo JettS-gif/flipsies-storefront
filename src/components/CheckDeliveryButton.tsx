@@ -24,9 +24,16 @@ interface Props {
    * home hero) without having to restyle the whole component.
    */
   className?: string;
+  /**
+   * Trigger text. Defaults to the hero's wording so existing call sites are
+   * unchanged. The product-page trust block overrides it to mention PRICING:
+   * that block no longer prints a delivery figure (see TRUST_POINTS), so the
+   * label is what tells a shopper delivery is priced at all rather than free.
+   */
+  label?: string;
 }
 
-export default function CheckDeliveryButton({ className = '' }: Props) {
+export default function CheckDeliveryButton({ className = '', label = 'Check Delivery Availability' }: Props) {
   const [open, setOpen] = useState(false);
 
   // Close on Esc. Also lock body scroll while open so the modal doesn't
@@ -54,7 +61,7 @@ export default function CheckDeliveryButton({ className = '' }: Props) {
         aria-haspopup="dialog"
         aria-expanded={open}
       >
-        Check Delivery Availability
+        {label}
       </button>
 
       {open && (

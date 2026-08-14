@@ -218,19 +218,25 @@ export const DELIVERY = {
   spaceReadyExpected: true,
 } as const;
 
-/** The four lines that go next to Add to Cart. Positives first, honestly. */
+/**
+ * The four lines that go next to Add to Cart. Positives first, honestly.
+ *
+ * Simplified 2026-08-14 (Jett: "easier for a human mind to handle"). Delivery
+ * and white-glove used to be two separate lines, the second carrying a "from
+ * $199" figure. Two problems with the figure: it made the block read as a rate
+ * card at the moment someone is deciding on a sofa, and it is only true inside
+ * 50 miles — past that the real number climbs to $400, so the one shopper most
+ * misled by a from-price was the one furthest away.
+ *
+ * The lines now say delivery is available and pickup is free, and the CTA under
+ * them sends anyone who wants a number to the availability checker, which
+ * quotes their actual address. Stating that delivery HAS pricing (via the CTA
+ * label) is what keeps this honest without printing a figure — see
+ * DELIVERY.includedInProductPrice for why that matters here.
+ */
 export const TRUST_POINTS = [
-  { icon: '🚚', text: `Delivered in ${DELIVERY.inStockBusinessDays} business days — in-stock items` },
-  // Reads "priced separately" FIRST and the from-price second, so the charge
-  // registers before the number does. "from $99" without that lead-in still
-  // leaves room to read the product price as covering it.
-  //
-  // The free-pickup half is on the SAME line on purpose. This is the moment the
-  // shopper learns delivery costs money, and the two-option model is the actual
-  // policy (Jett, 2026-08-14: "Pick up should be free. Delivery has a charge") —
-  // so the block that breaks the news should also carry the way out of it.
-  // Kept to four lines; a fifth point dilutes the block.
-  { icon: '🛋', text: `White-glove in-home delivery and assembly — priced separately, from $${DELIVERY.feeFlatUnder50Usd}. Warehouse pickup is free.` },
+  { icon: '🚚', text: `White-glove in-home delivery in ${DELIVERY.inStockBusinessDays} business days — in-stock items` },
+  { icon: '🏬', text: 'Warehouse pickup — available free' },
   { icon: '🏷', text: `Price match — any competitor within ${PRICE_MATCH.radiusMiles} miles, ${PRICE_MATCH.withinDays} days` },
   { icon: '🔁', text: `Arrived damaged? Swapped within ${RETURNS.defectiveSwapHours} hours` },
 ] as const;
