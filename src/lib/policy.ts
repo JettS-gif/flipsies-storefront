@@ -146,6 +146,32 @@ export const PRICE_MATCH = {
 export const DELIVERY = {
   /** In-stock only. Made-to-order runs on the vendor's production lead time. */
   inStockBusinessDays: 2,
+  /**
+   * Delivery + assembly is an ADDED charge on top of the product price. Stated
+   * as its own flag because the word "included" was doing two different jobs on
+   * this site and one of them was false (Jett, 2026-08-14):
+   *   TRUE  — assembly is included WITHIN white-glove service (see below).
+   *   FALSE — included in the price on the product card, i.e. free.
+   * The trust block next to Add to Cart said "included" while /delivery said
+   * "quoted at checkout, $99–$249", so a customer met a charge they had been
+   * told was covered. Worse in combination: a shopper who already believes
+   * delivery is free reads "and assembly included as well" as a second free
+   * thing. Anything asserting what the product price covers reads THIS flag.
+   */
+  includedInProductPrice: false,
+  /**
+   * Quoted at checkout off distance from the warehouse. Lives here, not as a
+   * literal on /delivery, because that page and the trust block drifted apart
+   * for exactly as long as the number had only one home.
+   */
+  feeFromUsd: 99,
+  feeToUsd: 249,
+  /**
+   * Included WITHIN white-glove service — never a separate line on top of the
+   * delivery fee. NOT "free": the delivery fee itself still applies. This is
+   * also the basis of the price-match like-for-like clause, so it must survive
+   * any rewording of the fee copy.
+   */
   assemblyIncluded: true,
   haulAwayIncluded: false,
   /**
@@ -180,7 +206,16 @@ export const DELIVERY = {
 /** The four lines that go next to Add to Cart. Positives first, honestly. */
 export const TRUST_POINTS = [
   { icon: '🚚', text: `Delivered in ${DELIVERY.inStockBusinessDays} business days — in-stock items` },
-  { icon: '🛋', text: 'White-glove in-home placement and assembly, included' },
+  // Reads "priced separately" FIRST and the from-price second, so the charge
+  // registers before the number does. "from $99" without that lead-in still
+  // leaves room to read the product price as covering it.
+  //
+  // The free-pickup half is on the SAME line on purpose. This is the moment the
+  // shopper learns delivery costs money, and the two-option model is the actual
+  // policy (Jett, 2026-08-14: "Pick up should be free. Delivery has a charge") —
+  // so the block that breaks the news should also carry the way out of it.
+  // Kept to four lines; a fifth point dilutes the block.
+  { icon: '🛋', text: `White-glove in-home delivery and assembly — priced separately, from $${DELIVERY.feeFromUsd}. Warehouse pickup is free.` },
   { icon: '🏷', text: `Price match — any competitor within ${PRICE_MATCH.radiusMiles} miles, ${PRICE_MATCH.withinDays} days` },
   { icon: '🔁', text: `Arrived damaged? Swapped within ${RETURNS.defectiveSwapHours} hours` },
 ] as const;

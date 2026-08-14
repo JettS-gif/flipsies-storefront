@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { pageMetadata } from '@/lib/site';
+import { DELIVERY } from '@/lib/policy';
 
 export const metadata = pageMetadata({
   title: 'Delivery Information',
@@ -46,8 +47,9 @@ export default function DeliveryPage() {
           </ul>
           <div className="bg-brand-warm-gray rounded-lg p-4">
             <p className="text-sm text-brand-charcoal">
-              <span className="font-semibold">Delivery pricing</span> is based on distance from our warehouse
-              and is quoted at checkout. Typical range: <span className="font-semibold">$99 – $249</span>.
+              <span className="font-semibold">Delivery and assembly are charged separately</span> from the
+              product price, based on distance from our warehouse and quoted at checkout. Typical range:{' '}
+              <span className="font-semibold">${DELIVERY.feeFromUsd} – ${DELIVERY.feeToUsd}</span>.
             </p>
           </div>
         </div>

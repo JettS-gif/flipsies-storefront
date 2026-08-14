@@ -133,9 +133,10 @@ export default function ReturnsPage() {
           <strong>{PRICE_MATCH.withinDays} days</strong> of your purchase, and we will match it.
         </p>
         <p>
-          It has to be a quote for the <strong>same service</strong>, not just the same sticker. Our price
-          includes white-glove in-home delivery and assembly; a cheaper price that leaves the box on your
-          driveway is not the same offer, and we will show you the difference rather than argue about it.
+          It has to be a quote for the <strong>same service</strong>, not just the same sticker. Compare the
+          delivered price: ours covers white-glove in-home delivery and assembly, and a cheaper price that
+          leaves the box on your driveway is not the same offer. We will show you the difference rather than
+          argue about it.
         </p>
         <p className="text-brand-charcoal">
           <strong>Not eligible:</strong> {PRICE_MATCH.excluded.join(', ')}.
@@ -178,8 +179,9 @@ export default function ReturnsPage() {
       <Section title="What our delivery crews do">
         <p>
           In-stock pieces are delivered within <strong>{DELIVERY.inStockBusinessDays} business days</strong> of
-          purchase. White-glove service is included — we bring it inside, place it in the room you want,
-          assemble it and take the packaging away. <strong>We never charge separately for assembly.</strong>
+          purchase. <strong>White-glove delivery is charged separately from the product price</strong> — and it
+          covers the whole job: we bring it inside, place it in the room you want, assemble it and take the
+          packaging away. <strong>Assembly is never an extra line on top of your delivery fee.</strong>
         </p>
         <ul className="list-disc pl-5 space-y-1.5">
           <li>Haul-away of your old furniture is available and charged separately.</li>
