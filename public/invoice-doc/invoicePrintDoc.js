@@ -200,6 +200,23 @@ export function buildInvoicePrintHtml(inv) {
         '<div style="font-size:12px;color:#555;line-height:1.6;">' + e(inv.notes) + '</div></div>'
     : '';
 
+  // UltaCare policy number (Savannah W 2026-08-16: "even having it printed on
+  // invoice"). Deliberately its OWN block rather than a line inside Notes: the
+  // customer is handed a separate paper certificate carrying this number, and
+  // the whole point is that the two can be matched when they file a claim.
+  // Buried in a free-text notes paragraph it is not findable, which is the
+  // status quo this replaces.
+  const warrantyBlock = inv.warranty_number
+    ? '<div style="border:1px solid #ddd;border-radius:8px;padding:10px 16px;margin-bottom:20px;' +
+        'display:flex;align-items:baseline;gap:10px;">' +
+        '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#888;">' +
+        'UltaCare warranty #</div>' +
+        '<div style="font-size:15px;font-weight:700;color:#1a1a1a;letter-spacing:.02em;">' +
+        e(inv.warranty_number) + '</div>' +
+        '<div style="font-size:11px;color:#888;margin-left:auto;">Keep with your warranty certificate</div>' +
+      '</div>'
+    : '';
+
   const salespersonLine = inv.salesperson?.name
     ? '<div style="font-size:12px;color:#555;margin-top:2px;">Sales: ' + e(inv.salesperson.name) + '</div>'
     : '';
@@ -437,6 +454,7 @@ export function buildInvoicePrintHtml(inv) {
     </div>
   </div>
 
+  ${warrantyBlock}
   ${notesBlock}
 
   <div style="border:1.5px solid #0C447C;border-radius:10px;padding:16px 18px;margin-bottom:20px;">
