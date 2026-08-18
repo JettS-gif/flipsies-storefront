@@ -450,9 +450,13 @@ export function hoursWorked(inTs, outTs) {
  */
 export function fmtHours(h) {
   if (h === null || h === undefined || isNaN(h)) return '—';
-  const hrs  = Math.floor(h);
-  const mins = Math.round((h - hrs) * 60);
-  return `${hrs}h ${String(mins).padStart(2, '0')}m`;
+  // Round to minutes FIRST, then split. Flooring the hours before rounding the
+  // remainder let the remainder round up to a full 60: a 7h59m50s shift printed
+  // "7h 60m" on Carlie's timecard (2026-08-06). Carrying the minute into the
+  // hour is the whole point of rounding once.
+  const sign  = h < 0 ? '-' : '';
+  const total = Math.round(Math.abs(h) * 60);
+  return `${sign}${Math.floor(total / 60)}h ${String(total % 60).padStart(2, '0')}m`;
 }
 
 // ── Money helpers ──────────────────────────────────────────────────────────────
