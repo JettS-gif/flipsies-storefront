@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { thumb } from '@/lib/img';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
@@ -43,7 +44,11 @@ export default async function PackagePage({ params }: Props) {
 
   const url = `${SITE_URL}/package/${pkg.id}`;
   const hero = pkg.images?.[0] || null;
-  const absImages = (pkg.images || []).map((u) => (u.startsWith('http') ? u : `${SITE_URL}${u}`));
+  // 1200 explicitly — same reason as the PDP: the API hands out the 600 bucket,
+  // whose short side never reaches the 800px Google recommends for the images it
+  // reads out of structured data when it crawls.
+  const absImages = (pkg.images || []).map((u) =>
+    thumb(u.startsWith('http') ? u : `${SITE_URL}${u}`, 1200));
   // Most package descriptions are buying notes carrying our own cost and the
   // vendor's price break — see lib/publicDescription.
   const pkgDesc = publicDescription(pkg.description);

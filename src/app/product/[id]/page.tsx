@@ -1,4 +1,5 @@
 import { cache } from 'react';
+import { thumb } from '@/lib/img';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -118,7 +119,21 @@ export default async function ProductPage({ params }: Props) {
 
   const productUrl = `${SITE_URL}/product/${p.id}`;
   const galleryImages = p.images ?? [];
-  const absImages = galleryImages.map((u) => (u.startsWith('http') ? u : `${SITE_URL}${u}`));
+  // Ask for the 1200 bucket EXPLICITLY rather than passing the API's URL
+  // through. Structured-data images are how Google sees this product when it
+  // CRAWLS the site (rich results, free Merchant listings) — the separate path
+  // from the feed, which already pins 1200 in feedImageUrl.
+  //
+  // Since BE a96db9f the API hands out the 600 bucket, whose long side is capped
+  // at 600, so its SHORT side is always under 600 — never near the 800x800
+  // Google recommends. Measured across 12 catalog images: 0/12 reached an 800px
+  // short side at 600, 6/12 did at 1200, and 1200 was genuinely larger for
+  // 11/12 (the twelfth has a 391x360 source, which no bucket can fix — the
+  // derivatives never upscale).
+  const absImages = galleryImages.map((u) => {
+    const abs = u.startsWith('http') ? u : `${SITE_URL}${u}`;
+    return thumb(abs, 1200);
+  });
 
   const productLd = {
     '@context': 'https://schema.org',
