@@ -10,8 +10,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
-import { thumb } from '@/lib/img';
 import { money } from '@/lib/orderLabels';
+import CatalogImage from '@/components/CatalogImage';
 import {
   isSignedIn,
   clearCustomerSession,
@@ -100,10 +100,10 @@ export default function WishlistPage() {
               >
                 <Link href={`/product/${it.product_id}`} className="shrink-0">
                   {it.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={thumb(it.image_url, { width: 160 })}
+                    <CatalogImage
+                      src={it.image_url}
                       alt={displayName(it)}
+                      width={160}
                       className="w-20 h-20 object-cover rounded-lg bg-brand-warm-gray"
                     />
                   ) : (

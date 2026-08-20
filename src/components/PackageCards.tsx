@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { thumb } from '@/lib/img';
 import type { StorefrontPackage } from '@/lib/packages';
+import CatalogImage from './CatalogImage';
 
 const money = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -40,8 +40,7 @@ export default function PackageCards({
               <Link href={`/package/${p.id}`} className="block">
                 <div className="relative aspect-[4/3] bg-brand-warm-gray flex items-center justify-center overflow-hidden">
                   {hero ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={thumb(hero, { width: 600 })} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
+                    <CatalogImage src={hero} alt={p.name} width={600} className="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     <span className="text-4xl opacity-30">🛏</span>
                   )}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { thumb } from '@/lib/img';
+import CatalogImage from './CatalogImage';
 
 // PDP image gallery — main image + clickable thumbnails, driven by the full
 // product.images[] array (the PDP previously showed only images[0]). Client
@@ -28,8 +28,8 @@ export default function ProductGallery({ images, alt }: { images: string[]; alt:
       {/* Main image — object-contain + aspect-[4/3] so the full piece shows
           regardless of source orientation, on a warm-gray letterbox. */}
       <div className="aspect-[4/3] bg-brand-warm-gray rounded-2xl flex items-center justify-center overflow-hidden p-4">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={thumb(current, { width: 1200 })} alt={alt} className="max-w-full max-h-full object-contain" />
+        { }
+        <CatalogImage src={current} alt={alt} width={1200} className="max-w-full max-h-full object-contain" />
       </div>
 
       {/* Thumbnails — only when there's more than one image. */}
@@ -46,8 +46,8 @@ export default function ProductGallery({ images, alt }: { images: string[]; alt:
                 i === active ? 'border-brand-yellow' : 'border-brand-border hover:border-brand-charcoal-light'
               }`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={thumb(src, 160)} alt="" className="w-full h-full object-cover" loading="lazy" />
+              { }
+              <CatalogImage src={src} alt="" width={160} className="w-full h-full object-cover" loading="lazy" />
             </button>
           ))}
         </div>

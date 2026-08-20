@@ -7,7 +7,7 @@ import AddPackageToCartButton from '@/components/AddPackageToCartButton';
 import { fetchPackage } from '@/lib/packages';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
 import { publicDescription } from '@/lib/publicDescription';
-import { thumb } from '@/lib/img';
+import CatalogImage from '@/components/CatalogImage';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -94,8 +94,7 @@ export default async function PackagePage({ params }: Props) {
       <div className="grid md:grid-cols-2 gap-10">
         <div className="bg-brand-warm-gray rounded-xl overflow-hidden aspect-[4/3] flex items-center justify-center">
           {hero ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={thumb(hero, { width: 1200 })} alt={pkg.name} className="w-full h-full object-cover" />
+            <CatalogImage src={hero} alt={pkg.name} width={1200} className="w-full h-full object-cover" />
           ) : (
             <span className="text-6xl opacity-30">🛏</span>
           )}
@@ -158,8 +157,7 @@ export default async function PackagePage({ params }: Props) {
                 <li key={i.id} className="flex items-center gap-3 px-4 py-3 bg-white">
                   <div className="w-12 h-12 shrink-0 bg-brand-warm-gray rounded flex items-center justify-center overflow-hidden">
                     {i.images?.[0] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={thumb(i.images[0], { width: 300 })} alt={i.name} className="w-full h-full object-cover" loading="lazy" />
+                      <CatalogImage src={i.images[0]} alt={i.name} width={160} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <span className="text-lg opacity-30">📦</span>
                     )}

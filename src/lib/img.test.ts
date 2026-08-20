@@ -1,31 +1,55 @@
 import { describe, it, expect } from 'vitest';
-import { thumb } from './img';
+import { thumb, bucketFor, BUCKETS } from './img';
 
-// thumb() rewrites Supabase public-object URLs to the image-transform endpoint.
-// It runs on essentially every product image on the site, so a regression here
-// is a sitewide visual failure — either every thumbnail 404s, or every one
-// silently falls back to downloading full-size showroom photos on a browse grid
-// (slow, and the aliasing this function exists to fix comes back).
+// thumb() addresses PRE-GENERATED derivatives (2026-08-20). It used to build
+// `/storage/v1/render/image/…` URLs and pay per transformation; it now points at
+// files the backfill wrote once, offline.
 //
-// The two behaviours worth pinning are the pass-through (a non-Supabase URL
-// must survive untouched) and the crop rule: a lone width must NOT set
-// `resize`, because that would square-crop landscape sofa photos on cards.
+// It runs on essentially every product image on the site, so a regression is a
+// sitewide visual failure — but the failure mode has changed, and that is what
+// these tests are shaped around. Before, a bug meant a distorted or oversized
+// image. Now a bug means a 400: the derived path is computed by pure string
+// manipulation, with no catalog to check against, so a path this function builds
+// either matches a real object or it does not.
+//
+// THE CRITICAL TEST is `matches the paths the backfill actually writes`. The
+// naming rule lives in TWO repos — here and in
+// `DeliverDeskBackEnd/scripts/backfill-image-derivatives.js` (derivedPath +
+// SIZES). One rule with two implementations is this codebase's most common bug
+// class, and here the two halves cannot even see each other. So the expected
+// strings below are written out literally rather than derived from a shared
+// constant: if either side's rule changes, this fails loudly instead of the
+// storefront quietly serving broken images.
 
 const SUPA = 'https://abc.supabase.co/storage/v1/object/public/product-images/sofa.jpg';
-
-const q = (url: string) => new URL(url).searchParams;
+const DERIVED = 'https://abc.supabase.co/storage/v1/object/public/product-images/_derived';
 
 describe('thumb', () => {
-  it('rewrites a Supabase public object URL to the render endpoint', () => {
-    const out = thumb(SUPA, 160);
-    expect(out).toContain('/storage/v1/render/image/public/product-images/sofa.jpg');
-    expect(out).not.toContain('/object/public/');
+  it('matches the paths the backfill actually writes', () => {
+    // Literal expectations, deliberately not built from BUCKETS or a helper.
+    expect(thumb(SUPA, 160)).toBe(`${DERIVED}/160/sofa.jpg`);
+    expect(thumb(SUPA, { width: 600 })).toBe(`${DERIVED}/600/sofa.jpg`);
+    expect(thumb(SUPA, { width: 1200 })).toBe(`${DERIVED}/1200/sofa.jpg`);
+  });
+
+  it('normalises the extension to .jpg, because derivatives are always JPEG', () => {
+    // Not cosmetic: the transform endpoint was doubling as a format normaliser
+    // for the ~198 AVIF originals Google rejects as image_link_broken. Losing
+    // that would silently re-break those feed rows.
+    const base = 'https://abc.supabase.co/storage/v1/object/public/product-images/';
+    for (const ext of ['jpg', 'jpeg', 'png', 'webp', 'avif', 'JPG']) {
+      expect(thumb(`${base}chair.${ext}`, 600)).toBe(`${DERIVED}/600/chair.jpg`);
+    }
+  });
+
+  it('keeps a nested object path intact under the size folder', () => {
+    const nested = 'https://abc.supabase.co/storage/v1/object/public/product-images/vendor/somo/123-45.jpg';
+    expect(thumb(nested, 600)).toBe(`${DERIVED}/600/vendor/somo/123-45.jpg`);
   });
 
   it('leaves a non-Supabase URL completely alone', () => {
     for (const url of [
       'https://cdn.vendor.com/img/sofa.jpg',
-      'https://example.com/storage/v1/render/image/public/already.jpg',
       '/local/relative.png',
       '',
     ]) {
@@ -33,72 +57,55 @@ describe('thumb', () => {
     }
   });
 
+  it('leaves other buckets alone — only product-images was backfilled', () => {
+    // Rewriting a bucket with no derivatives would be a guaranteed 400.
+    const other = 'https://abc.supabase.co/storage/v1/object/public/feedback-images/shot.png';
+    expect(thumb(other, 600)).toBe(other);
+  });
+
+  it('is idempotent — never derives a derivative', () => {
+    // A double application would produce `_derived/600/_derived/600/…`. This is
+    // reachable in practice: an already-thumbed URL can be passed through a
+    // second component.
+    const once = thumb(SUPA, 600);
+    expect(thumb(once, 600)).toBe(once);
+  });
+
   it('preserves the origin so a self-hosted Supabase still resolves', () => {
-    const out = thumb(SUPA, 160);
-    expect(out.startsWith('https://abc.supabase.co/')).toBe(true);
+    expect(thumb(SUPA, 160).startsWith('https://abc.supabase.co/')).toBe(true);
   });
 
-  // A number means "square chip": both dimensions constrain, so cover-crop.
-  it('a numeric arg produces a square cover-cropped chip', () => {
-    const p = q(thumb(SUPA, 64));
-    expect(p.get('width')).toBe('64');
-    expect(p.get('height')).toBe('64');
-    expect(p.get('resize')).toBe('cover');
+  it('defaults to the chip bucket when no options are passed', () => {
+    expect(thumb(SUPA)).toBe(`${DERIVED}/160/sofa.jpg`);
+  });
+});
+
+describe('bucketFor', () => {
+  it('maps every size the call sites request to a bucket that exists', () => {
+    // The eight sizes that were in use before the collapse.
+    expect(bucketFor(128)).toBe(160);
+    expect(bucketFor(160)).toBe(160);
+    expect(bucketFor(200)).toBe(160);
+    expect(bucketFor(300)).toBe(600);
+    expect(bucketFor(600)).toBe(600);
+    expect(bucketFor(1200)).toBe(1200);
+    expect(bucketFor(1600)).toBe(1200);
   });
 
-  // THE NO-DISTORTION RULE — this replaces an assertion that encoded a bug.
-  //
-  // The old test demanded `height` and `resize` be ABSENT on a width-only call,
-  // on the belief that Supabase preserves aspect ratio from one dimension. It
-  // does not: it returns the requested width and the ORIGINAL height. Measured
-  // against production 2026-07-31, a 1400x1867 photo came back 600x1867 — every
-  // grid card was serving a horizontally squashed image, which is the reported
-  // "thumbnails not displaying properly".
-  //
-  // The old test's INTENT was right (don't square-crop a sofa) — but omitting
-  // `resize` was the wrong mechanism. `contain` fits inside the box and neither
-  // crops nor distorts, which satisfies the original intent properly.
-  it('a width-only request still describes a box, and contains rather than crops', () => {
-    const p = q(thumb(SUPA, { width: 600 }));
-    expect(p.get('width')).toBe('600');
-    expect(p.get('height')).toBe('600');   // filled from width — "fit inside 600x600"
-    expect(p.get('resize')).toBe('contain');
-  });
-
-  it('a height-only request is symmetric', () => {
-    const p = q(thumb(SUPA, { height: 400 }));
-    expect(p.get('width')).toBe('400');
-    expect(p.get('height')).toBe('400');
-    expect(p.get('resize')).toBe('contain');
-  });
-
-  it('never emits a request that can distort — a resize mode is always set', () => {
-    for (const opts of [160, { width: 600 }, { height: 400 }, { width: 300, height: 200 }] as const) {
-      expect(q(thumb(SUPA, opts)).get('resize')).not.toBeNull();
+  it('only ever returns a bucket that was actually built', () => {
+    for (let w = 1; w <= 2400; w += 7) {
+      expect(BUCKETS).toContain(bucketFor(w));
     }
   });
 
-  it('honours an explicit resize', () => {
-    expect(q(thumb(SUPA, { width: 300, height: 200, resize: 'contain' })).get('resize')).toBe('contain');
-    expect(q(thumb(SUPA, { width: 300, height: 200, resize: 'cover' })).get('resize')).toBe('cover');
-    // cover stays opt-in: the square swatch chip wants a centre crop, a card does not.
-    expect(q(thumb(SUPA, { width: 600 })).get('resize')).toBe('contain');
+  it('clamps above the largest bucket rather than falling back to the original', () => {
+    // Serving a full-resolution original on a PDP hero is the egress problem
+    // this project exists to fix, so oversized requests round DOWN to 1200.
+    expect(bucketFor(4000)).toBe(1200);
   });
 
-  it('defaults quality to 80 and lets it be overridden', () => {
-    expect(q(thumb(SUPA, 160)).get('quality')).toBe('80');
-    expect(q(thumb(SUPA, { width: 600, quality: 60 })).get('quality')).toBe('60');
-  });
-
-  it('defaults to a 160px square when no options are passed', () => {
-    const p = q(thumb(SUPA));
-    expect(p.get('width')).toBe('160');
-    expect(p.get('height')).toBe('160');
-  });
-
-  // Paths with folders/spaces/query strings must survive the split.
-  it('keeps a nested object path intact', () => {
-    const nested = 'https://abc.supabase.co/storage/v1/object/public/product-images/vendor/somo/123-45.jpg';
-    expect(thumb(nested, 100)).toContain('render/image/public/product-images/vendor/somo/123-45.jpg');
+  it('uses the larger dimension so a box is never served a file too small', () => {
+    expect(thumb(SUPA, { width: 100, height: 1200 })).toBe(`${DERIVED}/1200/sofa.jpg`);
+    expect(thumb(SUPA, { height: 600 })).toBe(`${DERIVED}/600/sofa.jpg`);
   });
 });
