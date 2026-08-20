@@ -12,7 +12,7 @@
 // 3.A.2 we can share this file across both apps if we extract it to a
 // shared package.
 
-import { api, type Product } from '@/lib/api';
+import { api, serverUa, type Product } from '@/lib/api';
 
 /** Group labels used to cluster pieces in the wizard palette */
 export type SectionalGroup = 'Chairs' | 'Loveseats' | 'Sofas' | 'Chaises' | 'Ottomans';
@@ -72,10 +72,14 @@ export interface SectionalFamily {
  * inventory changes matter but not on a per-click basis.
  */
 export async function fetchSectionalFamilies(): Promise<SectionalFamily[]> {
+  // serverUa() and NOT catalogAuth(): this endpoint is deliberately ungated
+  // because SectionalWizard.tsx ('use client') calls it from the browser, where
+  // a secret would ship in the JS bundle. serverUa() is a no-op client-side —
+  // browsers forbid setting User-Agent — so it is correct in both contexts.
   const res = await fetch(
     (process.env.NEXT_PUBLIC_API_URL || 'https://deliverdesk-backend-production.up.railway.app') +
       '/storefront/sectional-families',
-    { next: { revalidate: 60 } }
+    { next: { revalidate: 60 }, headers: serverUa() }
   );
   if (!res.ok) throw new Error('Failed to load sectional families');
   const json = (await res.json()) as { data: SectionalFamily[] };
@@ -261,7 +265,7 @@ export async function fetchSectionalFamily(family: string): Promise<SectionalFam
   const res = await fetch(
     (process.env.NEXT_PUBLIC_API_URL || 'https://deliverdesk-backend-production.up.railway.app') +
       '/storefront/sectional-families/' + encodeURIComponent(family),
-    { next: { revalidate: 60 } },
+    { next: { revalidate: 60 }, headers: serverUa() },   // ungated — see above
   );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error('Failed to load sectional family');

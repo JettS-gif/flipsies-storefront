@@ -71,6 +71,27 @@ const CLIENT_UA =
  * The `typeof window` check mirrors the User-Agent guard above: belt and braces,
  * since the env var is already server-only.
  */
+/**
+ * Self-identification for RAW `fetch()` callers.
+ *
+ * request() below already sets CLIENT_UA, but packages.ts and sectional.ts call
+ * fetch() directly and so went out as undici's default `"node"` — the very
+ * ambiguity the comment above says cost an afternoon on 2026-08-19. The rule was
+ * fixed in one of the three places that needed it.
+ *
+ * Confirmed from Railway logs 2026-08-20: `/storefront/packages` arrived as
+ * `clientUa: node` from the SAME Vercel lambda IPs, milliseconds before
+ * `/storefront/products` arrived as `flipsies-storefront/1 (production)`. So a
+ * bot rule blocking bare `node` — filed as "a cheap early win" in the Cloudflare
+ * project — would have blocked our own package cards and sectional wizard.
+ *
+ * Kept separate from catalogAuth(): every server-side call should identify
+ * itself, but only the four gated reads may carry the secret.
+ */
+export function serverUa(): Record<string, string> {
+  return typeof window === 'undefined' ? { 'User-Agent': CLIENT_UA } : {};
+}
+
 export function catalogAuth(): Record<string, string> {
   if (typeof window !== 'undefined') return {};
   const key = process.env.STOREFRONT_SHARED_SECRET;
