@@ -26,12 +26,55 @@ interface RequestOptions {
   next?: { revalidate?: number; tags?: string[] };
 }
 
+// Identify ourselves to the backend. Server-side fetches from Next.js carry
+// undici's default User-Agent, the bare string "node" — which is also what a
+// scraper written in Node sends. On 2026-08-19 that ambiguity cost an afternoon:
+// the backend took ~4 req/s for four hours until Supabase locked up, and the
+// Railway logs could only say "clientUa: node" from a mix of AWS and RESIDENTIAL
+// IPs. Nothing in the request said whether it was our own storefront or someone
+// else's script.
+//
+// The environment is in the string on purpose. A `next dev` server renders
+// server components on EVERY request (no ISR, Strict Mode double-invokes, Fast
+// Refresh re-runs on save), so a dev instance pointed at the production API is a
+// traffic source in its own right — which is exactly what .env.local does by
+// default. "flipsies-storefront/… (development)" in a production log names that
+// instantly instead of leaving it indistinguishable from an attack.
+//
+// Server-side only: browsers forbid setting User-Agent and silently drop it, so
+// sending it from the client would be dead weight.
+const CLIENT_UA =
+  `flipsies-storefront/${process.env.NEXT_PUBLIC_APP_VERSION || '1'} (${process.env.NODE_ENV || 'unknown'})`;
+
+// Say it out loud when a dev server is aimed at production. .env.local ships
+// pointing at the Railway backend, so `npm run dev` hits prod by default — and
+// because dev re-renders server components on every request with no ISR, an
+// open catalog page is a sustained query source against the live database. That
+// is not hypothetical: it is the shape of the 2026-08-19 incident.
+//
+// A warning, not a hard stop: pointing dev at prod for a read-only look is
+// sometimes legitimate. The point is that it can no longer happen silently.
+if (
+  typeof window === 'undefined' &&
+  process.env.NODE_ENV === 'development' &&
+  /deliverdesk-backend-production/.test(API_BASE)
+) {
+  console.warn(
+    '\n\x1b[33m⚠  DEV SERVER IS POINTED AT PRODUCTION\x1b[0m\n' +
+    `   ${API_BASE}\n` +
+    '   Every render queries the live database, and dev applies no ISR caching.\n' +
+    '   Set NEXT_PUBLIC_API_URL=http://localhost:3001 in .env.local unless you\n' +
+    '   specifically mean to read production.\n',
+  );
+}
+
 async function request<T = unknown>(method: string, path: string, body?: unknown, opts: RequestOptions = {}): Promise<T> {
   const url = `${API_BASE}${path}`;
   const res = await fetch(url, {
     method,
     headers: {
       'Content-Type': 'application/json',
+      ...(typeof window === 'undefined' ? { 'User-Agent': CLIENT_UA } : {}),
       ...opts.headers,
     },
     body: body ? JSON.stringify(body) : undefined,
