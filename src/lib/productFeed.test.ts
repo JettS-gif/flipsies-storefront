@@ -314,17 +314,42 @@ describe('availability_date', () => {
 describe('feedImageUrl', () => {
   const SB = 'https://abc.supabase.co/storage/v1/object/public/product-images/products/x/1.';
 
-  it('leaves a supported format completely alone', () => {
-    for (const ext of ['jpg', 'jpeg', 'png', 'webp', 'gif']) {
-      expect(feedImageUrl(SB + ext)).toBe(SB + ext);
+  // Rewritten 2026-08-20. These two used to assert "supported formats pass
+  // through untouched" and "unsupported ones go through /render/image/". Both
+  // behaviours are now obsolete, and keeping them would have blocked the fix:
+  //
+  //   * Passing through is no longer safe. The API hands out the 600 bucket, so
+  //     "untouched" would mean shipping Google a 600px image — above its 100px
+  //     hard minimum but below the 800px it recommends for Shopping.
+  //   * The transform endpoint is no longer needed to normalise AVIF. The
+  //     derivatives are always JPEG, so the format fix comes free and unbilled.
+  it('asks for the 1200 bucket, whatever the source format', () => {
+    for (const ext of ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif']) {
+      const out = feedImageUrl(SB + ext);
+      expect(out).toContain('/_derived/1200/');
+      // Always .jpg — this is what replaces the transform endpoint's format
+      // normalisation for the ~198 AVIF originals Google rejects.
+      expect(out.endsWith('.jpg')).toBe(true);
+      expect(out).not.toContain('/render/image/');
     }
   });
 
-  it('routes an unsupported format through the transform endpoint', () => {
-    const out = feedImageUrl(SB + 'avif');
-    expect(out).toContain('/storage/v1/render/image/public/');
-    expect(out).toContain('product-images/products/x/1.avif');
-    expect(out).toMatch(/width=\d+/);
+  it('never emits a bucket below Google\'s recommended 800px', () => {
+    // The whole reason the feed asks by size instead of reusing the API's URL.
+    for (const ext of ['jpg', 'avif']) {
+      const out = feedImageUrl(SB + ext);
+      const m = out.match(/_derived\/(\d+)\//);
+      expect(m).not.toBeNull();
+      expect(Number(m![1])).toBeGreaterThanOrEqual(800);
+    }
+  });
+
+  it('upgrades an ALREADY-600 URL from the API up to 1200', () => {
+    // The regression this guards: thumb() used to return an already-derived URL
+    // unchanged, which would have silently halved feed image size the day the
+    // API started returning derivatives.
+    const six = 'https://abc.supabase.co/storage/v1/object/public/product-images/_derived/600/products/x/1.jpg';
+    expect(feedImageUrl(six)).toContain('/_derived/1200/');
   });
 
   // Inventing a transform URL for a host that has no transformer would 404 —

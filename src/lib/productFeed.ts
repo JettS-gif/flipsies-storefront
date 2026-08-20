@@ -19,6 +19,7 @@ import { productTitle } from '@/lib/productTitle';
 import { publicDescription } from '@/lib/publicDescription';
 import { parseDimensions } from '@/lib/productSchema';
 import { RETURN_WINDOW_DAYS, RETURNS } from '@/lib/policy';
+import { thumb } from '@/lib/img';
 import { todayCT, addDaysCT } from '@/lib/ct';
 
 // Tab-delimited rather than CSV. Furniture copy is full of commas and inch
@@ -190,6 +191,25 @@ const SUPABASE_OBJECT = '/storage/v1/object/public/';
  */
 export function feedImageUrl(raw: string): string {
   const url = absUrl(raw);
+
+  // Prefer the pre-generated 1200 derivative, explicitly — do NOT inherit
+  // whatever the API handed us.
+  //
+  // Two reasons, both Google's rules rather than ours:
+  //   * SIZE. From BE `<derived-api>` the API returns the 600 bucket, which is
+  //     above Google's 100px hard minimum but below the 800px it recommends for
+  //     Shopping. Taking the API's URL as-is would silently halve our feed image
+  //     size the day that shipped. 1200 is the largest bucket built.
+  //   * FORMAT. Derivatives are always JPEG, so an AVIF source is normalised
+  //     without touching the billed transform endpoint. That is the same job the
+  //     endpoint was doing below, done once at build time instead of per request.
+  //
+  // Asking for 1200 by size (not by string surgery) also means thumb() re-maps a
+  // 600 URL up to 1200 rather than leaving it — see the already-derived branch
+  // in lib/img.ts.
+  const derived = thumb(url, 1200);
+  if (derived !== url) return derived;
+
   if (SUPPORTED_IMAGE.test(url)) return url;
   const i = url.indexOf(SUPABASE_OBJECT);
   // Not a Supabase object (so not ours to transform) — pass it through and let

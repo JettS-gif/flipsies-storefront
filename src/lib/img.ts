@@ -87,8 +87,6 @@ export function thumb(url: string, opts: number | ThumbOpts = 160): string {
   const objectPath = rest.slice(slash + 1);
 
   if (bucket !== DERIVED_BUCKET) return url;
-  // Already a derivative. Re-deriving would produce `_derived/600/_derived/…`.
-  if (objectPath.startsWith(`${DERIVED_ROOT}/`)) return url;
 
   // A number has always meant "square chip"; an object constrains a box. Either
   // way the bucket is chosen off the larger requested dimension, so a box is
@@ -98,6 +96,26 @@ export function thumb(url: string, opts: number | ThumbOpts = 160): string {
     : Math.max(opts.width || 0, opts.height || 0) || 160;
 
   const size = bucketFor(requested);
+
+  // ALREADY DERIVED — re-map the bucket rather than passing through.
+  //
+  // This used to `return url`, which was right while the API handed out
+  // originals and only this file ever produced a `_derived` path. From BE
+  // `<derived-api>` the API returns the 600 bucket, so nearly every URL arriving
+  // here is already derived — and passing through would mean the PDP hero
+  // (asks 1200) renders an upscaled 600 file, and swatch chips (ask 160) pull
+  // ~5x the bytes they need. Both are silent: the image still loads.
+  //
+  // Re-mapping is safe because the bucket is a path segment and all three
+  // buckets exist for any derived original. Nesting is still impossible — the
+  // segment is REPLACED, never appended.
+  const already = objectPath.match(
+    new RegExp(`^${DERIVED_ROOT}/(\\d+)/(.+)$`),
+  );
+  if (already) {
+    if (Number(already[1]) === size) return url;          // already correct
+    return `${origin}${OBJECT}${bucket}/${DERIVED_ROOT}/${size}/${already[2]}`;
+  }
 
   // Extension → .jpg, because the backfill always encodes JPEG. That is not
   // cosmetic: the transform endpoint was quietly acting as a format normaliser
