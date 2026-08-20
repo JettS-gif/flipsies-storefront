@@ -46,6 +46,37 @@ interface RequestOptions {
 const CLIENT_UA =
   `flipsies-storefront/${process.env.NEXT_PUBLIC_APP_VERSION || '1'} (${process.env.NODE_ENV || 'unknown'})`;
 
+/**
+ * Shared-secret header for the four SERVER-ONLY catalog reads
+ * (/storefront/products, /products/:id, /packages, /packages/:id).
+ *
+ * Answers the 2026-08-19 incident: a scrape on a rotating residential-proxy
+ * network OOM-crashed the backend, which paralysed the in-store app — the
+ * storefront and the store share one process and one database. Per-IP limits
+ * barely engage across rotating addresses; a secret works because it identifies
+ * US instead of trying to identify THEM.
+ *
+ * TWO RULES, BOTH LOAD-BEARING:
+ *
+ * 1. The variable is NOT `NEXT_PUBLIC_`. Next inlines NEXT_PUBLIC_* into the
+ *    browser bundle at build time, so a public-prefixed secret would be
+ *    published to the exact scraper it exists to stop. Non-public vars resolve
+ *    to undefined on the client, which is why the guard below degrades to
+ *    sending no header rather than throwing.
+ * 2. Only ever attach this to endpoints the browser never calls. It must NOT go
+ *    on check-availability, subscribe, track-order, lead capture, or the
+ *    sectional-families routes — SectionalWizard.tsx is 'use client' and calls
+ *    those directly, so gating them would break the page.
+ *
+ * The `typeof window` check mirrors the User-Agent guard above: belt and braces,
+ * since the env var is already server-only.
+ */
+export function catalogAuth(): Record<string, string> {
+  if (typeof window !== 'undefined') return {};
+  const key = process.env.STOREFRONT_SHARED_SECRET;
+  return key ? { 'x-storefront-key': key } : {};
+}
+
 // Say it out loud when a dev server is aimed at production. .env.local ships
 // pointing at the Railway backend, so `npm run dev` hits prod by default — and
 // because dev re-renders server components on every request with no ISR, an
@@ -311,6 +342,7 @@ export const api = {
     });
     const res = await request<ProductsResponse>('GET', `/storefront/products?${p}`, undefined, {
       next: { revalidate: 60 },
+      headers: catalogAuth(),
     });
     return { ...res, data: res.data.map(hydrateProduct) };
   },
@@ -318,6 +350,7 @@ export const api = {
   getProduct: async (id: string) => {
     const p = await request<Product>('GET', `/storefront/products/${id}`, undefined, {
       next: { revalidate: 60 },
+      headers: catalogAuth(),
     });
     return hydrateProduct(p);
   },

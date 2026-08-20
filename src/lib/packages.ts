@@ -16,6 +16,13 @@
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://deliverdesk-backend-production.up.railway.app';
 
+// Both package reads are gated by the shared secret — see catalogAuth() in
+// lib/api.ts for why the variable must not be NEXT_PUBLIC_ and why this may
+// only be attached to endpoints the browser never calls. Both fetchers below
+// are reached solely from server components (app/package/[id]/page.tsx and the
+// shop pages), verified 2026-08-20.
+import { catalogAuth } from './api';
+
 export interface PackageItem {
   id: string;
   sku: string;
@@ -71,6 +78,7 @@ export async function fetchPackages(q: PackageQuery = {}): Promise<StorefrontPac
   }
   const res = await fetch(`${API_BASE}/storefront/packages${qs.toString() ? `?${qs}` : ''}`, {
     next: { revalidate: 60 },
+    headers: catalogAuth(),
   });
   if (!res.ok) return [];
   const json = await res.json();
@@ -78,7 +86,10 @@ export async function fetchPackages(q: PackageQuery = {}): Promise<StorefrontPac
 }
 
 export async function fetchPackage(id: string): Promise<StorefrontPackage | null> {
-  const res = await fetch(`${API_BASE}/storefront/packages/${id}`, { next: { revalidate: 60 } });
+  const res = await fetch(`${API_BASE}/storefront/packages/${id}`, {
+    next: { revalidate: 60 },
+    headers: catalogAuth(),
+  });
   if (!res.ok) return null;
   return (await res.json()) as StorefrontPackage;
 }
