@@ -101,17 +101,36 @@ export default async function ShopPage({ searchParams }: Props) {
     if (sp[k]) params[k] = sp[k]!;
   }
 
+  // EVERY promise carries its own fallback. Promise.all is all-or-nothing, so a
+  // sibling failure used to take the whole page's data with it — and worse, when
+  // MORE THAN ONE rejected, only the first reached the catch below. The rest
+  // were unobserved and surfaced as unhandled rejections.
+  //
+  // That is not hypothetical: 2026-08-20 08:16 CDT (Sentry FLIPSIES-STOREFRONT-1),
+  // during the Postgres saturation, /storefront/facets and /storefront/categories
+  // both returned 500. Two rejections — one caught, one unhandled — and the shop
+  // page rendered with NO PRODUCTS even though the products call itself was fine.
+  //
+  // Facets and categories are page CHROME. A shopper can still browse a grid
+  // without a filter rail; they cannot browse an empty one. Degrading each
+  // dataset independently is what keeps the storefront useful through a backend
+  // blip instead of blank.
   try {
     const [prodRes, catRes, famList, pkgList, facetRes] = await Promise.all([
+      // Deliberately the ONLY one without a fallback: there is no useful shop
+      // page without products, so this failure should reach the catch below and
+      // be logged as a real one. With every sibling now guarded it is also the
+      // only promise that can reject, which is what makes an unobserved
+      // rejection impossible here.
       api.getProducts(params),
-      api.getCategories(),
+      api.getCategories().catch(() => ({ categories: [] as string[] })),
       fetchSectionalFamilies().catch(() => []),
       // Packages are merchandising, not a filtered result set — a shopper who
       // narrowed to "grey, under $500" is shopping pieces, so the set cards are
       // hidden below rather than fetched and filtered. Same call the sectional
       // family cards make.
       fetchPackages({ search, collection: sp.collection, room: sp.room }).catch(() => []),
-      fetchFacets(),
+      fetchFacets().catch(() => null),
     ]);
     products = prodRes.data || [];
     count = prodRes.count || 0;
