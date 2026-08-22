@@ -147,13 +147,19 @@ export function pageMetadata(opts: {
   description?: string;
   path: string; // leading-slash path, e.g. '/about-us'
   images?: string[];
+  // Emit robots noindex/nofollow. For faceted views whose content is a subset
+  // of a page that is already indexed — the canonical handles ranking, but only
+  // this keeps a crawler from walking the combinatorial URL space in the first
+  // place. See ShopFilters.tsx for what happened when nothing did.
+  noindex?: boolean;
 }): Metadata {
-  const { title, description, path, images } = opts;
+  const { title, description, path, images, noindex } = opts;
   const og = images ?? [OG_IMAGE];
   return {
     title,
     description,
     alternates: { canonical: path },
+    ...(noindex ? { robots: { index: false, follow: false } } : {}),
     openGraph: {
       title,
       description,

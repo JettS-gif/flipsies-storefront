@@ -27,11 +27,21 @@ import type { Metadata } from 'next';
 // would declare them duplicates of a page they are absent from. It therefore
 // self-canonicals, and every other param is still discarded.
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const page = pageOf(await searchParams);
+  const sp = await searchParams;
+  const page = pageOf(sp);
+  // A FILTERED view is noindex/nofollow (2026-08-22). The canonical above
+  // already stopped facets diluting rankings; what it could not do is stop a
+  // crawler fetching every combination to find that canonical. Nine filter
+  // dimensions multiply into millions of URLs and meta-externalagent walked
+  // them — 2.2M hits on /shop in 12 hours against a ~3,100-URL catalogue.
+  // Pagination is deliberately still indexable: ?page=3 holds 48 products that
+  // appear nowhere else, so it is real content, not a near-duplicate.
+  const filtered = activeFilterCount(sp) > 0;
   return pageMetadata({
     title: page > 1 ? `Shop All Furniture — Page ${page}` : 'Shop All Furniture',
     description: 'Browse our full collection of sofas, sectionals, bedroom sets, dining furniture, and more at Flipsies Furniture.',
     path: page > 1 ? `/shop?page=${page}` : '/shop',
+    noindex: filtered,
   });
 }
 

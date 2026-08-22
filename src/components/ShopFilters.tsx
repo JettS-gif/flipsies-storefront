@@ -31,6 +31,16 @@ function Option({
   return (
     <Link
       href={href}
+      // rel="nofollow" closes a crawl trap (2026-08-22). Every option here is a
+      // faceted /shop URL, and with 9 filter dimensions the combinations run to
+      // millions of near-duplicate pages. The canonical tag already stops them
+      // diluting rankings, but a canonical does NOT stop a crawler FETCHING the
+      // URL to discover it — so the whole space stayed walkable. It got walked:
+      // meta-externalagent pulled 2.3M requests in 12 hours, 2.2M of them /shop,
+      // 85% of all site traffic, against a real catalogue of ~3,100 URLs.
+      // Googlebot only managed 264K because its crawl-budget heuristics learn to
+      // skip low-value parameter URLs; Meta's crawler has no such restraint.
+      rel="nofollow"
       aria-current={active ? 'true' : undefined}
       className={`flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-sm transition-colors ${
         active

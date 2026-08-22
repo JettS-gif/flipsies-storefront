@@ -31,6 +31,31 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+// ISR: cache the RENDERED page, not just its data (added 2026-08-22).
+//
+// The data fetch already carried `next: { revalidate: 60 }`, but that only
+// caches the API response — the page still rendered on every single request,
+// so every hit was a function invocation. With 3,056 published products a
+// crawler walks the whole catalog in about half an hour and then walks it
+// again, paying full render cost each time. meta-externalagent was measured at
+// ~6,000 page renders/hour on 2026-08-20; the resulting bill was 63.37M edge
+// requests and 55.17M function invocations, which Vercel then multiplied into
+// 261.32M observability events ($313.58 of a $583.13 cycle).
+//
+// This page is safe to cache because it takes NO dynamic input: no
+// searchParams, no cookies(), no headers(). (The /shop and /shop/[category]
+// pages read searchParams for pagination, which forces dynamic rendering —
+// they cannot take this treatment without restructuring pagination into route
+// segments.)
+//
+// 300s is a deliberate trade, not a default: the PDP renders `in_stock` and
+// price server-side, so those can be up to 5 minutes stale. That cannot cause
+// an oversell — checkout re-checks against /storefront/check-availability with
+// `cache: 'no-store'` (app/checkout/page.tsx:506), so the authoritative check
+// happens with money on the table. Lower this if stock accuracy on the PDP
+// itself starts to matter more than the render cost.
+export const revalidate = 300;
+
 // Memoize so generateMetadata and the page component share one fetch per
 // request instead of hitting the backend twice.
 const getProduct = cache((id: string) => api.getProduct(id));
