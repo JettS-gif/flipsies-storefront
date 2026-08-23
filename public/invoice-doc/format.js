@@ -334,30 +334,35 @@ export function fmt12Time(dateObj) {
 }
 
 /**
- * "HH:MM:SS" calendar item time (events/tasks) → "3:45 PM"
+ * "HH:MM:SS" server time string → "3:45 PM".
+ *
+ * ONE body, two exported names (2026-08-23). `fmtCalendarTime` and
+ * `fmtShiftTime` were byte-identical, twelve lines apart in this file — the
+ * duplicate-helper scanner never saw them because it keys on a name appearing in
+ * two FILES, and these shared a file. Both names stay: the calendar and the
+ * schedule each read naturally with their own, and renaming touches 20 call
+ * sites to buy nothing.
+ *
+ * Mirrors backend utils/hrPtoPolicy.js fmt12Time, which is that file's name for
+ * the same rule. Compared by mirroredHelpersParity.contract.test.js.
+ * ⚠️ NOT the same function as this file's `fmt12Time`, which takes a Date — a
+ * genuine name collision, and the reason the parity table needs `feName`.
  */
 export function fmtCalendarTime(t) {
   if (!t) return '';
-  const [hStr, mStr] = t.split(':');
-  let h = parseInt(hStr), m = parseInt(mStr);
+  const [hStr, mStr] = String(t).split(':');
+  let h = parseInt(hStr, 10);
+  // Default the minutes rather than parseInt(undefined) — a bare "13" rendered
+  // "1:NaN PM" here while the backend answered "1:00 PM".
+  const m = String(mStr ?? '00').padStart(2, '0').slice(0, 2);
   const ampm = h >= 12 ? 'PM' : 'AM';
   if (h > 12) h -= 12;
   if (h === 0) h = 12;
-  return `${h}:${String(m).padStart(2, '0')} ${ampm}`;
+  return `${h}:${m} ${ampm}`;
 }
 
-/**
- * "HH:MM:SS" (server time string) → "3:45 PM"
- */
-export function fmtShiftTime(t) {
-  if (!t) return '';
-  const [hStr, mStr] = t.split(':');
-  let h = parseInt(hStr), m = parseInt(mStr);
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  if (h > 12) h -= 12;
-  if (h === 0) h = 12;
-  return `${h}:${String(m).padStart(2, '0')} ${ampm}`;
-}
+/** Alias of fmtCalendarTime — see the note there. */
+export const fmtShiftTime = fmtCalendarTime;
 
 /**
  * "HH:MM:SS" → "8a" / "8:30a" / "12p" — the narrowest honest rendering.
