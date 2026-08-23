@@ -19,6 +19,7 @@ import { CUSTOM_ORDER_DEPOSIT_PCT, requiredDeposit } from './depositThresholds.j
 import { balanceDue } from './invoiceBalanceGate.js';
 import { escapeHtml } from './format.js';
 import { resolveStoreLocation } from './storeLocations.js';
+import { groupInvoiceLines } from './packageGrouping.js';
 
 const e = (s) => escapeHtml(s == null ? '' : s);
 
@@ -65,61 +66,50 @@ export function buildInvoicePrintHtml(inv) {
     : new Date(rawDate);
   const dateStr   = dateObj.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
 
-  // Build item rows with optional package-group headers. Lines sharing
-  // a package_id render under a single "🎁 Package — N pieces" header
-  // row that totals the group price + savings vs retail-sum. Matches
-  // the invoice-form visual collapse.
+  // Item rows. A package renders as ONE row — name, contents, set price — never
+  // as its component lines. Jett 2026-08-23: "for the customer and invoice having
+  // one row bundling a bedroom suite makes sense."
+  //
+  // Grouping comes from utils/packageGrouping so the customer copy, the invoice
+  // form and the detail view cannot disagree about what a package is. This file
+  // previously carried its own consecutive-run loop, which produced two headers
+  // for one package if anything reordered the lines between them.
   const itemRows = (() => {
     const out = [];
-    let prevPackageId = null;
-    for (let idx = 0; idx < items.length; idx++) {
-      const i = items[idx];
+
+    for (const entry of groupInvoiceLines(items)) {
+      if (entry.kind === 'package') {
+        const savingsCell = entry.savings > 0.01
+          ? '<div style="font-size:11px;color:#D98C00;font-weight:500;margin-top:3px;">saves $' + entry.savings.toFixed(2) + ' vs buying separately</div>'
+          : '';
+        out.push(
+          '<tr style="border-bottom:1px solid #eee;background:#F4FBF7;">' +
+          '<td style="padding:9px 10px;font-family:monospace;font-size:11px;color:#13684E;">SET</td>' +
+          '<td style="padding:9px 10px;font-size:13px;">' +
+            '<div style="font-weight:600;color:#13684E;">' + e(entry.name) + '</div>' +
+            '<div style="font-size:11.5px;color:#5A6B62;margin-top:2px;line-height:1.45;">Includes ' + e(entry.contents) + '</div>' +
+            savingsCell +
+          '</td>' +
+          '<td style="text-align:center;padding:9px 10px;font-size:13px;">' + entry.units + '</td>' +
+          '<td style="text-align:right;padding:9px 10px;font-size:13px;">$' + entry.group_total.toFixed(2) + '</td>' +
+          '<td style="text-align:right;padding:9px 10px;font-size:13px;font-weight:600;">$' + entry.group_total.toFixed(2) + '</td>' +
+          '</tr>'
+        );
+        continue;
+      }
+
+      const i         = entry.item;
       const retail    = Number(i.product?.retail_price || 0);
       const price     = Number(i.unit_price || 0);
       const qty       = Number(i.qty || 1);
       const lineTotal = price * qty;
-
-      // Package header: emit when entering a new package_id run.
-      if (i.package_id && i.package_id !== prevPackageId) {
-        let pkgLineCount = 0;
-        let pkgGroupTotal = 0;
-        let pkgRetailSum  = 0;
-        let pkgName = '';
-        for (let k = idx; k < items.length && items[k].package_id === i.package_id; k++) {
-          const ik = items[k];
-          const ikRetail = Number(ik.product?.retail_price || 0);
-          const ikQty    = Number(ik.qty || 1);
-          pkgLineCount  += 1;
-          pkgGroupTotal += Number(ik.unit_price || 0) * ikQty;
-          pkgRetailSum  += ikRetail * ikQty;
-          if (!pkgName) pkgName = ik._packageName || ik.package?.name || ik.package_name || '';
-        }
-        const pkgSavings = Math.max(0, pkgRetailSum - pkgGroupTotal);
-        const savingsCell = pkgSavings > 0.01
-          ? '<span style="color:#D98C00;font-weight:500;margin-left:8px;">saves $' + pkgSavings.toFixed(2) + '</span>'
-          : '';
-        out.push(
-          '<tr style="background:#E8F7F0;border-top:1px solid #A8D9C4;border-bottom:1px solid #A8D9C4;">' +
-          '<td colspan="3" style="padding:7px 10px;font-size:12px;font-weight:600;color:#13684E;">' +
-            '🎁 ' + e(pkgName || 'Package') +
-            ' <span style="color:#666;font-weight:500;">— ' + pkgLineCount + ' piece' + (pkgLineCount !== 1 ? 's' : '') + '</span>' +
-          '</td>' +
-          '<td colspan="2" style="text-align:right;padding:7px 10px;font-size:12px;font-weight:600;color:#13684E;">' +
-            '$' + pkgGroupTotal.toFixed(2) + savingsCell +
-          '</td>' +
-          '</tr>'
-        );
-      }
-      prevPackageId = i.package_id || null;
 
       // 2026-05-08 — post pass-through migration discount lives in
       // unit_price, so the strikethrough retail goes INLINE next to
       // the discounted price (per Jett: "original price with a strike
       // through next to the new line item price"). The separate Retail
       // column was dropped to make the savings legible at a glance.
-      // For packaged lines we skip the strikethrough (the package
-      // header already shows the savings against retail-sum).
-      const priceCellInner = (!i.package_id && retail > 0 && retail > price)
+      const priceCellInner = (retail > 0 && retail > price)
         ? '<span style="color:#999;text-decoration:line-through;font-size:11px;margin-right:6px;">$' + retail.toFixed(2) + '</span>$' + price.toFixed(2)
         : '$' + price.toFixed(2);
       // 2026-05-02: render fabric / custom-config as a sub-line under the
@@ -132,10 +122,9 @@ export function buildInvoicePrintHtml(inv) {
       const subLineHtml = fabricLine
         ? '<div style="font-size:11px;color:#7C5C0C;margin-top:2px;font-style:italic;">🧵 ' + e(String(fabricLine)) + '</div>'
         : '';
-      const skuCellIndent = i.package_id ? 'padding-left:24px;' : '';
       out.push(
         '<tr style="border-bottom:1px solid #eee;">' +
-        '<td style="padding:9px 10px;' + skuCellIndent + 'font-family:monospace;font-size:11px;color:#0C447C;">' + e(i.sku||'—') + '</td>' +
+        '<td style="padding:9px 10px;font-family:monospace;font-size:11px;color:#0C447C;">' + e(i.sku||'—') + '</td>' +
         '<td style="padding:9px 10px;font-size:13px;">' + e(i.name||i.description||'—') + subLineHtml + '</td>' +
         '<td style="text-align:center;padding:9px 10px;font-size:13px;">' + qty + '</td>' +
         '<td style="text-align:right;padding:9px 10px;font-size:13px;">' + priceCellInner + '</td>' +
