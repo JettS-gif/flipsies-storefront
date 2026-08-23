@@ -28,30 +28,34 @@ export function dateCT(ts) {
   return d.toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
 }
 
-/** Shift a YYYY-MM-DD date string by n days, staying on the CT calendar.
+/** Shift a YYYY-MM-DD date string by n days.
  *  Exists so "30 days ago" default ranges stop being written as
  *  `new Date(Date.now() - 30*86400000).toISOString().slice(0,10)`, which takes
- *  the UTC day and lands a day early from ~7pm CT onward. Noon-anchored, so a
- *  DST hop moves the clock to 11am/1pm and never crosses midnight.
- *  (reports.js has an identical local `shiftDays`; prefer this one in new code.) */
+ *  the UTC day and lands a day early from ~7pm CT onward.
+ *
+ *  THE CANONICAL ONE (2026-08-23). There were three: this, utils/paymentsRollup.js
+ *  and a local copy in views/reports.js. Both others now import this.
+ *
+ *  Shifting a calendar date by whole days is pure calendar arithmetic — there is
+ *  no instant involved, so there is no zone to get wrong. The previous bodies all
+ *  routed through a Date anyway and disagreed about how: this one anchored at
+ *  LOCAL noon and read LOCAL parts, the other two anchored at LOCAL noon and read
+ *  the CT calendar. On the Alabama machines every screen runs on, all three agree;
+ *  off CT they drift a day, and the docstring here claimed CT while the code did
+ *  not. Doing the arithmetic in UTC removes the question rather than answering it. */
 export function shiftDays(ds, n) {
   if (!ds || !/^\d{4}-\d{2}-\d{2}$/.test(ds)) return ds;
-  const d = new Date(ds + 'T12:00:00');
-  if (isNaN(d.getTime())) return ds;
-  d.setDate(d.getDate() + Number(n || 0));
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const [y, m, d] = ds.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d) + Number(n || 0) * 86400000);
+  if (isNaN(t.getTime())) return ds;
+  return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`;
 }
 
-/** Pickups run only Tuesday / Thursday / Saturday (2026-07-04). Mirrors
- *  backend utils/time.js isAllowedPickupDay. Noon-anchor the date-only string
- *  so a TZ boundary can't shift the weekday. */
-export const PICKUP_DAYS_LABEL = 'Tuesday, Thursday, and Saturday';
-export function isAllowedPickupDay(ds) {
-  if (!ds || !/^\d{4}-\d{2}-\d{2}$/.test(ds)) return false;
-  const d = new Date(ds + 'T12:00:00');
-  if (isNaN(d.getTime())) return false;
-  return [2, 4, 6].includes(d.getDay()); // 0=Sun … 6=Sat
-}
+// The Tue/Thu/Sat pickup restriction was REMOVED on 2026-08-23 — staff-
+// requested on 2026-07-04, then withdrawn by the same staff. PICKUP_DAYS_LABEL
+// and isAllowedPickupDay lived here as the mirror of the backend rule; both
+// sides went in one change, because a picker that greys out days the server
+// accepts is worse than either answer.
 
 /**
  * "2025-04-05" → "Sat, Apr 5"
