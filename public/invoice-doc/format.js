@@ -220,14 +220,37 @@ export function parseCTInputValue(s) {
  * report stays Sunday after midnight UTC.
  */
 export function sundayCT() {
-  const todayStr = today();   // YYYY-MM-DD in CT
+  const t = today();
+  return shiftDays(t, -dowCT(t));
+}
+
+/** CT day-of-week index (0=Sun) for a YYYY-MM-DD date string.
+ *  Bare getDay() would read the BROWSER's calendar; every week helper here
+ *  must agree with the store's.
+ *
+ *  Added 2026-08-24 with weekMonday. It replaced the THIRD inline copy of this
+ *  Sun..Sat lookup in this file — sundayCT above had its own, and so did the
+ *  weekMonday that used to live in paymentsRollup.js. Two of the three also did
+ *  their own Date arithmetic afterwards; both now go through shiftDays. */
+export function dowCT(ds) {
   const dows = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  // Read CT day-of-week for "now" — bare getDay() would use the browser TZ.
-  const wd = new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', weekday: 'short' });
-  // Subtract that many days from today (anchored at noon for DST safety).
-  const d = new Date(todayStr + 'T12:00:00Z');
-  d.setUTCDate(d.getUTCDate() - (dows[wd] ?? 0));
-  return d.toISOString().slice(0, 10);
+  const wd = new Date(ds + 'T12:00:00').toLocaleDateString('en-US', {
+    timeZone: 'America/Chicago', weekday: 'short',
+  });
+  return dows[wd] ?? 0;
+}
+
+/** Monday of ds's week, in CT. Mirrors backend weekMondayCT — if those two
+ *  disagree, a week rollup stops lining up with the range that asked for it.
+ *
+ *  Moved here from utils/paymentsRollup.js (2026-08-24), which is where it
+ *  landed first and is not its home: three surfaces needed Monday-of-week and
+ *  a payments module owning it is why views/newDeliveryForm.js and
+ *  views/schedulingTool.js each grew their own copy instead of importing one.
+ *  paymentsRollup re-exports it, exactly as it already does for shiftDays. */
+export function weekMonday(ds) {
+  const wd = dowCT(ds);
+  return shiftDays(ds, wd === 0 ? -6 : 1 - wd);
 }
 
 /**
