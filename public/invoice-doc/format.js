@@ -57,6 +57,31 @@ export function shiftDays(ds, n) {
 // sides went in one change, because a picker that greys out days the server
 // accepts is worse than either answer.
 
+/** Whole years between a calendar date and today in CT, or null if unusable.
+ *
+ *  Written for years-of-service on the team list (Carlie 2026-08-24 asked for
+ *  start dates); lives here rather than in views/users.js because HR, payroll
+ *  and any anniversary report want the same answer, and a second copy of "how
+ *  many years is that" is how two screens end up disagreeing about someone's
+ *  tenure on their anniversary week.
+ *
+ *  PURE STRING ARITHMETIC — no Date parsing of the input. A start date is a
+ *  calendar date, not an instant; parsing it introduces a timezone that can
+ *  shift it across a boundary and read a Feb-28 hire as Feb-27. Comparing the
+ *  'MM-DD' tails answers "has the anniversary happened yet this year" exactly,
+ *  in every zone, including across a leap day.
+ *
+ *  Returns null for a FUTURE date rather than a negative — someone starting next
+ *  week has no tenure to state, and "-1y" on a roster is worse than nothing. */
+export function yearsOfService(startDate) {
+  const ds = String(startDate || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ds)) return null;
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Chicago' });
+  let years = Number(today.slice(0, 4)) - Number(ds.slice(0, 4));
+  if (today.slice(5) < ds.slice(5)) years -= 1;   // anniversary not reached yet
+  return years >= 0 && years < 100 ? years : null;
+}
+
 /**
  * "2025-04-05" → "Sat, Apr 5"
  * Forces noon local time so timezone shifts don't flip the day.
