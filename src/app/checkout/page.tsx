@@ -612,9 +612,27 @@ export default function CheckoutPage() {
               store:       pickupStore,
             } : {}),
           },
-          // Delivery fee comes from the picked slot for delivery orders,
-          // zero for pickup.
-          delivery_fee: fulfillmentType === 'delivery' && selectedSlot ? selectedSlot.price : 0,
+          // Delivery fee comes from the picked slot for delivery orders, or
+          // from the extended-range quote when the address is past 50 miles and
+          // therefore has NO slot to pick. Zero for pickup.
+          //
+          // The extended branch is why this is not just `selectedSlot.price`:
+          // beyond 50mi there is no slot, so that expression fell through to 0
+          // and the order billed nothing while the panel above quoted a real
+          // number. Live case WEB-20260825-4922 — Clanton AL, 61 miles, quoted
+          // $244, invoiced $0.00 delivery. Charging it at checkout is Jett's
+          // call (2026-08-27); the panel copy was changed to match.
+          //
+          // Both numbers come from OUR /storefront/check-availability, not from
+          // anything the shopper types, and the server re-clamps to
+          // [0, STOREFRONT_MAX_DELIVERY_FEE] regardless — the quote maxes at
+          // $400 (100mi × $2 round-trip) so the clamp never truncates a real one.
+          delivery_fee:
+            fulfillmentType !== 'delivery' ? 0
+              : selectedSlot ? selectedSlot.price
+              : extendedDelivery && availability?.status === 'extended_delivery'
+                ? availability.delivery_fee
+                : 0,
           // First-party attribution: carries this browser's visitor id onto the
           // invoice so a sale can be joined back to the traffic that produced
           // it. Best-effort — a shopper with storage disabled sends nothing and
@@ -926,18 +944,24 @@ export default function CheckoutPage() {
                   <p className="font-semibold text-brand-charcoal mb-2">
                     We can deliver — it&apos;s a little further out
                   </p>
+                  {/* Copy changed 2026-08-27 with the decision to CHARGE this
+                      fee at checkout rather than bill it later. It previously
+                      said "we'll confirm that figure ... before anything is
+                      scheduled", which is the wrong promise to make on money we
+                      are about to take — the delivery DAY is still arranged by
+                      hand, and that is what the second line now says. */}
                   <p className="text-brand-charcoal-light mb-3">
                     Your address is about {availability.distance_miles} miles from our Irondale
-                    store, past our standard 50-mile range. We can still bring it to you for an
-                    estimated{' '}
+                    store, past our standard 50-mile range. We can still bring it to you — delivery
+                    to your address is{' '}
                     <span className="font-semibold text-brand-charcoal">
                       ${availability.delivery_fee}
                     </span>
-                    . We&apos;ll confirm that figure and agree a delivery day with you before
-                    anything is scheduled.
+                    , included in your total below.
                   </p>
                   <p className="text-brand-charcoal-light">
-                    Place your order now and we&apos;ll be in touch. Questions first? Call{' '}
+                    Place your order now and we&apos;ll call to agree a delivery day. Questions
+                    first? Call{' '}
                     <a
                       href={`tel:${availability.store_phone.replace(/\D/g, '')}`}
                       className="font-semibold underline"
@@ -1218,6 +1242,19 @@ export default function CheckoutPage() {
                   </div>
                 )}
               </>
+            )}
+            {/* Extended range has no slot to name, so it needs its own row.
+                Without it Subtotal + Tax does not reconcile with Total — and
+                Total is the server's number, so the gap would be real money the
+                breakdown could not explain. */}
+            {extendedDelivery && fulfillmentType === 'delivery'
+              && availability?.status === 'extended_delivery' && (
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-brand-charcoal-light">
+                  Delivery — {availability.distance_miles} mi, day arranged by phone
+                </span>
+                <span>${availability.delivery_fee.toFixed(2)}</span>
+              </div>
             )}
             {/* Made-to-order: no fee is charged now, but say so rather than
                 silently omitting the line — an absent delivery row on a
