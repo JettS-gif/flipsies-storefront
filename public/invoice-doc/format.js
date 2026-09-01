@@ -82,6 +82,88 @@ export function yearsOfService(startDate) {
   return years >= 0 && years < 100 ? years : null;
 }
 
+// ── Birthdays ──────────────────────────────────────────────────────────────
+//
+// `users.birthday` is a plain `date`, and a birthday is frequently known only as
+// a month and a day. Year 1900 is the SENTINEL for "year not known" — declared
+// in migrations/users_hire_date_birthday.sql and in the column's own COMMENT.
+//
+// Carlie, 2026-08-31: *"Some salespeople don't want years shared, i only have
+// the month/date they were born because that's all they would share with me."*
+// The sentinel already existed for exactly this; what was missing was any way to
+// enter one, because <input type="date"> cannot represent a date without a year.
+//
+// Everything below is PURE STRING arithmetic with a month lookup — deliberately
+// no Date parsing. `new Date('1900-09-22')` is UTC midnight, which renders as
+// Sep 21 for anyone west of UTC, and a birthday landing a day early is the exact
+// class of bug the rest of this file exists to prevent. It also sidesteps the
+// browsers that quietly mishandle years before 1970.
+
+const BIRTHDAY_UNKNOWN_YEAR = '1900';
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/** Is this birthday carrying the "year unknown" sentinel? */
+export function birthdayYearUnknown(ds) {
+  return String(ds || '').slice(0, 4) === BIRTHDAY_UNKNOWN_YEAR;
+}
+
+/** 'YYYY-MM-DD' → { month, day, year } with `year` NULL when unknown.
+ *  Returns nulls throughout for an unusable value so callers can spread it
+ *  straight into form state. */
+export function birthdayParts(ds) {
+  const s = String(ds || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return { month: '', day: '', year: '' };
+  return {
+    month: s.slice(5, 7),
+    day:   s.slice(8, 10),
+    year:  birthdayYearUnknown(s) ? '' : s.slice(0, 4),
+  };
+}
+
+/** { month, day, year } → 'YYYY-MM-DD', stamping the sentinel when the year is
+ *  blank. Returns null when month or day is missing — a birthday is not partly
+ *  storable, and a half-filled picker must not write a garbage date. */
+export function birthdayFromParts({ month, day, year } = {}) {
+  const m = String(month || '').padStart(2, '0');
+  const d = String(day   || '').padStart(2, '0');
+  if (!/^\d{2}$/.test(m) || !/^\d{2}$/.test(d)) return null;
+  if (Number(m) < 1 || Number(m) > 12 || Number(d) < 1 || Number(d) > 31) return null;
+  const y = /^\d{4}$/.test(String(year || '')) ? String(year) : BIRTHDAY_UNKNOWN_YEAR;
+  return `${y}-${m}-${d}`;
+}
+
+/** Birthday → "Sep 22" when the year is unknown, "Sep 22, 1965" when it is not.
+ *
+ *  Note this deliberately does NOT use formatDateLabel, which leads with a
+ *  weekday ("Mon, Nov 2"). The weekday somebody was born on is noise on a roster,
+ *  and for a sentinel row it would be the weekday in 1900 — noise that is also
+ *  wrong. */
+export function fmtBirthday(ds) {
+  const { month, day, year } = birthdayParts(ds);
+  if (!month || !day) return '';
+  const label = `${MONTHS[Number(month) - 1]} ${Number(day)}`;
+  return year ? `${label}, ${year}` : label;
+}
+
+/** Days in a month, for a day picker that should not offer Feb 30.
+ *  Year unknown → treat February as 29 so a leap-day birthday stays selectable;
+ *  that is the whole point of not knowing the year. */
+export function daysInBirthMonth(month, year) {
+  const m = Number(month);
+  if (!m || m < 1 || m > 12) return 31;
+  if (m === 2) {
+    const y = Number(year);
+    if (!y) return 29;
+    return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0 ? 29 : 28;
+  }
+  return [4, 6, 9, 11].includes(m) ? 30 : 31;
+}
+
+/** Month options for a birthday picker: [{ value:'01', label:'Jan' }, …] */
+export function birthMonthOptions() {
+  return MONTHS.map((label, i) => ({ value: String(i + 1).padStart(2, '0'), label }));
+}
+
 /**
  * "2025-04-05" → "Sat, Apr 5"
  * Forces noon local time so timezone shifts don't flip the day.
