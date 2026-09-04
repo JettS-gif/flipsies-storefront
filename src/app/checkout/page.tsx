@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart, type CartItem } from '@/context/CartContext';
 import { canContinueFulfillment } from '@/lib/checkoutReadiness';
-import { addDaysCT } from '@/lib/ct';
+import { addDaysCT, weekdayCT } from '@/lib/ct';
 import { trackEvent } from '@/lib/analytics';
 import { visitorId, track } from '@/lib/siteEvents';
 import { purchased } from '@/lib/events';
@@ -246,13 +246,56 @@ export default function CheckoutPage() {
   // answer again. The store's calendar is the only one that matters here.
   const minPickupDate = addDaysCT(2);
 
-  // Pickups run only Tuesday / Thursday / Saturday. Noon-anchor the date-only
-  // string so a TZ boundary can't shift the weekday. getDay(): 0=Sun … 6=Sat.
+  // Pickups run only Tuesday / Thursday / Saturday. 0=Sun … 6=Sat.
+  const PICKUP_DAYS = [2, 4, 6];
+
+  // Uses weekdayCT rather than a local `new Date(ds + 'T12:00:00').getDay()`.
+  // That form is anchored at noon in the SHOPPER's zone and read back with
+  // getDay(), so it answers with the shopper's weekday — the same defect the
+  // minPickupDate comment above describes, which made valid pickup days
+  // silently unavailable to anyone outside Central. weekdayCT anchors at noon
+  // UTC and reads getUTCDay(), so the store's calendar is the only one asked.
   function isPickupDay(ds: string): boolean {
-    if (!ds || !/^\d{4}-\d{2}-\d{2}$/.test(ds)) return false;
-    const d = new Date(`${ds}T12:00:00`);
-    return !isNaN(d.getTime()) && [2, 4, 6].includes(d.getDay());
+    const w = weekdayCT(ds);
+    return w !== null && PICKUP_DAYS.includes(w);
   }
+
+  /**
+   * The dates a shopper may actually choose.
+   *
+   * Jett, 2026-09-04: *"the pickup scheduling is confusing and poorly
+   * displayed… scheduling next day doesn't throw an error but pops up a bubble
+   * saying value must be greater than that date… there is no indication of our
+   * pick up schedule prior to the error."*
+   *
+   * The rules were already correct and already enforced — but only AFTER the
+   * shopper committed. A native <input type="date"> cannot grey out weekdays,
+   * so every invalid day still looked available, and the only feedback for the
+   * 48h rule was the browser's own `min` bubble, which says "value must be
+   * greater than…" and explains nothing.
+   *
+   * So the picker becomes a list of valid dates instead. Sunday, Monday,
+   * Wednesday and Friday are not rejected — they are never offered, and neither
+   * is anything inside 48 hours. There is no invalid choice left to warn about.
+   */
+  const pickupDateOptions = useMemo(() => {
+    const out: { value: string; label: string }[] = [];
+    // 28 days scanned yields ~12 pickup dates — plenty of choice without an
+    // endless list. Starts at the 48h floor, so the first option is already legal.
+    for (let i = 0; out.length < 12 && i < 28; i++) {
+      const ds = addDaysCT(2 + i);
+      if (!isPickupDay(ds)) continue;
+      out.push({
+        value: ds,
+        // Noon-UTC anchored and formatted in UTC for the same reason the
+        // weekday is: the label must name the store's day, not the browser's.
+        label: new Date(`${ds}T12:00:00Z`).toLocaleDateString('en-US', {
+          timeZone: 'UTC', weekday: 'long', month: 'long', day: 'numeric',
+        }),
+      });
+    }
+    return out;
+  }, []);
 
   // Availability check state — tracks the /storefront/check-availability
   // roundtrip + the slot the customer picked. Response mirrors the backend
@@ -320,6 +363,26 @@ export default function CheckoutPage() {
     qty_available: number;
   }> | null>(null);
 
+  /**
+   * Put the shopper back at the top of the page.
+   *
+   * The Pay button sits at the BOTTOM of a long step, and swapping the step's
+   * content does not move the scroll position — so the confirmation renders
+   * above where the shopper is standing and they are left looking at the
+   * footer with no visible sign the payment worked. Jett, 2026-09-04, having
+   * just paid: *"my one preference would be the order confirmed page snapping
+   * the user back to top of page instead of leaving them in the footer after
+   * payment is completed."*
+   *
+   * 'auto' rather than 'smooth': after a payment the shopper wants the
+   * confirmation now, and an animated scroll reads as more waiting. Guarded
+   * because this runs on the one path where the money has already moved — it
+   * must never be the thing that throws.
+   */
+  function scrollToTop() {
+    try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch { /* non-fatal */ }
+  }
+
   // Handle return from Stripe redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -329,6 +392,10 @@ export default function CheckoutPage() {
       clearStoredSlot();
       setInvoiceNumber(params.get('invoice') || '');
       setStep(3);
+      // Same reason as the in-page path in handlePaymentSuccess: a browser can
+      // restore the previous scroll offset across this redirect, dropping the
+      // shopper into the footer with the confirmation off-screen above them.
+      scrollToTop();
       // Clean URL
       window.history.replaceState({}, '', '/checkout');
     }
@@ -682,6 +749,7 @@ export default function CheckoutPage() {
     clearCart();
     clearStoredSlot();
     setStep(3);
+    scrollToTop();
   }
 
   const taxRate = 0.10;
@@ -1109,30 +1177,32 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Date picker — enforces 48h lead via min attribute */}
+              {/* Date picker — only legal dates are offered, so there is no
+                  invalid choice to reject. Replaced <input type="date"> on
+                  2026-09-04: a native date field cannot grey out weekdays, so
+                  Sun/Mon/Wed/Fri all looked bookable, and the only feedback for
+                  the 48h rule was the browser's own "value must be greater
+                  than…" bubble, which names no rule at all. */}
               <div>
                 <label className="block text-sm font-medium text-brand-charcoal mb-1">
                   Pickup date <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="date"
-                  value={pickupDate}
-                  min={minPickupDate}
-                  onChange={e => {
-                    setPickupDate(e.target.value);
-                    setAvailError(
-                      e.target.value && !isPickupDay(e.target.value)
-                        ? 'Pickups are only available on Tuesday, Thursday, and Saturday.'
-                        : null,
-                    );
-                  }}
-                  className={`w-full sm:w-64 border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow ${
-                    pickupDate && !isPickupDay(pickupDate) ? 'border-red-500' : 'border-brand-border'
-                  }`}
-                />
-                <p className="text-xs text-brand-charcoal-light mt-1">
-                  Pickups are available Tuesday, Thursday, and Saturday — at least 48 hours out.
+                {/* The schedule is stated ABOVE the control, not under it. It
+                    was already written here as small grey text below the input,
+                    where it was read only after something had gone wrong. */}
+                <p className="text-sm text-brand-charcoal mb-2">
+                  Pickups are available <strong>Tuesday, Thursday and Saturday</strong>, at least 48 hours out.
                 </p>
+                <select
+                  value={pickupDate}
+                  onChange={e => { setPickupDate(e.target.value); setAvailError(null); }}
+                  className="w-full sm:w-72 border border-brand-border rounded-lg px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-yellow"
+                >
+                  <option value="">Choose a pickup day…</option>
+                  {pickupDateOptions.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Time preference — preset windows, defaults to "Any time" */}
