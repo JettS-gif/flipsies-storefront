@@ -18,6 +18,35 @@
 //      high-value because the office can arrange third-party shipping
 //      or other options that a self-service checkout can't.
 
+// A 5-digit ZIP, optionally ZIP+4 — but NOT the leading house number.
+//
+// Until 2026-09-04 the only address check here was `length < 10`, while the
+// error string promised city, state and ZIP were required. "10005 Chelsea Park
+// Rd" is 21 characters, so it passed, geocoded ~959 miles away, and point 3
+// above then told a customer 20 minutes from Hoover that she was outside our
+// delivery range — with a mileage attached, which reads as precision the input
+// cannot support. Requiring a ZIP is what makes the address geocodable without
+// splitting this into city/state/ZIP boxes, which would cost leads on a widget
+// built to capture them.
+//
+// The index > 0 test is the whole subtlety: house numbers are often five
+// digits, and the address that prompted this LEADS with one, so a plain
+// /\b\d{5}\b/ accepts exactly what we mean to reject.
+//
+// ⚠️ MIRRORED from DeliverDeskBackEnd/utils/addressValidation.js (separate repo,
+// cannot be imported). Locked there by utils/__tests__/addressValidation.test.js.
+// Change both together.
+function hasUsZip(address: string): boolean {
+  const s = (address || '').trim();
+  if (!s) return false;
+  const re = /\b\d{5}(?:-\d{4})?\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(s)) !== null) {
+    if (m.index > 0) return true;
+  }
+  return false;
+}
+
 import { useState, type FormEvent } from 'react';
 import { api, type LeadCaptureResponse, type AvailableSlot } from '@/lib/api';
 import { trackEvent } from '@/lib/analytics';
@@ -84,7 +113,7 @@ export default function CheckDelivery({
       setError('Please give us at least one way to reach you — an email or a phone number.');
       return;
     }
-    if (trimmedAddress.length < 10) {
+    if (trimmedAddress.length < 10 || !hasUsZip(trimmedAddress)) {
       setError('Please enter a full street address including city, state, and ZIP.');
       return;
     }
@@ -207,7 +236,7 @@ export default function CheckDelivery({
             className="w-full border border-brand-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow"
           />
           <p className="text-xs text-brand-charcoal-light mt-1">
-            We deliver within 50 miles of our Irondale location. Further out? Still enter your address — we&apos;ll follow up.
+            Please include your ZIP so we can place you accurately. We deliver within 50 miles of our Irondale location. Further out? Still enter your address — we&apos;ll follow up.
           </p>
         </div>
 
