@@ -572,9 +572,31 @@ export default async function ShopPage({ searchParams }: Props) {
               <div className="text-4xl mb-4">📦</div>
               <p>{search ? `No products match "${search}".` : 'No products found. Check back soon!'}</p>
               {search && (
-                <Link href="/shop" className="text-brand-yellow-dark hover:underline mt-2 inline-block">
-                  Browse all products
-                </Link>
+                <>
+                  <Link href="/shop" className="text-brand-yellow-dark hover:underline mt-2 inline-block">
+                    Browse all products
+                  </Link>
+                  {/* Not everything typed here is a product. The 2026-09-04 sweep of
+                      zero-result searches turned up "careers", "job openings",
+                      "irondale store" and "store hous"[sic] — people using the
+                      product search as site navigation, because an empty state that
+                      only offers more products has nowhere for them to go. No search
+                      fix can ever answer those; a signpost can. */}
+                  <p className="mt-8 text-sm">
+                    Looking for something other than furniture?{' '}
+                    <Link href="/locations" className="text-brand-yellow-dark hover:underline">
+                      Store hours &amp; locations
+                    </Link>
+                    {' · '}
+                    <Link href="/careers" className="text-brand-yellow-dark hover:underline">
+                      Careers
+                    </Link>
+                    {' · '}
+                    <Link href="/contact" className="text-brand-yellow-dark hover:underline">
+                      Contact us
+                    </Link>
+                  </p>
+                </>
               )}
             </div>
           ) : null}

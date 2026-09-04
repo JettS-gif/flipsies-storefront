@@ -23,6 +23,10 @@ const STATIC_PATHS: { path: string; priority: number; changeFrequency: ChangeFre
   { path: '/financing',  priority: 0.6, changeFrequency: 'monthly' },
   { path: '/about-us',   priority: 0.5, changeFrequency: 'monthly' },
   { path: '/contact',    priority: 0.5, changeFrequency: 'monthly' },
+  // Weekly, not monthly: the page carries JobPosting structured data, and a
+  // stale crawl of an opening we already filled is the one way this page can
+  // waste somebody's time.
+  { path: '/careers',    priority: 0.5, changeFrequency: 'weekly' },
   { path: '/privacy',    priority: 0.2, changeFrequency: 'yearly' },
   { path: '/terms',      priority: 0.2, changeFrequency: 'yearly' },
   { path: '/accessibility', priority: 0.3, changeFrequency: 'yearly' },
