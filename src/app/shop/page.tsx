@@ -302,7 +302,30 @@ export default async function ShopPage({ searchParams }: Props) {
           count, never the did-you-mean substitute's — correcting the words on
           screen must not erase the fact that the shopper's own words found
           nothing. */}
-      {search && <TrackEvent type="search" query={search} resultsCount={count} />}
+      {search && (
+        <TrackEvent
+          type="search"
+          query={search}
+          resultsCount={count}
+          /* The did-you-mean outcome, recorded next to that 0 rather than
+             instead of it. Without this the table cannot tell a term we
+             genuinely do not carry from one the synonym map already answers —
+             and utils/searchSynonyms.js is curated from exactly that table, so
+             the ambiguity feeds back into the map. `shown` is the honest field:
+             a suggestion can exist and still be filtered away above, in which
+             case the shopper saw an empty shelf regardless. */
+          rescue={
+            suggestion?.via
+              ? {
+                  via:   suggestion.via,
+                  term:  suggestion.suggestion,
+                  count: suggestion.count ?? null,
+                  shown: !!suggested,
+                }
+              : null
+          }
+        />
+      )}
 
       {/* Header */}
       <div className="mb-8">

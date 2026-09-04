@@ -93,6 +93,43 @@ describe('searched', () => {
     expect(gaCalls).toHaveLength(0);
     expect(fpCalls).toHaveLength(0);
   });
+
+  // ── the rescue payload ────────────────────────────────────────────────────
+  //
+  // Measured 2026-09-04: 88 of 587 zero-result searches were ALREADY answered
+  // by the curated synonym map and nothing recorded it, so the unmet-demand
+  // list re-reported saves as failures. searchSynonyms.js is curated from that
+  // list, so the noise fed back into the map.
+
+  it('sends NO payload when the did-you-mean layer never fired', () => {
+    // An all-null payload on every ordinary search would bloat the table and
+    // read as "we tried and failed".
+    searched('sofa', 12);
+    expect(fpCalls[0].payload).toBeUndefined();
+  });
+
+  it('records which mechanism rescued a zero-result search', () => {
+    searched('kitchen table', 0,
+      { via: 'synonym', term: 'dining table', count: 89, shown: true });
+    expect(fpCalls[0].results_count).toBe(0);       // still the shopper's own words
+    expect(fpCalls[0].payload).toMatchObject({
+      via: 'synonym', suggested_term: 'dining table', suggested_count: 89, shown: true,
+    });
+  });
+
+  it('distinguishes a rescue the shopper SAW from one their filters removed', () => {
+    // shop/page.tsx only swaps the grid once the re-run survives active filters.
+    // A suggestion that existed but was filtered away is still an empty shelf,
+    // and must not be counted as a save.
+    searched('nightstand', 0,
+      { via: 'synonym', term: 'bedside table', count: 67, shown: false });
+    expect(fpCalls[0].payload).toMatchObject({ shown: false });
+  });
+
+  it('omits the payload when a rescue object carries no via', () => {
+    searched('elephant', 0, { term: null, count: null, shown: false });
+    expect(fpCalls[0].payload).toBeUndefined();
+  });
 });
 
 describe('purchased', () => {
