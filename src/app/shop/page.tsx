@@ -13,6 +13,7 @@ import PackageCards from '@/components/PackageCards';
 import CollectionCards, { type CollectionCard } from '@/components/CollectionCards';
 import { buildCollectionCards, normColl } from '@/lib/collectionCards';
 import TrackEvent from '@/components/TrackEvent';
+import { notFound } from 'next/navigation';
 import { SORTS, buildHref, activeFilterCount, PAGE_SIZE, pageOf, pageCount, type ShopSearchParams } from '@/lib/shopFilters';
 import Pagination from '@/components/Pagination';
 import type { Metadata } from 'next';
@@ -84,6 +85,12 @@ export default async function ShopPage({ searchParams }: Props) {
   let packages: StorefrontPackage[] = [];
   let facets = null;
   let count = 0;
+  // Whether the product query actually answered. The out-of-range guard below
+  // MUST NOT fire on a backend failure: count stays 0 in the catch, which would
+  // make pageCount(0) === 1 and 404 every real page 2+ during a blip — the
+  // opposite of the graceful degradation the rest of this function is built for,
+  // and a fast way to have a crawler drop pages that exist.
+  let loaded = false;
 
   // Room browse groups by collection client-side, so fetch enough to cover a
   // whole room's pieces before the packaged ones are suppressed (no paging yet).
@@ -138,9 +145,42 @@ export default async function ShopPage({ searchParams }: Props) {
     families = famList || [];
     packages = pkgList || [];
     facets = facetRes;
+    loaded = true;
   } catch (e) {
     console.error('Failed to load products:', e);
   }
+
+  // ── Out-of-range pagination is not a page ────────────────────────────────
+  //
+  // Without this, /shop?page=1000000 answered 200 with an empty grid, an
+  // "index, follow" robots tag and a canonical pointing AT ITSELF — i.e. every
+  // integer was a distinct URL that told the crawler it was real, unique
+  // content worth indexing and worth following. That is an infinite crawl
+  // space, and unlike the nine facet params it is not disallowed in robots.txt,
+  // because pagination is deliberately indexable (?page=3 holds 48 products
+  // that appear nowhere else).
+  //
+  // It got walked. 2026-09-04: 50M requests to /shop in 30 days, 78% of all
+  // site traffic, against a 272-URL sitemap; 173K in one 12h window from
+  // meta-webindexer alone at 0% cache-hit. The crawler was not malfunctioning —
+  // it asked for page N, we said "200, real, index me, follow me", so it asked
+  // for N+1. Nothing in the response could have told it to stop.
+  //
+  // /shop/[category] already had this guard (added 2026-08-22 alongside the
+  // facet nofollow); the parent /shop route was missed, which is exactly why
+  // /shop is 50M and /shop/[category] is 3M.
+  //
+  // Room browse (?room=) is bounded at page 1 rather than by pageCount: it
+  // fetches the whole room and renders NO pagination, so every page>1 is the
+  // same page under a different URL.
+  //
+  // NOTE ON STATUS CODE: src/app/shop/loading.tsx makes this segment stream, so
+  // notFound() lands as HTTP 200 carrying <meta name="robots" content=
+  // "noindex"> rather than a true 404 — the same caveat documented on the
+  // category route. noindex stops the space being indexed and re-walked; a true
+  // 404 (the stronger "drop this from your queue" signal) needs a check ahead
+  // of the render, i.e. middleware. Filed as the follow-up.
+  if (loaded && page > 1 && (roomBrowse || page > pageCount(count))) notFound();
 
   // When searching, only surface the family cards that match the query. When a
   // retail filter is on, hide them entirely: the cards are built from the

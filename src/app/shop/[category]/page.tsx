@@ -197,7 +197,17 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   // An out-of-range page is a made-up URL, and leaving it as a 200 would rebuild
   // exactly the unbounded thin-page space the notFound() guard above closed —
   // ?page=9999 is as arbitrary a string as /shop/zzz.
-  if (!isRoom && page > 1 && loose.length === 0) notFound();
+  //
+  // 2026-09-04: this used to read `!isRoom && …`, which left ROOMS unbounded.
+  // A room is not paginated at all — it fetches the whole room (limit 1000) and
+  // renders no <Pagination> — so ?page= is simply ignored, and every integer
+  // rendered the SAME full room page under its own self-canonical, indexable
+  // URL. Verified live before the fix: /shop/sofas?page=99999 correctly said
+  // noindex, while /shop/living-room?page=99999 said "index, follow". Rooms are
+  // the expensive half, too: each of those served the entire room.
+  //
+  // So the bound is now: any page>1 on a room, or an empty page on a category.
+  if (page > 1 && (isRoom || loose.length === 0)) notFound();
 
   const nothingToShow = loose.length === 0 && cards.length === 0 && packages.length === 0;
 
