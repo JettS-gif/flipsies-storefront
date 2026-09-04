@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { StorefrontPackage } from '@/lib/packages';
 import CatalogImage from './CatalogImage';
+import { packageHero } from '@/lib/heroImage';
 
 const money = (n: number) =>
   n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -31,7 +32,10 @@ export default function PackageCards({
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
         {packages.map((p) => {
-          const hero = p.images?.[0] || p.items.find((i) => i.images?.length)?.images?.[0] || null;
+          // Was inlined here, and this was the ONLY one of the three package
+          // surfaces that had a fallback at all — which is why a card could
+          // show a photo and its own detail page could not. Now shared.
+          const hero = packageHero(p);
           return (
             <div
               key={p.id}

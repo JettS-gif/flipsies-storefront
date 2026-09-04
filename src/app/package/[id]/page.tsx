@@ -8,6 +8,7 @@ import AddPackageToCartButton from '@/components/AddPackageToCartButton';
 import { fetchPackage } from '@/lib/packages';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
 import { publicDescription } from '@/lib/publicDescription';
+import { packageImages } from '@/lib/heroImage';
 import CatalogImage from '@/components/CatalogImage';
 
 interface Props {
@@ -43,11 +44,22 @@ export default async function PackagePage({ params }: Props) {
   if (!pkg) notFound();
 
   const url = `${SITE_URL}/package/${pkg.id}`;
-  const hero = pkg.images?.[0] || null;
+  // packageImages, not pkg.images: 26 of 77 published packages carry no images
+  // of their own and 24 of those have a component photo available — for the
+  // Crown Mark bedroom sets that photo IS the styled set shot, attached to the
+  // bed. Before this the card borrowed it and this page did not, so clicking a
+  // package card with a photo landed on a page with none.
+  const shown = packageImages(pkg);
+  const hero = shown[0] || null;
   // 1200 explicitly — same reason as the PDP: the API hands out the 600 bucket,
   // whose short side never reaches the 800px Google recommends for the images it
   // reads out of structured data when it crawls.
-  const absImages = (pkg.images || []).map((u) =>
+  //
+  // Fed from the same list as the hero, deliberately: an imageless package used
+  // to emit Product structured data with an empty image array, which Google
+  // treats as an invalid offer — so these 24 were both blank to a shopper AND
+  // unrankable. Whatever we show a person is what we tell a crawler.
+  const absImages = shown.map((u) =>
     thumb(u.startsWith('http') ? u : `${SITE_URL}${u}`, 1200));
   // Most package descriptions are buying notes carrying our own cost and the
   // vendor's price break — see lib/publicDescription.
