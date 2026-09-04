@@ -79,6 +79,19 @@ export default async function ShopPage({ searchParams }: Props) {
   // still escape to the flat piece grid below.
   const roomBrowse = !!sp.room && !search && !sp.collection && !sp.color_family;
 
+  // Hard ceiling, checked BEFORE any fetch, and the only check that works when
+  // the products query itself rejects the offset — which it does: getProducts
+  // THROWS on an out-of-range offset rather than returning an empty page, so
+  // anything that waits on `count` never runs for exactly the URLs this exists
+  // to stop. Verified live 2026-09-04: the first attempt at this guard sat
+  // behind `loaded` and fired on none of page=70/100/300/1000/99999.
+  //
+  // The catalogue is ~45 pages (real content through page 40, empty by 50), so
+  // 250 is ~5x headroom. Being early also means an absurd page costs no render
+  // and no backend call at all, which is the half that shows up on the bill.
+  const MAX_PAGE = 250;
+  if (page > MAX_PAGE) notFound();
+
   let products: Product[] = [];
   let categories: string[] = [];
   let families: SectionalFamily[] = [];
@@ -180,7 +193,17 @@ export default async function ShopPage({ searchParams }: Props) {
   // category route. noindex stops the space being indexed and re-walked; a true
   // 404 (the stronger "drop this from your queue" signal) needs a check ahead
   // of the render, i.e. middleware. Filed as the follow-up.
-  if (loaded && page > 1 && (roomBrowse || page > pageCount(count))) notFound();
+  //
+  // Three ways to know a page is past the end, in descending confidence. The
+  // third matters because getProducts THROWS on an out-of-range offset, so
+  // `loaded` is false for most of the band this guard covers — and an outage
+  // and a refused offset are not the same thing. `categories` comes from a
+  // sibling call that carries its own .catch fallback, so a non-empty list
+  // proves the backend answered and it was this OFFSET it rejected. In a real
+  // outage every sibling falls back too, categories is empty, and we degrade
+  // to rendering instead of 404-ing pages that exist.
+  const pastEnd = loaded ? page > pageCount(count) : categories.length > 0;
+  if (page > 1 && (roomBrowse || pastEnd)) notFound();
 
   // When searching, only surface the family cards that match the query. When a
   // retail filter is on, hide them entirely: the cards are built from the
