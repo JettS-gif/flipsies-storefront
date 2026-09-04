@@ -1,4 +1,5 @@
-import { api, type Product } from '@/lib/api';
+import { fetchAllProducts } from '@/lib/allProducts';
+import { api } from '@/lib/api';
 import { buildLocalFeed, type ShowroomInventoryRow } from '@/lib/localFeed';
 import { isFeedEligible } from '@/lib/productFeed';
 
@@ -8,8 +9,6 @@ import { isFeedEligible } from '@/lib/productFeed';
 export const revalidate = 900;
 export const dynamic = 'force-static';
 
-const PAGE = 200;
-const MAX_PRODUCTS = 50000;
 
 /**
  * The ids the ONLINE feed publishes.
@@ -20,13 +19,12 @@ const MAX_PRODUCTS = 50000;
  * publishable.
  */
 async function eligibleProductIds(): Promise<Set<string>> {
+  // Paging lives in @/lib/allProducts — the local copy asked for 200, got the
+  // server's clamped 100, and treated that as the last page. This feed carried
+  // 39 rows from 2026-08-19 until 2026-09-04.
   const ids = new Set<string>();
-  let offset = 0;
-  for (;;) {
-    const { data } = await api.getProducts({ limit: PAGE, offset, include_never_stock: 1 });
-    for (const p of data as Product[]) if (isFeedEligible(p)) ids.add(p.id);
-    if (data.length < PAGE || ids.size >= MAX_PRODUCTS) break;
-    offset += PAGE;
+  for (const p of await fetchAllProducts({ include_never_stock: 1 })) {
+    if (isFeedEligible(p)) ids.add(p.id);
   }
   return ids;
 }

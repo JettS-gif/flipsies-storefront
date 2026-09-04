@@ -1,3 +1,4 @@
+import { fetchAllProducts } from '@/lib/allProducts';
 import type { MetadataRoute } from 'next';
 import { api } from '@/lib/api';
 import { SITE_URL, SHOWROOMS } from '@/lib/site';
@@ -91,29 +92,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Categories endpoint down — ship the rest of the sitemap anyway.
   }
 
-  // Every published product. Page until a short page arrives — don't trust
-  // the estimated count for termination (it can run high or low). Hard cap
-  // at the 50k Sitemaps limit as a backstop.
+  // Every published product.
   try {
-    const PAGE = 200;
-    let offset = 0;
-    for (;;) {
-      const { data } = await api.getProducts({ limit: PAGE, offset });
-      for (const p of data) {
-        // An imageless PDP cannot convert and cannot rank, so submitting it
-        // just spends crawl budget on a page we'd rather Google didn't judge
-        // us by. It stays live and searchable — this only withdraws the
-        // invitation, and each product re-enters the moment a photo lands.
-        if (!p.images?.length && !p.image_url) continue;
-        entries.push({
-          url: `${SITE_URL}/product/${p.id}`,
-          lastModified: now,
-          changeFrequency: 'weekly',
-          priority: 0.6,
-        });
-      }
-      if (data.length < PAGE || offset >= 50000) break;
-      offset += PAGE;
+    // Paging lives in @/lib/allProducts. The loop that used to be here asked
+    // for 200 and treated a short page as the end — so from 2026-08-19, when
+    // the backend began clamping limit to 100, it stopped after ONE page. This
+    // sitemap offered Google 94 product URLs out of 3,020 published products
+    // for two and a half weeks, and nothing errored.
+    for (const p of await fetchAllProducts()) {
+      // An imageless PDP cannot convert and cannot rank, so submitting it
+      // just spends crawl budget on a page we'd rather Google didn't judge
+      // us by. It stays live and searchable — this only withdraws the
+      // invitation, and each product re-enters the moment a photo lands.
+      if (!p.images?.length && !p.image_url) continue;
+      entries.push({
+        url: `${SITE_URL}/product/${p.id}`,
+        lastModified: now,
+        changeFrequency: 'weekly',
+        priority: 0.6,
+      });
     }
   } catch {
     // Products endpoint down — ship the static + category entries.

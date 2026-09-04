@@ -1,4 +1,4 @@
-import { api, type Product } from '@/lib/api';
+import { fetchAllProducts } from '@/lib/allProducts';
 import { buildFeed } from '@/lib/productFeed';
 
 // 15 minutes, because that is the cadence OpenAI accepts feed updates at — a
@@ -8,31 +8,18 @@ import { buildFeed } from '@/lib/productFeed';
 export const revalidate = 900;
 export const dynamic = 'force-static';
 
-// Matches sitemap.ts. The estimated count runs high and low, so pages until a
-// short page arrives rather than trusting it.
-const PAGE = 200;
-const MAX_PRODUCTS = 50000;
-
-async function allProducts(): Promise<Product[]> {
-  const out: Product[] = [];
-  let offset = 0;
-  for (;;) {
-    // include_never_stock: the default browse deliberately hides special-order
-    // items with nothing on hand and nothing on order, because they pollute a
-    // wall of tiles. A feed is a catalog manifest, not a browse grid, and that
-    // rule was silently withholding 281 priced, imaged, buyable products from
-    // every shopping surface while their PDPs stayed live. They list honestly
-    // as `backorder`.
-    const { data } = await api.getProducts({ limit: PAGE, offset, include_never_stock: 1 });
-    out.push(...data);
-    if (data.length < PAGE || out.length >= MAX_PRODUCTS) break;
-    offset += PAGE;
-  }
-  return out;
-}
-
+// Paging lives in @/lib/allProducts. It used to be a local loop that asked for
+// 200 and treated a short page as the end — which stopped after ONE page from
+// 2026-08-19, when the backend began clamping limit to 100. This feed served 94
+// products instead of ~2,478 for two and a half weeks without erroring.
+//
+// include_never_stock: the default browse deliberately hides special-order
+// items with nothing on hand and nothing on order, because they pollute a wall
+// of tiles. A feed is a catalog manifest, not a browse grid, and that rule was
+// silently withholding 281 priced, imaged, buyable products from every shopping
+// surface while their PDPs stayed live. They list honestly as `backorder`.
 export async function GET() {
-  const products = await allProducts();
+  const products = await fetchAllProducts({ include_never_stock: 1 });
   const body = buildFeed(products);
 
   return new Response(body, {
