@@ -88,6 +88,26 @@ export default function PrivacyPage() {
           </p>
         </section>
 
+        {/* Added 2026-09-04 with the /careers form. The policy described a
+            SHOPPER's data only, and we now collect a second, unrelated kind from
+            people who may never buy anything — saying so is the whole job of
+            this page. */}
+        <section>
+          <h2 className="text-lg font-semibold text-brand-charcoal mt-8 mb-2">Job Applications</h2>
+          <p>
+            If you apply for a job through our careers page, we collect your
+            name, the contact details you give us, the position you applied
+            for, and anything you choose to write in the message box. We use it
+            to consider you for the role and to get back to you — nothing else.
+          </p>
+          <p className="mt-2">
+            Applications are never added to any marketing list, and are kept
+            separately from customer records. Only management can see them. You
+            can ask us to delete your application at any time using the contact
+            details below, and we will.
+          </p>
+        </section>
+
         <section>
           <h2 className="text-lg font-semibold text-brand-charcoal mt-8 mb-2">How Long We Keep It</h2>
           <p>

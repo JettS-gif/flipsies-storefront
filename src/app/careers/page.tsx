@@ -19,6 +19,7 @@
 
 import Link from 'next/link';
 import JsonLd from '@/components/JsonLd';
+import JobApplicationForm from '@/components/JobApplicationForm';
 import {
   pageMetadata, SHOWROOMS, HOURS_DISPLAY, STORE_EMAIL, SITE_URL, SITE_NAME,
 } from '@/lib/site';
@@ -120,16 +121,19 @@ const ROLES: Role[] = [
 //
 // Only fields we can state truthfully. No baseSalary and no employmentType:
 // both are RECOMMENDED rather than required, and a guessed salary range on a
-// real job posting is a lie with legal edges on it. `directApply` is false
-// because there is no form here — saying otherwise sends Google's crawler
-// looking for one.
+// real job posting is a lie with legal edges on it.
+//
+// `directApply` became TRUE when the form landed the same day. It is a claim
+// Google checks — it means "a candidate can complete an application on this
+// page without being sent elsewhere" — and it was correctly false for the few
+// hours this page carried only an email address.
 const jobsLd = ROLES.map((r) => ({
   '@context': 'https://schema.org',
   '@type': 'JobPosting',
   title: r.title,
   description: `${r.blurb} Responsibilities: ${r.duties.join('; ')}.`,
   datePosted: POSTED,
-  directApply: false,
+  directApply: true,
   hiringOrganization: {
     '@type': 'Organization',
     name: SITE_NAME,
@@ -181,18 +185,35 @@ export default function CareersPage() {
                 <li key={d} className="leading-relaxed">{d}</li>
               ))}
             </ul>
+            {/* A plain in-page anchor, so it works before hydration and needs no
+                JavaScript at all. It does not preselect the dropdown — see the
+                header of JobApplicationForm for why that costs more than it is
+                worth on a static page. */}
+            <a
+              href="#apply"
+              className="mt-4 self-start text-sm font-semibold text-brand-charcoal hover:underline"
+            >
+              Apply for this role →
+            </a>
           </div>
         ))}
+      </div>
+
+      {/* The form. Email, phone and walking in stay on the page below it — the
+          crew roles in particular get filled by someone who will never fill in a
+          web form, and hiding the phone number narrows the funnel. */}
+      <div className="mb-16">
+        <JobApplicationForm roles={ROLES.map((r) => ({ slug: r.slug, title: r.title }))} />
       </div>
 
       {/* How to apply */}
       <div className="bg-brand-charcoal text-white rounded-2xl p-8 sm:p-12 mb-16">
         <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-2xl font-bold mb-4">How to Apply</h2>
+          <h2 className="text-2xl font-bold mb-4">Prefer Not to Use the Form?</h2>
           <p className="text-gray-400 mb-8 leading-relaxed">
-            There is no online form and no account to create. Email us, call a showroom, or
-            simply come by during opening hours and ask for a manager — tell us which role
-            you are interested in and a bit about yourself.
+            Then don&apos;t. Email us, call a showroom, or simply come by during opening hours and
+            ask for a manager — tell us which role you are interested in and a bit about yourself.
+            It carries exactly the same weight as the form above.
           </p>
           <a
             href={`mailto:${STORE_EMAIL}?subject=${encodeURIComponent('Job application')}`}

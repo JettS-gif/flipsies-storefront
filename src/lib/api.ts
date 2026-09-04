@@ -539,6 +539,32 @@ export const api = {
    * UTM params are read from the URL by the caller rather than here: this
    * module is imported by server components, where there is no location to read.
    */
+  /**
+   * Job application from /careers.
+   *
+   * NOT a marketing signup and NOT a lead: it writes to job_applications, a
+   * separate table, precisely so nobody who asked about a warehouse job ever
+   * receives a sofa promotion.
+   *
+   * `company` is the honeypot — hidden from people, irresistible to naive bots.
+   * It is always sent (empty) so the shape of a real submission and a bot's are
+   * identical on the wire.
+   */
+  applyForJob: (payload: {
+    name: string;
+    role_slug: string;
+    phone?: string;
+    email?: string;
+    message?: string;
+    company?: string;
+  }) =>
+    request<{ ok: true; application_id?: string; duplicate?: boolean; message?: string }>(
+      'POST',
+      '/storefront/apply',
+      { company: '', ...payload, ...browserAttribution() },
+      { cache: 'no-store' },
+    ),
+
   subscribe: (payload: {
     email: string;
     name?: string;
