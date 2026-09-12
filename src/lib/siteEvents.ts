@@ -27,13 +27,22 @@ const UTM_KEY = 'fs_utm';
 const VISITOR_DAYS = 365;
 const SESSION_MINUTES = 30;
 
+// Mirrors ck_site_events_type and DeliverDeskBackEnd utils/siteEvents.js
+// EVENT_TYPES. A type this union allows but the CHECK does not is refused
+// per-row at insert and only shows up as a panel that under-reports.
 export type SiteEventType =
   | 'page_view'
   | 'product_view'
   | 'search'
   | 'add_to_cart'
   | 'begin_checkout'
-  | 'purchase';
+  | 'purchase'
+  // 2026-09-12. Every other capture point is transactional — delivery quote,
+  // cart, checkout, footer signup — so the funnel could see "wants a quote" and
+  // "began a checkout" but was blind to "has a question and is about to call".
+  // Measured over 90 days: 53 visitors reached /contact, ONE produced a lead by
+  // any route. A view says they looked at the number; this says they dialled it.
+  | 'contact_click';
 
 export interface SiteEventInput {
   event_type: SiteEventType;
