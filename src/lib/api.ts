@@ -557,8 +557,19 @@ export const api = {
     email?: string;
     message?: string;
     company?: string;
+    form_version?: number;
+    start_date?: string;
+    available_days?: string[];
+    hours_wanted?: string;
+    showroom?: string;
+    screening?: Record<string, boolean>;
+    first_job?: boolean;
+    work_history?: { employer: string; title: string; dates: string; reason_left?: string }[];
+    /** base64 data URL — the server decides the type from the bytes. */
+    resume?: string;
+    resume_name?: string;
   }) =>
-    request<{ ok: true; application_id?: string; duplicate?: boolean; message?: string }>(
+    request<{ ok: true; application_id?: string; duplicate?: boolean; resume_uploaded?: boolean; message?: string }>(
       'POST',
       '/storefront/apply',
       { company: '', ...payload, ...browserAttribution() },
