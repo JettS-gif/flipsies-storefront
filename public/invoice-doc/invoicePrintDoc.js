@@ -166,7 +166,7 @@ export function buildInvoicePrintHtml(inv) {
   const PRINT_PAY_LABELS = {
     cash: 'Cash', check: 'Check', credit_card: 'Credit Card', paypal: 'PayPal',
     zelle: 'Zelle', synchrony: 'Synchrony', progressive: 'Progressive Leasing',
-    '1st_franklin': '1st Franklin', store_credit: 'Store Credit',
+    '1st_franklin': '1st Franklin', acima: 'Acima', kafene: 'Kafene', store_credit: 'Store Credit',
   };
   const payments = Array.isArray(inv.payments) ? inv.payments : [];
   const paymentsBlock = (!isQuote && payments.length)
