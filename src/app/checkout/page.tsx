@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCart, type CartItem } from '@/context/CartContext';
 import { canContinueFulfillment } from '@/lib/checkoutReadiness';
 import { leadSignature, shouldSendLead } from '@/lib/checkoutLead';
-import { addDaysCT, weekdayCT } from '@/lib/ct';
+import { addDaysCT } from '@/lib/ct';
 import { trackEvent } from '@/lib/analytics';
 import { visitorId, track } from '@/lib/siteEvents';
 import { purchased } from '@/lib/events';
@@ -247,19 +247,12 @@ export default function CheckoutPage() {
   // answer again. The store's calendar is the only one that matters here.
   const minPickupDate = addDaysCT(2);
 
-  // Pickups run only Tuesday / Thursday / Saturday. 0=Sun … 6=Sat.
-  const PICKUP_DAYS = [2, 4, 6];
-
-  // Uses weekdayCT rather than a local `new Date(ds + 'T12:00:00').getDay()`.
-  // That form is anchored at noon in the SHOPPER's zone and read back with
-  // getDay(), so it answers with the shopper's weekday — the same defect the
-  // minPickupDate comment above describes, which made valid pickup days
-  // silently unavailable to anyone outside Central. weekdayCT anchors at noon
-  // UTC and reads getUTCDay(), so the store's calendar is the only one asked.
-  function isPickupDay(ds: string): boolean {
-    const w = weekdayCT(ds);
-    return w !== null && PICKUP_DAYS.includes(w);
-  }
+  // No weekday rule. Pickups ran only Tue/Thu/Sat from 2026-07-04 until the
+  // backend dropped it on 2026-08-23 (818d4a4, "pickups book on any open day
+  // again"). That change missed this repo, so the website kept offering three
+  // days a week for three weeks while the store booked any day. Both
+  // showrooms are open seven days, so the 48h floor is the only rule, and the
+  // server enforces it (utils/storefrontOrder/slotGuards.js).
 
   /**
    * The dates a shopper may actually choose.
@@ -275,17 +268,15 @@ export default function CheckoutPage() {
    * 48h rule was the browser's own `min` bubble, which says "value must be
    * greater than…" and explains nothing.
    *
-   * So the picker becomes a list of valid dates instead. Sunday, Monday,
-   * Wednesday and Friday are not rejected — they are never offered, and neither
-   * is anything inside 48 hours. There is no invalid choice left to warn about.
+   * So the picker becomes a list of valid dates instead. Nothing inside 48
+   * hours is offered, so there is no invalid choice left to warn about.
    */
   const pickupDateOptions = useMemo(() => {
     const out: { value: string; label: string }[] = [];
-    // 28 days scanned yields ~12 pickup dates — plenty of choice without an
-    // endless list. Starts at the 48h floor, so the first option is already legal.
-    for (let i = 0; out.length < 12 && i < 28; i++) {
+    // Two weeks of days: plenty of choice without an endless list. Starts at
+    // the 48h floor, so the first option is already legal.
+    for (let i = 0; i < 14; i++) {
       const ds = addDaysCT(2 + i);
-      if (!isPickupDay(ds)) continue;
       out.push({
         value: ds,
         // Noon-UTC anchored and formatted in UTC for the same reason the
@@ -527,12 +518,6 @@ export default function CheckoutPage() {
       // could still submit an invalid date. The backend re-checks too.
       if (pickupDate < minPickupDate) {
         setAvailError('Pickup must be scheduled at least 48 hours in advance.');
-        return;
-      }
-      // Pickups run only Tue / Thu / Sat. The backend re-checks (422), this is
-      // the friendly client-side guard.
-      if (!isPickupDay(pickupDate)) {
-        setAvailError('Pickups are only available on Tuesday, Thursday, and Saturday.');
         return;
       }
     }
@@ -1177,10 +1162,9 @@ export default function CheckoutPage() {
 
               {/* Date picker — only legal dates are offered, so there is no
                   invalid choice to reject. Replaced <input type="date"> on
-                  2026-09-04: a native date field cannot grey out weekdays, so
-                  Sun/Mon/Wed/Fri all looked bookable, and the only feedback for
-                  the 48h rule was the browser's own "value must be greater
-                  than…" bubble, which names no rule at all. */}
+                  2026-09-04, when the only feedback for the 48h rule was the
+                  browser's own "value must be greater than…" bubble, which
+                  names no rule at all. */}
               <div>
                 <label className="block text-sm font-medium text-brand-charcoal mb-1">
                   Pickup date <span className="text-red-500">*</span>
@@ -1189,7 +1173,7 @@ export default function CheckoutPage() {
                     was already written here as small grey text below the input,
                     where it was read only after something had gone wrong. */}
                 <p className="text-sm text-brand-charcoal mb-2">
-                  Pickups are available <strong>Tuesday, Thursday and Saturday</strong>, at least 48 hours out.
+                  Pick up <strong>any day</strong>, at least 48 hours out.
                 </p>
                 <select
                   value={pickupDate}
