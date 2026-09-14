@@ -407,7 +407,9 @@ export default function JobApplicationForm({ roles }: { roles: FormRole[] }) {
           <input id="resume" type="file" accept={RESUME_ACCEPT}
             onChange={(e) => pickResume(e.target.files?.[0] || null)}
             className="block w-full text-sm text-brand-charcoal file:mr-3 file:rounded-lg file:border-0 file:bg-brand-charcoal file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white" />
-          <p className="mt-1 text-xs text-brand-charcoal-light">PDF, Word, or a photo of it (JPG or PNG), up to 5 MB.</p>
+          <p className="mt-1 text-xs text-brand-charcoal-light">
+            PDF, Word, or a photo of it (JPG or PNG), up to 5 MB. We delete resumes 30 days after you apply.
+          </p>
         </div>
 
         <div className="sm:col-span-2">

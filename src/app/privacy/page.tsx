@@ -6,7 +6,7 @@ export const metadata = pageMetadata({
   path: '/privacy',
 });
 
-const LAST_UPDATED = 'June 4, 2026';
+const LAST_UPDATED = 'September 14, 2026';
 const STORE_EMAIL  = 'jett@flipsiesfurniture.com';
 const STORE_PHONE  = '(205) 238-5076';
 const STORE_ADDR   = '1811 Crestwood Blvd, Irondale, AL 35210';
@@ -97,8 +97,16 @@ export default function PrivacyPage() {
           <p>
             If you apply for a job through our careers page, we collect your
             name, the contact details you give us, the position you applied
-            for, and anything you choose to write in the message box. We use it
-            to consider you for the role and to get back to you — nothing else.
+            for, your availability, your answers to the yes-or-no questions for
+            that position, the work history you enter, and anything you choose
+            to write in the message box — plus your resume, if you attach one.
+            We use it to consider you for the role and to get back to you —
+            nothing else.
+          </p>
+          <p className="mt-2">
+            If you attach a resume, we delete the file 30 days after you apply.
+            The rest of your application is kept so we have a record that you
+            applied and what we decided.
           </p>
           <p className="mt-2">
             Applications are never added to any marketing list, and are kept
