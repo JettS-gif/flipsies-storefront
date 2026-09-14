@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart, type CartItem } from '@/context/CartContext';
 import { canContinueFulfillment } from '@/lib/checkoutReadiness';
+import { leadSignature, shouldSendLead } from '@/lib/checkoutLead';
 import { addDaysCT, weekdayCT } from '@/lib/ct';
 import { trackEvent } from '@/lib/analytics';
 import { visitorId, track } from '@/lib/siteEvents';
@@ -164,8 +165,8 @@ export default function CheckoutPage() {
   const { items, subtotal, clearCart, itemCount } = useCart();
 
   const [step, setStep] = useState(0);
-  // Fire-once guard for the abandoned-checkout lead — see handleInfoSubmit.
-  const leadCaptured = useRef(false);
+  // What the last abandoned-checkout lead send carried — see captureLead.
+  const leadSent = useRef<string | null>(null);
 
   // Customer info
   const [name, setName] = useState('');
@@ -446,27 +447,23 @@ export default function CheckoutPage() {
     // the money path: a lost lead costs a phone call, a blocked checkout costs
     // the sale. Nothing below may delay setStep.
     //
-    // Guarded by a ref rather than by step, because going Back and forward
-    // again is the same lead — the server upserts too, but not firing twice is
-    // cheaper than relying on it.
-    captureLeadOnce();
+    // Going Back and forward again is the same lead; captureLead only sends
+    // when something is new, and the server upserts on email regardless.
+    captureLead();
     setStep(1);
   }
 
   /**
-   * Send the abandoned-checkout lead, at most once.
+   * Send the abandoned-checkout lead whenever it has something NEW to carry.
    *
-   * Called from BOTH the Continue handler and the email field's onBlur, and the
-   * blur is the one that matters. Firing only on submit meant we captured
-   * nobody who typed their address in and then hesitated — measured 2026-08-06:
-   * three shoppers reached checkout after this shipped, two left without a
-   * trace, and one of those had already reached checkout twice on a Shari
-   * table set. A finished email field is intent; a clicked button is a
-   * different, later thing.
-   *
-   * The ref makes it idempotent, so blur-then-submit, or tabbing back and
-   * forth, still sends one lead. The server upserts too, but not firing twice
-   * is cheaper than relying on it.
+   * Called from the Continue handler and from leaving the email AND phone
+   * fields. Firing only on submit meant we captured nobody who typed their
+   * address in and then hesitated (measured 2026-08-06), so the email blur
+   * stays. But firing ONCE on that blur shipped every lead without a phone —
+   * phone comes after email on this form — and the one-shot guard then blocked
+   * the send that had one: 25 of 36 checkout leads carried no phone, including
+   * Kyle Knudson's on 2026-09-14. src/lib/checkoutLead.ts decides; the rule is
+   * unit-tested there.
    *
    * NOT a marketing signup. Reaching checkout is not consent to be marketed to
    * — that is what /storefront/subscribe and marketing_status are for. This
@@ -475,14 +472,12 @@ export default function CheckoutPage() {
    * Fire-and-forget and swallows everything: this is the money path, and a lost
    * lead costs a phone call while a blocked checkout costs the sale.
    */
-  function captureLeadOnce() {
-    const trimmed = email.trim();
-    // A half-typed address is worse than none — it cannot be contacted and it
-    // burns the one-shot ref. Require something that at least looks deliverable.
-    if (leadCaptured.current || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return;
-    leadCaptured.current = true;
+  function captureLead() {
+    const next = leadSignature(email, phone);
+    if (!shouldSendLead(leadSent.current, next)) return;
+    leadSent.current = next;
     api
-      .captureCheckoutLead({ name: name.trim() || undefined, email: trimmed, phone: phone.trim() || undefined })
+      .captureCheckoutLead({ name: name.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined })
       .catch(() => { /* fire-and-forget — never surface, never block */ });
   }
 
@@ -786,7 +781,7 @@ export default function CheckoutPage() {
               // Capture the moment they finish the field, not when they click
               // Continue. Someone who types their email and then stalls on the
               // delivery step is exactly the lead we were losing.
-              onBlur={captureLeadOnce}
+              onBlur={captureLead}
               className="w-full border border-brand-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow"
               placeholder="john@example.com"
             />
@@ -797,6 +792,9 @@ export default function CheckoutPage() {
               type="tel"
               value={phone}
               onChange={e => setPhone(e.target.value)}
+              // The email blur already sent the lead, without this. Resend now
+              // so the office gets a number to call (see captureLead).
+              onBlur={captureLead}
               className="w-full border border-brand-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-yellow"
               placeholder="(205) 555-0123"
             />
