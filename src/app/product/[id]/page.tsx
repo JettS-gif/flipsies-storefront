@@ -356,7 +356,7 @@ export default async function ProductPage({ params }: Props) {
           </div>
 
           <FitCheck dimensions={p.dimensions} />
-          <TrustBlock />
+          <TrustBlock inStock={inStock} />
 
         </div>
       </div>

@@ -25,10 +25,9 @@ interface Props {
    */
   className?: string;
   /**
-   * Trigger text. Defaults to the hero's wording so existing call sites are
-   * unchanged. The product-page trust block overrides it to mention PRICING:
-   * that block no longer prints a delivery figure (see TRUST_POINTS), so the
-   * label is what tells a shopper delivery is priced at all rather than free.
+   * Trigger text. Defaults to the hero's wording. (The product page used to
+   * override it with "…& pricing"; that placement was removed 2026-09-15 —
+   * delivery is priced at checkout's fulfilment step, not on a product page.)
    */
   label?: string;
 }

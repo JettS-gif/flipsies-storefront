@@ -228,14 +228,23 @@ export const DELIVERY = {
  * 50 miles — past that the real number climbs to $400, so the one shopper most
  * misled by a from-price was the one furthest away.
  *
- * The lines now say delivery is available and pickup is free, and the CTA under
- * them sends anyone who wants a number to the availability checker, which
- * quotes their actual address. Stating that delivery HAS pricing (via the CTA
- * label) is what keeps this honest without printing a figure — see
- * DELIVERY.includedInProductPrice for why that matters here.
+ * The lines say delivery is available and pickup is free. Stating that delivery
+ * HAS pricing is what keeps this honest without printing a figure — see
+ * DELIVERY.includedInProductPrice for why that matters here. That used to be
+ * the label of a "Check delivery availability & pricing" CTA under the list;
+ * 2026-09-15 the CTA came off the product page (Jett: delivery pricing belongs
+ * at checkout's fulfilment step, and on a made-to-order page it quoted a
+ * delivery we could not schedule), so the delivery line now says it itself.
+ *
+ * The delivery line has two forms: the two-day promise is true only of stock
+ * on hand, and a made-to-order page already states its own wait.
  */
 export const TRUST_POINTS = [
-  { icon: '🚚', text: `White-glove in-home delivery in ${DELIVERY.inStockBusinessDays} business days — in-stock items` },
+  {
+    icon: '🚚',
+    text: `White-glove in-home delivery in ${DELIVERY.inStockBusinessDays} business days — priced at checkout`,
+    textNotInStock: 'White-glove in-home delivery once it arrives — priced at checkout',
+  },
   { icon: '🏬', text: 'Warehouse pickup — available free' },
   { icon: '🏷', text: `Price match — any competitor within ${PRICE_MATCH.radiusMiles} miles, ${PRICE_MATCH.withinDays} days` },
   { icon: '🔁', text: `Arrived damaged? Swapped within ${RETURNS.defectiveSwapHours} hours` },

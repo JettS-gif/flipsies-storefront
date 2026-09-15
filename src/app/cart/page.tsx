@@ -25,7 +25,7 @@ export default function CartPage() {
 
   // Rule lives in src/lib/cartAvailability.ts so it is unit-tested — same
   // reason checkoutReadiness.ts is not inline here.
-  const { inStockLines, mixed: mixedCart, longestLead } = summarizeCartAvailability(items);
+  const { inStockLines, madeToOrderLines, mixed: mixedCart, longestLead } = summarizeCartAvailability(items);
 
   if (items.length === 0) {
     return (
@@ -213,12 +213,23 @@ export default function CartPage() {
           checkout twice.
 
           A distinct `source` so this placement can be judged on its own
-          numbers rather than blurred into the home-page total. */}
+          numbers rather than blurred into the home-page total.
+
+          The dates and prices it shows are for stock on hand. A made-to-order
+          piece cannot be scheduled until it arrives, so with one in the cart
+          the box says so (Jett, 2026-09-15: "something saying this applies to
+          in stock items only") rather than letting the dates read as the whole
+          order's. */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <CheckDelivery
           source="cart"
           heading="Can we deliver this to you?"
-          blurb="Enter your address and we'll show you delivery dates and pricing for this cart. Further out? We'll quote it rather than turn you away."
+          blurb={
+            "Enter your address and we'll show you delivery dates and pricing for this cart. Further out? We'll quote it rather than turn you away."
+            + (madeToOrderLines > 0
+              ? ` Dates and pricing shown apply to in-stock items only — made-to-order pieces are scheduled once they arrive${longestLead ? ` (about ${longestLead})` : ''}.`
+              : '')
+          }
         />
       </div>
     </div>
