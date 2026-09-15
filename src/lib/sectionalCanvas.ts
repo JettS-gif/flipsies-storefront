@@ -159,9 +159,13 @@ export function computeFootprint(
   defsById: Record<string, PieceDef>,
   unit: number,
 ): Footprint {
+  // Longest chain of real lengths per axis. Mirrors DeliverDeskFrontEnd
+  // src/sectional/dims.js, where the reasoning lives: the old per-square model
+  // assumed every grid square is the same number of inches, so an L whose pieces
+  // differ (Tori: 63/2, 25/1, 104/3) read 132 x 113 instead of 132 x 104.
   if (!placed || !placed.length) return { w: 0, d: 0, h: 0, complete: true, missing: 0 };
-  const colW: Record<number, number> = {};
-  const rowD: Record<number, number> = {};
+  const xEdges: Edge[] = [];
+  const yEdges: Edge[] = [];
   let maxH = 0, missing = 0, counted = 0;
 
   for (const pi of placed) {
@@ -179,19 +183,38 @@ export function computeFootprint(
 
     const col0 = Math.round((pi.x / unit) * 2);
     const row0 = Math.round((pi.y / unit) * 2);
-    const spanC = Math.max(1, Math.round(gridW * 2));
-    const spanR = Math.max(1, Math.round(gridH * 2));
-    const perC = realX / spanC;
-    const perR = realY / spanR;
-    for (let c = col0; c < col0 + spanC; c++) colW[c] = Math.max(colW[c] || 0, perC);
-    for (let r = row0; r < row0 + spanR; r++) rowD[r] = Math.max(rowD[r] || 0, perR);
+    xEdges.push({ from: col0, to: col0 + Math.max(1, Math.round(gridW * 2)), len: realX });
+    yEdges.push({ from: row0, to: row0 + Math.max(1, Math.round(gridH * 2)), len: realY });
 
     if (real.h != null) maxH = Math.max(maxH, real.h);
   }
 
-  const w = Object.values(colW).reduce((a, b) => a + b, 0);
-  const d = Object.values(rowD).reduce((a, b) => a + b, 0);
-  return { w: Math.round(w), d: Math.round(d), h: Math.round(maxH), complete: missing === 0 && counted > 0, missing };
+  return {
+    w: Math.round(longestChain(xEdges)),
+    d: Math.round(longestChain(yEdges)),
+    h: Math.round(maxH),
+    complete: missing === 0 && counted > 0,
+    missing,
+  };
+}
+
+type Edge = { from: number; to: number; len: number };
+
+// Longest path lowest edge → highest; a piece is an edge weighted by its real
+// length, an uncovered stretch between edges costs 0.
+function longestChain(edges: Edge[]): number {
+  if (!edges.length) return 0;
+  const nodes = [...new Set(edges.flatMap((e) => [e.from, e.to]))].sort((a, b) => a - b);
+  const dist = new Map<number, number>(nodes.map((n) => [n, 0]));
+  const out = new Map<number, Edge[]>(nodes.map((n) => [n, []]));
+  for (const e of edges) out.get(e.from)!.push(e);
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i];
+    const here = dist.get(n)!;
+    if (i + 1 < nodes.length) dist.set(nodes[i + 1], Math.max(dist.get(nodes[i + 1])!, here));
+    for (const e of out.get(n)!) dist.set(e.to, Math.max(dist.get(e.to)!, here + e.len));
+  }
+  return dist.get(nodes[nodes.length - 1])!;
 }
 
 export function formatFootprint(fp: Footprint | null): string {
