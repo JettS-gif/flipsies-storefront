@@ -50,7 +50,7 @@ export default function Footer() {
             <ul className="space-y-2.5">
               {/* The href is derived from the label, so a new entry only works if
                   its slug matches the route: 'Careers' -> /careers. */}
-              {['About Us', 'Careers', 'Locations', 'Financing', 'Delivery', 'Returns', 'Contact', 'Track Order'].map(item => (
+              {['About Us', 'Careers', 'Locations', 'Financing', 'Layaway', 'Delivery', 'Returns', 'Contact', 'Track Order'].map(item => (
                 <li key={item}>
                   <Link href={`/${item.toLowerCase().replace(/\s+/g, '-')}`}
                     className="text-sm text-gray-400 hover:text-brand-yellow transition-colors">

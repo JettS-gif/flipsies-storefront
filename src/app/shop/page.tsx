@@ -427,6 +427,18 @@ export default async function ShopPage({ searchParams }: Props) {
             )}
           </p>
         )}
+        {/* "do you take layaways" returned a blank page (2026-09-12). A policy
+            question has no product answer, so point it at the page that has one
+            — whether or not the fallback search found products. */}
+        {search && /lay[\s-]?aways?/i.test(search) && (
+          <p className="mt-2 text-sm text-brand-charcoal">
+            Yes, we offer layaway &mdash;{' '}
+            <Link href="/layaway" className="font-semibold text-brand-yellow-dark hover:underline">
+              here&rsquo;s how to get started
+            </Link>
+            .
+          </p>
+        )}
         {search && (
           <Link href="/shop" className="text-sm text-brand-yellow-dark hover:underline mt-2 inline-block">
             Clear search

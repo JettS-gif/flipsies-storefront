@@ -22,6 +22,7 @@ const STATIC_PATHS: { path: string; priority: number; changeFrequency: ChangeFre
   { path: '/delivery',   priority: 0.6, changeFrequency: 'monthly' },
   { path: '/returns',    priority: 0.6, changeFrequency: 'monthly' },
   { path: '/financing',  priority: 0.6, changeFrequency: 'monthly' },
+  { path: '/layaway',    priority: 0.6, changeFrequency: 'monthly' },
   { path: '/about-us',   priority: 0.5, changeFrequency: 'monthly' },
   { path: '/contact',    priority: 0.5, changeFrequency: 'monthly' },
   // Weekly, not monthly: the page carries JobPosting structured data, and a
