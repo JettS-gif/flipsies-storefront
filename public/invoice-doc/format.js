@@ -435,6 +435,27 @@ export function fmtPhone(s) {
  * preserve the raw E.164 form (international or extension support)
  * should bypass this helper.
  */
+/**
+ * What a phone input should KEEP in state — the same digits formatPhoneInput
+ * renders, so the two cannot disagree.
+ *
+ * This exists because they did disagree, and it cost real data (2026-09-16).
+ * Every phone field paired `value=${formatPhoneInput(phone)}` with
+ * `onInput=${e => setPhone(digitsOnly(e.target.value))}`: the display truncated
+ * to 10 digits while state kept everything. Paste `12055551234` and the field
+ * reads "(205)-555-1234" — correct — while 11 digits are submitted. That is
+ * where 226 eleven-digit customers.phone rows came from, and 29 of them are now
+ * duplicate people, because the uniqueness constraint compares strings.
+ *
+ * Backend counterpart: utils/phone.js customerPhoneForWrite.
+ */
+export function phoneInputDigits(s) {
+  if (s == null) return '';
+  let digits = String(s).replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
+  return digits.slice(0, 10);
+}
+
 export function formatPhoneInput(s) {
   if (s == null) return '';
   let digits = String(s).replace(/\D/g, '');
