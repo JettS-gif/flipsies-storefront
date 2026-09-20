@@ -46,9 +46,30 @@ export function buildInvoicePrintHtml(inv) {
   const paid        = Number(inv.amount_paid || 0);
   const balance     = balanceDue(inv); // grandTotal === inv.total; nets returns_credit
 
-  const retailTotal  = items.reduce((s,i) => s + (Number(i.product?.retail_price||0) * Number(i.qty||1)), 0);
-  const retailGrand  = retailTotal + (retailTotal * TAX_RATE);
-  const savings      = retailGrand - grandTotal;
+  // ── "Your savings today" — merchandise vs merchandise, both PRE-TAX ───────
+  //
+  // Kim Lagrone's quote (INV-20260920-4818, 2026-09-20) printed $407.97 off
+  // retail on a $499.88 discount. The old sum compared a goods-only retail
+  // figure WITH tax added (retailTotal × 1.10) against inv.total, which also
+  // carries delivery, assembly and haul-away. So every fee was silently
+  // subtracted from the customer's savings — off by fee × (1 + tax) on every
+  // quote that had one, which is nearly all of them. Jett: "It looks like its
+  // comparing the after tax total instead of the subtotal."
+  //
+  // Fees are identical whether you pay retail or our price, so they cancel and
+  // have no business in a savings figure. Tax likewise. Compare the goods:
+  // what the merchandise lists for, against what they are paying for it.
+  const retailTotal  = items.reduce((s, i) => {
+    const qty    = Number(i.qty || 1);
+    const line   = Number(i.unit_price || 0) * qty;
+    const retail = Number(i.product?.retail_price || 0) * qty;
+    // A line with no catalog retail (freeform, custom order) has no "was"
+    // price. Count it at what they are paying so it cancels out, rather than
+    // contributing 0 to retail while its price sits in the subtotal — which
+    // reads as a discount running backwards.
+    return s + (retail > 0 ? retail : line);
+  }, 0);
+  const savings      = retailTotal - subtotal;
   const showDiscount = savings > 0.01;
 
   const isLayaway = inv.type === 'layaway' || inv.status === 'layaway';
@@ -140,8 +161,12 @@ export function buildInvoicePrintHtml(inv) {
         '<div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.85;margin-bottom:2px;">Your savings today</div>' +
         '<div style="font-size:22px;font-weight:800;">$' + savings.toFixed(2) + ' off retail</div></div>' +
         '<div style="text-align:right;opacity:.9;font-size:13px;line-height:1.8;">' +
-        '<div>Retail value: $' + retailGrand.toFixed(2) + '</div>' +
-        '<div>Your price: $' + grandTotal.toFixed(2) + '</div></div></div>'
+        '<div>Merchandise at retail: $' + retailTotal.toFixed(2) + '</div>' +
+        '<div>Your price: $' + subtotal.toFixed(2) + '</div>' +
+        // Said out loud so nobody reads this as the amount owed — delivery and
+        // tax are on the totals block below, and the two must not look like
+        // they disagree.
+        '<div style="opacity:.75;font-size:11px;">before delivery &amp; tax</div></div></div>'
     : '';
 
   const layawayBlock = isLayaway
