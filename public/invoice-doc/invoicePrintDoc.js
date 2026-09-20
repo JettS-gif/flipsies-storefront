@@ -49,27 +49,35 @@ export function buildInvoicePrintHtml(inv) {
   // ── "Your savings today" — merchandise vs merchandise, both PRE-TAX ───────
   //
   // Kim Lagrone's quote (INV-20260920-4818, 2026-09-20) printed $407.97 off
-  // retail on a $499.88 discount. The old sum compared a goods-only retail
-  // figure WITH tax added (retailTotal × 1.10) against inv.total, which also
+  // on a $499.88 discount. The old sum compared a goods-only regular-price
+  // figure WITH tax added (regularTotal × 1.10) against inv.total, which also
   // carries delivery, assembly and haul-away. So every fee was silently
   // subtracted from the customer's savings — off by fee × (1 + tax) on every
   // quote that had one, which is nearly all of them. Jett: "It looks like its
   // comparing the after tax total instead of the subtotal."
   //
-  // Fees are identical whether you pay retail or our price, so they cancel and
-  // have no business in a savings figure. Tax likewise. Compare the goods:
-  // what the merchandise lists for, against what they are paying for it.
-  const retailTotal  = items.reduce((s, i) => {
-    const qty    = Number(i.qty || 1);
-    const line   = Number(i.unit_price || 0) * qty;
-    const retail = Number(i.product?.retail_price || 0) * qty;
-    // A line with no catalog retail (freeform, custom order) has no "was"
+  // Fees are identical whether you pay our regular price or the quoted one, so
+  // they cancel and have no business in a savings figure. Tax likewise.
+  // Compare the goods: what the merchandise normally sells for here, against
+  // what they are paying for it.
+  //
+  // WORDING (Jett, 2026-09-20): the caption is "regular price", never
+  // "retail". `products.retail_price` is OUR list price — printTagsCore labels
+  // it "our price" — while `compare_at_price` is the market anchor. Printing
+  // our own price under the MSRP word is the inflated give EDLP exists to
+  // avoid (see ptBuildSaleTag's wasLabel), and the storefront About Us page
+  // promises customers "no inflated MSRPs, no fake sales".
+  const regularTotal = items.reduce((s, i) => {
+    const qty     = Number(i.qty || 1);
+    const line    = Number(i.unit_price || 0) * qty;
+    const regular = Number(i.product?.retail_price || 0) * qty;
+    // A line with no catalog price (freeform, custom order) has no "was"
     // price. Count it at what they are paying so it cancels out, rather than
-    // contributing 0 to retail while its price sits in the subtotal — which
-    // reads as a discount running backwards.
-    return s + (retail > 0 ? retail : line);
+    // contributing 0 to the regular total while its price sits in the subtotal
+    // — which reads as a discount running backwards.
+    return s + (regular > 0 ? regular : line);
   }, 0);
-  const savings      = retailTotal - subtotal;
+  const savings      = regularTotal - subtotal;
   const showDiscount = savings > 0.01;
 
   const isLayaway = inv.type === 'layaway' || inv.status === 'layaway';
@@ -120,18 +128,23 @@ export function buildInvoicePrintHtml(inv) {
       }
 
       const i         = entry.item;
-      const retail    = Number(i.product?.retail_price || 0);
+      const regular   = Number(i.product?.retail_price || 0);
       const price     = Number(i.unit_price || 0);
       const qty       = Number(i.qty || 1);
       const lineTotal = price * qty;
 
       // 2026-05-08 — post pass-through migration discount lives in
-      // unit_price, so the strikethrough retail goes INLINE next to
+      // unit_price, so the struck regular price goes INLINE next to
       // the discounted price (per Jett: "original price with a strike
-      // through next to the new line item price"). The separate Retail
-      // column was dropped to make the savings legible at a glance.
-      const priceCellInner = (retail > 0 && retail > price)
-        ? '<span style="color:#999;text-decoration:line-through;font-size:11px;margin-right:6px;">$' + retail.toFixed(2) + '</span>$' + price.toFixed(2)
+      // through next to the new line item price"). The separate column
+      // was dropped to make the savings legible at a glance.
+      //
+      // The struck figure is CAPTIONED "reg." (Jett, 2026-09-20). An
+      // unlabelled strikethrough is the compare-at claim — "cheaper than the
+      // market" — and this number is our own list price, so it must say so.
+      // Same rule ptBuildSaleTag's wasLabel enforces on the floor.
+      const priceCellInner = (regular > 0 && regular > price)
+        ? '<span style="color:#999;text-decoration:line-through;font-size:11px;margin-right:6px;">reg. $' + regular.toFixed(2) + '</span>$' + price.toFixed(2)
         : '$' + price.toFixed(2);
       // 2026-05-02: render fabric / custom-config as a sub-line under the
       // item name. Pre-fix the customer's printed invoice didn't surface
@@ -159,9 +172,9 @@ export function buildInvoicePrintHtml(inv) {
   const discountBanner = showDiscount
     ? '<div style="background:#1D9E75;color:white;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">' +
         '<div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.85;margin-bottom:2px;">Your savings today</div>' +
-        '<div style="font-size:22px;font-weight:800;">$' + savings.toFixed(2) + ' off retail</div></div>' +
+        '<div style="font-size:22px;font-weight:800;">$' + savings.toFixed(2) + ' off regular price</div></div>' +
         '<div style="text-align:right;opacity:.9;font-size:13px;line-height:1.8;">' +
-        '<div>Merchandise at retail: $' + retailTotal.toFixed(2) + '</div>' +
+        '<div>Regular price: $' + regularTotal.toFixed(2) + '</div>' +
         '<div>Your price: $' + subtotal.toFixed(2) + '</div>' +
         // Said out loud so nobody reads this as the amount owed — delivery and
         // tax are on the totals block below, and the two must not look like
