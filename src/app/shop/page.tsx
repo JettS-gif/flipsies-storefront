@@ -12,6 +12,7 @@ import { fetchPackages, type StorefrontPackage } from '@/lib/packages';
 import PackageCards from '@/components/PackageCards';
 import CollectionCards, { type CollectionCard } from '@/components/CollectionCards';
 import { buildCollectionCards, normColl } from '@/lib/collectionCards';
+import { shownResultCount } from '@/lib/resultCount';
 import TrackEvent from '@/components/TrackEvent';
 import { notFound } from 'next/navigation';
 import { SORTS, buildHref, activeFilterCount, PAGE_SIZE, pageOf, pageCount, type ShopSearchParams } from '@/lib/shopFilters';
@@ -349,6 +350,25 @@ export default async function ShopPage({ searchParams }: Props) {
   const gridFamilies = suggested ? suggested.families : shownFamilies;
   const gridCount    = suggested ? suggested.count    : count;
 
+  // What the shopper can actually SEE. gridCount is the server's count of grid
+  // PRODUCTS only, and sectional pieces are deliberately kept out of the grid —
+  // they collapse into one "Build yours" family card. So a search for a
+  // sectional collection by name rendered a family card above the words
+  // "0 products found", on the same screen (measured 2026-09-19: searching
+  // "turner" showed the Turner Sectional card and a zero).
+  //
+  // That is not cosmetic. 212 published sectional pieces across 33 families, 24
+  // of them with stock, answer a name search that way — Long Island, Tori,
+  // Remington, Staley, Amelia, Kimpton, Turner and the rest. It also poisons the
+  // unmet-demand panel, because the shopper's search records results_count 0 and
+  // reads back as "we do not carry it" for a collection sitting on the floor.
+  //
+  // Counting the cards rather than the rows fixes the contradiction without
+  // touching the merchandising decision underneath it: pieces STAY out of the
+  // grid, because a shopper looking for "Turner" wants the sectional, not nine
+  // LSF/RSF/corner tiles.
+  const gridShownCount = shownResultCount(gridCount, gridFamilies.length, gridPackages.length);
+
   const catHref = (c: string) => (c === 'Sectional' ? '/sectionals' : `/shop/${encodeURIComponent(c)}`);
 
   const title = search ? `Results for "${search}"` : 'Shop All';
@@ -369,7 +389,20 @@ export default async function ShopPage({ searchParams }: Props) {
         <TrackEvent
           type="search"
           query={search}
-          resultsCount={count}
+          /* The shopper's OWN words, and everything those words surfaced —
+             products PLUS the sectional families and packages the grid does not
+             hold. Deliberately the un-substituted sets (`count`, `shownFamilies`,
+             `shownPackages`), never the grid* ones.
+             This is NOT the substitution rule bending: a family match is the
+             shopper's own term hitting a collection we showed them, not a
+             did-you-mean. Recording 0 there said "we do not carry it" about a
+             sectional sitting on the floor — 13 terms and 19 visitors read that
+             way between 2026-08-01 and 09-19 (turner, liberty, gatlin,
+             rendezvous, royster, the Tori queries), and searchSynonyms.js is
+             curated FROM this table, so the lie compounds into the synonym map.
+             A rescued term still records its own 0; `rescue.shown` settles that
+             case and is untouched here. */
+          resultsCount={shownResultCount(count, shownFamilies.length, shownPackages.length)}
           /* The did-you-mean outcome, recorded next to that 0 rather than
              instead of it. Without this the table cannot tell a term we
              genuinely do not carry from one the synonym map already answers —
@@ -394,7 +427,12 @@ export default async function ShopPage({ searchParams }: Props) {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-brand-charcoal">{title}</h1>
         <p className="text-brand-charcoal-light mt-1">
-          {gridCount} product{gridCount !== 1 ? 's' : ''}{search ? ' found' : ' available'}
+          {/* "result" while searching, because a match can be a sectional family
+              or a package card rather than a grid tile; browse keeps "products
+              available", where the number really is the product total. */}
+          {search
+            ? `${gridShownCount} result${gridShownCount !== 1 ? 's' : ''} found`
+            : `${gridCount} product${gridCount !== 1 ? 's' : ''} available`}
         </p>
         {/* Never substitute silently. The shopper sees their words came up empty
             and exactly what we searched instead — the link makes that
