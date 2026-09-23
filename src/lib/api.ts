@@ -614,6 +614,38 @@ export const api = {
     ),
 
   /**
+   * Freight quote request from a shopper outside the delivery radius.
+   *
+   * Until 2026-09-23 `out_of_range` in checkout was a dead end with a phone
+   * number, while the business was in fact shipping — Fort Worth, Warrensburg
+   * and Milton all went out in September. 63 of 177 captured leads sit outside
+   * the radius at an average of 868 miles; this is the door for them.
+   *
+   * Lands in `shipping_quote_requests`, NOT `storefront_leads` — that table is
+   * swept onto showroom sales reps, and these are worked by admins. Carries the
+   * cart so the quote is against what they actually asked for.
+   */
+  requestShippingQuote: (payload: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zip?: string;
+    distance_miles?: number;
+    cart?: Array<{ sku?: string; name?: string; qty?: number; unit_price?: number }>;
+    cart_total?: number;
+    customer_note?: string;
+  }) =>
+    request<{ ok: true; id: string; repeat?: boolean }>(
+      'POST',
+      '/storefront/shipping-quote',
+      { ...payload, ...browserAttribution() },
+      { cache: 'no-store' },
+    ),
+
+  /**
    * Self-service order tracking. Returns 404 on either an unknown
    * invoice_number OR an email mismatch — the storefront page treats
    * both as the same "couldn't find your order" UX.

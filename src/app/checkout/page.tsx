@@ -15,6 +15,7 @@ import { api, type AvailableSlot, type CheckAvailabilityResponse } from '@/lib/a
 import { loadStoredSlot, saveStoredSlot, clearStoredSlot } from '@/lib/deliverySlot';
 import { DELIVERY } from '@/lib/policy';
 import Link from 'next/link';
+import ShippingQuoteRequest from '@/components/ShippingQuoteRequest';
 
 // GA4 purchase must survive the Stripe redirect-return, which reloads the
 // page and clears cart + component state. So we stash the payload at
@@ -1024,23 +1025,25 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* ── out_of_range: beyond the freight threshold, call us ── */}
+              {/* ── out_of_range: past our trucks, but we ship ──────────
+                  Was a dead end that said "give us a call" and stopped. The
+                  business ships — three orders went to TX, MO and DE in
+                  September — and 63 of 177 captured leads are outside the
+                  radius at an average of 868 miles, so this branch was turning
+                  away demand we already knew how to fulfil. Now it captures a
+                  quote request WITH the cart, into an admin-only pipeline
+                  (separate from sales leads by design). The phone number stays
+                  on screen: some people would still rather just call. */}
               {availability?.status === 'out_of_range' && (
-                <div className="rounded-lg border-2 border-brand-yellow bg-brand-yellow-light px-4 py-5 text-sm">
-                  <p className="font-semibold text-brand-charcoal mb-2">
-                    Outside our standard delivery range
-                  </p>
-                  <p className="text-brand-charcoal-light mb-3">
-                    Your address is approximately {availability.distance_miles} miles from our Irondale store, which is outside our in-house delivery range.
-                    We&apos;d love to help — please give us a call so we can discuss options.
-                  </p>
-                  <a
-                    href={`tel:${availability.store_phone.replace(/\D/g, '')}`}
-                    className="inline-block btn-brand text-base px-6 py-2.5"
-                  >
-                    📞 {availability.store_phone}
-                  </a>
-                </div>
+                <ShippingQuoteRequest
+                  distanceMiles={availability.distance_miles}
+                  storePhone={availability.store_phone}
+                  defaults={{ name, email, phone, address: street, city, state: stateCode, zip }}
+                  cart={items.map(i => ({
+                    sku: i.sku, name: i.name, qty: i.qty, unit_price: i.price,
+                  }))}
+                  cartTotal={subtotal}
+                />
               )}
 
               {/* ── geocode_failed: retry ───────────────────────────── */}
