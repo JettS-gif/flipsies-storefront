@@ -67,6 +67,30 @@ export default function CatalogImage({
       src={resolved}
       alt={alt}
       loading={loading}
+      ref={(el) => {
+        // THE onError ABOVE IS NOT ENOUGH ON ITS OWN, and the gap is invisible
+        // in dev. Hydration is when React attaches event handlers to server-
+        // rendered HTML (next/dist/docs 01-app/01-getting-started/
+        // 05-server-and-client-components.md). An EAGER image starts loading as
+        // the browser parses the HTML, so a 404/400 fires its `error` event
+        // BEFORE that handler exists — React never hears it and the image stays
+        // broken forever.
+        //
+        // It only bites eager images, which is why it went unnoticed: every
+        // lazy thumbnail on the same page loads after hydration and recovers
+        // normally. The one that does not is the hero — the most visible image
+        // on the page. Measured 2026-09-24: 39 of 51 published packages with
+        // their own photo had a dead hero and intact thumbnails, all from this.
+        //
+        // It also hides on a client-side navigation, where the component renders
+        // on the client with the handler already attached; only a direct load or
+        // a refresh shows it.
+        //
+        // `complete && naturalWidth === 0` is the standard read for "the browser
+        // already finished with this and got no pixels". If it is still loading,
+        // complete is false and onError takes it from here as before.
+        if (el && !useOriginal && el.complete && el.naturalWidth === 0) setUseOriginal(true);
+      }}
       onError={() => {
         // Guard against a loop: if the ORIGINAL is what just failed (case 2
         // above, or a dead vendor URL), there is nowhere further to fall back
