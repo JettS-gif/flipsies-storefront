@@ -22,6 +22,8 @@ interface CartItem {
   qty: number;
   /** Made-to-order fabric pick (Chairs America etc.) — backend mints the child. */
   fabric_id?: string;
+  /** Colourway within the fabric — the backend validates it against fabric_id. */
+  fabric_color_id?: string;
   fabric_name?: string | null;
 }
 
@@ -37,6 +39,8 @@ interface RequestBody {
     address?: string;
     date?: string;
     time_window?: string;
+    /** "Pay now, call me to schedule" — no slot, no delivery fee today. */
+    schedule_by_call?: boolean;
   };
   delivery_fee?: number;
   /** Opaque first-party visitor id. Optional: a shopper with storage disabled
@@ -85,7 +89,14 @@ export async function POST(req: Request) {
                 qty: i.qty,
                 price: i.price,
                 // Made-to-order fabric pick — backend mints/swaps + prices it.
-                ...(i.fabric_id ? { fabric_id: i.fabric_id, fabric_name: i.fabric_name } : {}),
+                // fabric_color_id must ride along: the browser sends it, and
+                // dropping it here landed every web fabric order with no
+                // colourway on the invoice or the minted child (2026-09-28).
+                ...(i.fabric_id ? {
+                  fabric_id: i.fabric_id,
+                  ...(i.fabric_color_id ? { fabric_color_id: i.fabric_color_id } : {}),
+                  fabric_name: i.fabric_name,
+                } : {}),
               }
         )),
         fulfillment,
@@ -134,6 +145,9 @@ export async function POST(req: Request) {
       total,
       taxRate: order.tax_rate,
       jurisdiction: order.tax_jurisdiction,
+      // The backend kept no slot (it failed a scheduling rule, or the shopper
+      // asked to be called) and charged no delivery fee — checkout must say so.
+      schedule_by_call: order.schedule_by_call === true,
     });
   } catch (err) {
     // The live-fire failure (2026-07-26) landed here: paymentIntents.create

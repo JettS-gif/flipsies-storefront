@@ -38,6 +38,13 @@ export interface FulfillmentReadinessInput {
    * back four hours later, tried again, and could not buy at any price.
    */
   extendedDelivery: boolean;
+  /**
+   * True when the shopper chose "pay now, call me to schedule" (with a complete
+   * address). Logistics never blocks a sale (Jett 2026-09-28): a cart with no
+   * slot it wants — none offered, none that suit, or the check itself failing —
+   * pays for the merchandise and the office calls to book and price delivery.
+   */
+  scheduleByCall: boolean;
   /** Pickup path only. */
   hasPickupStore: boolean;
   hasPickupDate: boolean;
@@ -45,10 +52,10 @@ export interface FulfillmentReadinessInput {
 
 export function canContinueFulfillment(i: FulfillmentReadinessInput): boolean {
   if (i.fulfillmentType === 'delivery') {
-    // Either a real slot, or one of the two explicit "there is no slot to pick"
-    // answers: made-to-order (billed on arrival) and extended range (quoted at
-    // the round-trip rate, scheduled by hand).
-    return i.hasSelectedSlot || i.deliveryOnArrival || i.extendedDelivery;
+    // Either a real slot, or one of the explicit "there is no slot to pick"
+    // answers: made-to-order (billed on arrival), extended range (quoted at the
+    // round-trip rate, scheduled by hand), and call-to-schedule.
+    return i.hasSelectedSlot || i.deliveryOnArrival || i.extendedDelivery || i.scheduleByCall;
   }
   return i.hasPickupStore && i.hasPickupDate;
 }

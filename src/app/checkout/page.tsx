@@ -297,6 +297,13 @@ export default function CheckoutPage() {
   const [availability, setAvailability]     = useState<CheckAvailabilityResponse | null>(null);
   const [selectedSlot, setSelectedSlot]     = useState<AvailableSlot | null>(null);
   const [availError, setAvailError]         = useState<string | null>(null);
+  // "Pay now, call me to schedule" — see canContinueFulfillment for why a
+  // logistics gap must never end the sale.
+  const [scheduleByCall, setScheduleByCall] = useState(false);
+  // Set from the order response when the server could NOT keep the picked slot
+  // and deferred it to a call. The summary must stop showing that slot and its
+  // fee, because neither was booked nor charged.
+  const [serverScheduledByCall, setServerScheduledByCall] = useState(false);
 
   // Rehydrate a previously-picked slot from localStorage on mount. The
   // helper enforces both the 24h TTL and the 48h lead window, so by the
@@ -488,6 +495,8 @@ export default function CheckoutPage() {
     hasSelectedSlot:   !!selectedSlot,
     deliveryOnArrival,
     extendedDelivery,
+    // The order still needs an address to tax and to call about.
+    scheduleByCall:    scheduleByCall && addressComplete,
     hasPickupStore:    !!pickupStore,
     hasPickupDate:     !!pickupDate,
   });
@@ -567,6 +576,7 @@ export default function CheckoutPage() {
   // product page, etc.) remembers the choice.
   function handleSlotPick(slot: AvailableSlot) {
     setSelectedSlot(slot);
+    setScheduleByCall(false);
     saveStoredSlot({
       address:            address.trim(),
       // Persist the parts too, so returning to checkout refills the four
@@ -585,6 +595,15 @@ export default function CheckoutPage() {
     });
   }
 
+  // The alternative to a slot: pay now, and the office calls to book and price
+  // delivery. Drops any picked or remembered slot so the two can't both apply.
+  function chooseScheduleByCall() {
+    setScheduleByCall(true);
+    setSelectedSlot(null);
+    clearStoredSlot();
+    setAvailError(null);
+  }
+
   // Create payment intent when moving to payment step. Forwards the
   // selected delivery slot (date + time window + fee) so the backend
   // /store/order handler can create the invoice with the right delivery
@@ -594,6 +613,7 @@ export default function CheckoutPage() {
     setCreatingIntent(true);
     setPaymentError(null);
     setOversoldItems(null);
+    setServerScheduledByCall(false);
 
     try {
       const res = await fetch('/api/create-payment-intent', {
@@ -650,10 +670,11 @@ export default function CheckoutPage() {
             } : {}),
             // Delivery path uses the slot's date + time_window.
             // Pickup path uses the picker + preset time preference.
-            ...(selectedSlot && fulfillmentType === 'delivery' ? {
+            ...(selectedSlot && fulfillmentType === 'delivery' && !scheduleByCall ? {
               date:        selectedSlot.date,
               time_window: selectedSlot.time_label,
             } : {}),
+            ...(fulfillmentType === 'delivery' && scheduleByCall ? { schedule_by_call: true } : {}),
             ...(fulfillmentType === 'pickup' && pickupDate ? {
               date:        pickupDate,
               time_window: pickupTime,
@@ -676,7 +697,7 @@ export default function CheckoutPage() {
           // [0, STOREFRONT_MAX_DELIVERY_FEE] regardless — the quote maxes at
           // $400 (100mi × $2 round-trip) so the clamp never truncates a real one.
           delivery_fee:
-            fulfillmentType !== 'delivery' ? 0
+            fulfillmentType !== 'delivery' || scheduleByCall ? 0
               : selectedSlot ? selectedSlot.price
               : extendedDelivery && availability?.status === 'extended_delivery'
                 ? availability.delivery_fee
@@ -706,6 +727,7 @@ export default function CheckoutPage() {
       setClientSecret(data.clientSecret);
       setInvoiceNumber(data.invoice_number);
       setTotal(data.total);
+      setServerScheduledByCall(data.schedule_by_call === true);
       // Stash the GA4 purchase payload now, while the cart is still
       // populated and we hold the authoritative backend total — it must
       // outlive the Stripe redirect-return that clears cart + page state.
@@ -1121,6 +1143,36 @@ export default function CheckoutPage() {
                   )}
                 </div>
               )}
+
+              {/* ── call-to-schedule: the way through when no slot works ──
+                  Logistics must never end a sale (Jett 2026-09-28). Offered
+                  whenever the address is complete — no slots, none that suit,
+                  or the check itself failing — except where the cart already
+                  has its own no-slot answer (made-to-order, extended range) or
+                  needs a freight quote rather than local delivery. */}
+              {addressComplete && !deliveryOnArrival && !extendedDelivery
+                && availability?.status !== 'out_of_range' && (
+                <button
+                  type="button"
+                  onClick={chooseScheduleByCall}
+                  aria-pressed={scheduleByCall}
+                  className={`w-full rounded-lg border px-4 py-3 text-left text-sm transition-colors ${
+                    scheduleByCall
+                      ? 'border-brand-yellow bg-brand-yellow-light'
+                      : 'border-brand-border bg-white hover:border-brand-charcoal-light'
+                  }`}
+                >
+                  <span className="block font-semibold text-brand-charcoal">
+                    {scheduleByCall ? '✓ ' : '📞 '}
+                    {availability?.status === 'in_range' && availability.slots.length > 0
+                      ? 'None of these times work? Pay now and we’ll call you'
+                      : 'Pay now and we’ll call you to schedule delivery'}
+                  </span>
+                  <span className="block text-brand-charcoal-light mt-0.5">
+                    No delivery charge today. We’ll call to set a delivery time and quote the fee for your address.
+                  </span>
+                </button>
+              )}
             </div>
           )}
 
@@ -1283,7 +1335,7 @@ export default function CheckoutPage() {
             </div>
             {/* Delivery fee line only when a slot is actually picked on
                 the delivery path. Pickup and empty-slot orders omit it. */}
-            {selectedSlot && fulfillmentType === 'delivery' && (
+            {selectedSlot && fulfillmentType === 'delivery' && !scheduleByCall && !serverScheduledByCall && (
               <>
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-brand-charcoal-light">
@@ -1323,6 +1375,27 @@ export default function CheckoutPage() {
                     : 'Quoted on arrival'}
                 </span>
               </div>
+            )}
+            {/* Call-to-schedule: chosen, or applied by the server because the
+                picked time could no longer be booked. Either way nothing was
+                charged for delivery, and the shopper must not think a time is
+                booked. */}
+            {(scheduleByCall || serverScheduledByCall) && (
+              <>
+                {fulfillmentType === 'delivery' && (
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-brand-charcoal-light">Delivery</span>
+                    <span className="text-brand-charcoal-light">We’ll call to schedule &amp; quote</span>
+                  </div>
+                )}
+                {serverScheduledByCall && !scheduleByCall && (
+                  <p className="text-xs text-brand-charcoal bg-brand-yellow-light border border-brand-yellow rounded px-3 py-2 my-2">
+                    {fulfillmentType === 'delivery'
+                      ? 'The time you picked is no longer available, so there’s no delivery charge today. Your order is still placed — we’ll call you to book a time and quote delivery.'
+                      : 'The pickup time you picked is too soon for us to have it ready. Your order is still placed — we’ll call you to set a pickup time.'}
+                  </p>
+                )}
+              </>
             )}
             <div className="flex justify-between text-sm mb-1">
               <span className="text-brand-charcoal-light">Tax</span>

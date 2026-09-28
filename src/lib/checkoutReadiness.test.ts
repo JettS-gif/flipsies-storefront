@@ -6,6 +6,7 @@ const base: FulfillmentReadinessInput = {
   hasSelectedSlot:   false,
   deliveryOnArrival: false,
   extendedDelivery: false,
+  scheduleByCall:    false,
   hasPickupStore:    false,
   hasPickupDate:     false,
 };
@@ -81,5 +82,19 @@ describe('extendedDelivery', () => {
 
   it('composes with deliveryOnArrival rather than conflicting', () => {
     expect(at({ extendedDelivery: true, deliveryOnArrival: true, hasSelectedSlot: false })).toBe(true);
+  });
+});
+
+// Call-to-schedule (Jett 2026-09-28: "We shouldn't reject payment if it's just
+// a logistical problem"). A shopper with no slot they want — none offered, none
+// that suit, or the availability check itself failing — must still be able to
+// pay; the office calls to book and price delivery.
+describe('scheduleByCall', () => {
+  it('unlocks delivery with no slot and no availability answer', () => {
+    expect(at({ scheduleByCall: true })).toBe(true);
+  });
+
+  it('does not unlock the pickup path', () => {
+    expect(at({ fulfillmentType: 'pickup', scheduleByCall: true })).toBe(false);
   });
 });
