@@ -390,6 +390,33 @@ export function fmtDateShort(ts) {
     { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
 }
 
+/**
+ * Invoice → "Sep 27, 2026 · 2:14 PM", or "Sep 27, 2026" when no sale time exists.
+ *
+ * The date is sale_date (back-dated tickets), else created_at. sale_date is a
+ * `date` column, so it is anchored at local noon — bare `new Date('YYYY-MM-DD')`
+ * is UTC midnight and reads a day early in CT.
+ *
+ * The time comes ONLY from invoices.sale_at (migrations/invoice_sale_at.sql),
+ * which is null where no real sale time was recorded — quotes and back-dated
+ * tickets. Never created_at's time: on those rows it is the entry or import
+ * time, not when the customer bought (Jett 2026-09-27). The day check keeps a
+ * stamp from pairing with a date it does not fall on.
+ */
+export function fmtInvoiceSaleLabel(inv) {
+  const dateStr = inv?.sale_date || inv?.created_at;
+  if (!dateStr) return '—';
+  const isDateOnly = typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
+  const d = new Date(isDateOnly ? dateStr + 'T12:00:00' : dateStr);
+  if (isNaN(d.getTime())) return '—';
+  const dateLabel = d.toLocaleDateString('en-US',
+    { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+  const shownDay = isDateOnly ? dateStr : dateCT(dateStr);
+  return inv.sale_at && dateCT(inv.sale_at) === shownDay
+    ? `${dateLabel} · ${fmtTs(inv.sale_at)}`
+    : dateLabel;
+}
+
 // ── Phone helpers ──────────────────────────────────────────────────────────────
 
 /**
