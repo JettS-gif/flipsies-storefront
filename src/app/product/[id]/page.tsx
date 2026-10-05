@@ -2,7 +2,8 @@ import { cache } from 'react';
 import { thumb } from '@/lib/img';
 import { api } from '@/lib/api';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
+import { landingPath, normalizeProductId, type Landing } from '@/lib/productLanding';
 import TrackEvent from '@/components/TrackEvent';
 import type { Metadata } from 'next';
 import AddToCartButton from '@/components/AddToCartButton';
@@ -61,7 +62,7 @@ export const revalidate = 300;
 const getProduct = cache((id: string) => api.getProduct(id));
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const id = normalizeProductId((await params).id);
   try {
     const product = await getProduct(id);
     const name = productTitle(product);
@@ -80,12 +81,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductPage({ params }: Props) {
-  const { id } = await params;
+  const { id: rawId } = await params;
+  const id = normalizeProductId(rawId);
 
+  // An old link to a product we have since unpublished lands on the package
+  // that now sells it, its frame page, or its room — not "Page Not Found"
+  // (105 dead landings in 30 days from Google, saved links and Facebook,
+  // including a paid ad). The backend's 404 carries the target. redirect()
+  // works by throwing, so it runs AFTER the try/catch, never inside it.
   let product;
+  let landing: Landing | null = null;
   try {
     product = await getProduct(id);
-  } catch {
+  } catch (err) {
+    landing = (err as { landing?: Landing } | null)?.landing ?? null;
+  }
+  if (!product) {
+    const to = landingPath(landing);
+    if (to) redirect(to);
     notFound();
   }
 

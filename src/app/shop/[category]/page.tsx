@@ -16,7 +16,7 @@ import { fetchPackages, type StorefrontPackage } from '@/lib/packages';
 
 interface Props {
   params: Promise<{ category: string }>;
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; gone?: string }>;
 }
 
 // A paginated page canonicals to ITSELF, never back to page 1 — pointing page 3
@@ -116,7 +116,11 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 export default async function CategoryPage({ params, searchParams }: Props) {
   const { category } = await params;
   const { categories, resolved } = await resolveSegment(category);
-  const page = pageOf(await searchParams);
+  const sp = await searchParams;
+  const page = pageOf(sp);
+  // ?gone=1: the shopper followed an old link to a product we no longer list
+  // (lib/productLanding.ts) and was sent to its room instead of "Page Not Found".
+  const cameFromGoneItem = sp.gone === '1';
 
   // The guard this route never had. Any string used to render an indexable page
   // with the slug echoed as the <h1> — an unbounded space of crawlable thin
@@ -215,6 +219,11 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <JsonLd id="ld-category" data={breadcrumbLd} />
       {itemListLd && <JsonLd id="ld-category-items" data={itemListLd} />}
+      {cameFromGoneItem && (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-brand-charcoal">
+          That item is no longer available — here&apos;s what we have in {label} right now.
+        </div>
+      )}
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-brand-charcoal-light mb-6">
         <Link href="/shop" className="hover:text-brand-charcoal transition-colors">Shop</Link>
