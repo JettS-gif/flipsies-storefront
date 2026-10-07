@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { pageMetadata } from '@/lib/site';
+import { FINANCE_HEADLINE, FINANCE_DISCLOSURE } from '@/lib/financing';
 
 export const metadata = pageMetadata({
   title: 'Financing Options',
-  description: '12-month special financing — 0% interest if paid in full — with Synchrony, plus no-credit-needed lease-to-own with Progressive Leasing.',
+  description: '12-month special financing with Synchrony — no interest if paid in full within 12 months — plus no-credit-needed lease-to-own with Progressive Leasing.',
   path: '/financing',
 });
 
@@ -11,9 +12,9 @@ const OPTIONS = [
   {
     name: 'Synchrony — 12 Months Same as Cash',
     icon: '💳',
-    description: 'Our everyday program: 0% interest when you pay in full within 12 months. Quick approval, in-store or online.',
-    features: ['0% interest for 12 months', 'No interest if paid in full in 12 months', 'Simple monthly payments', 'Fast, easy approval'],
-    best_for: 'Most customers — spread your purchase across a full year at no extra cost.',
+    description: `Our everyday program: ${FINANCE_HEADLINE.toLowerCase()}. ${FINANCE_DISCLOSURE} Quick approval, in-store or online.`,
+    features: [FINANCE_HEADLINE, 'Simple monthly payments', 'Fast, easy approval'],
+    best_for: 'Most customers — spread your purchase across a full year, with no interest when it is paid in full within 12 months.',
   },
   {
     name: 'Progressive Leasing',
@@ -41,15 +42,16 @@ export default function FinancingPage() {
         </p>
       </div>
 
-      {/* Flagship everyday offer — the 12-month 0% program. Larger terms are
-          available in-store on qualifying purchases; kept as a soft mention to
-          steer customers to the everyday program. */}
+      {/* Flagship everyday offer — the 12-month deferred-interest program
+          (lib/financing.ts: Reg Z wording). Larger terms are available in-store
+          on qualifying purchases; kept as a soft mention. */}
       <div className="bg-brand-yellow-light border border-brand-border rounded-2xl p-6 sm:p-8 max-w-4xl mx-auto mb-12 text-center">
         <p className="text-xs font-semibold uppercase tracking-wider text-brand-yellow-dark mb-2">Everyday offer</p>
         <h2 className="text-2xl sm:text-3xl font-bold text-brand-charcoal">12 Months Special Financing</h2>
         <p className="text-brand-charcoal-light mt-2 max-w-xl mx-auto">
-          0% interest if paid in full within 12 months, with Synchrony. Ask an associate about options for larger purchases.
+          {FINANCE_HEADLINE}*, with Synchrony. Ask an associate about options for larger purchases.
         </p>
+        <p className="text-xs text-brand-charcoal-light mt-2 max-w-xl mx-auto">*{FINANCE_DISCLOSURE}</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">

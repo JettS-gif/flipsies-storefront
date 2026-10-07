@@ -18,6 +18,7 @@ import RelatedProducts from '@/components/RelatedProducts';
 import SimilarProducts from '@/components/SimilarProducts';
 import JsonLd from '@/components/JsonLd';
 import { SITE_URL } from '@/lib/site';
+import { financeMonthly, FINANCE_HEADLINE, FINANCE_DISCLOSURE } from '@/lib/financing';
 import { publicDescription } from '@/lib/publicDescription';
 import { productTitle, productMetaDescription } from '@/lib/productTitle';
 import { dimensionSchema, availabilityUrl, priceValidUntil, shippingDetailsSchema, merchantReturnPolicySchema } from '@/lib/productSchema';
@@ -294,13 +295,20 @@ export default async function ProductPage({ params }: Props) {
             </span>
           </div>
 
-          {/* 12-month 0% monthly estimate — the Synchrony everyday program. */}
-          <p className="mt-2 text-sm text-brand-charcoal-light">
-            or about{" "}
-            <span className="font-semibold text-brand-charcoal">${Math.ceil(Number(p.retail_price) / 12)}/mo</span>{" "}
-            for 12 months —{" "}
-            <Link href="/financing" className="text-brand-yellow-dark hover:underline">0% financing</Link>
-          </p>
+          {/* 12-month monthly estimate — the Synchrony everyday program, a
+              deferred-interest offer, so the Reg Z disclosure sits right under it
+              (lib/financing.ts). */}
+          {financeMonthly(Number(p.retail_price)) != null && (
+            <div className="mt-2 text-sm text-brand-charcoal-light">
+              <p>
+                or about{" "}
+                <span className="font-semibold text-brand-charcoal">${financeMonthly(Number(p.retail_price))}/mo</span>{" "}
+                for 12 months* —{" "}
+                <Link href="/financing" className="text-brand-yellow-dark hover:underline">{FINANCE_HEADLINE}</Link>
+              </p>
+              <p className="mt-1 text-xs">*{FINANCE_DISCLOSURE}</p>
+            </div>
+          )}
 
           {/* Availability.
               "Ask about lead time" was the old out-of-stock line, and it asked
