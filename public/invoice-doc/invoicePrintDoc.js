@@ -307,7 +307,7 @@ export function buildInvoicePrintHtml(inv) {
     : '';
 
   // Raw status keys carry underscores ("partially_returned", "en_route"), which
-  // printed verbatim on a customer document.
+  // printed verbatim on the customer's copy.
   const statusText = String(inv.status || '').replace(/_/g, ' ');
   const statusLabel = statusText.charAt(0).toUpperCase() + statusText.slice(1);
 
