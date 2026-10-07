@@ -1,6 +1,13 @@
 // utils/format.js
 // Pure formatting helpers — no DOM, no state, no side effects.
 // All functions are named exports. Import what you need.
+//
+// VENDORED: this file is copied byte-for-byte into
+// flipsies-storefront/public/invoice-doc/format.js (the customer invoice share
+// page). After ANY edit here, run `node scripts/sync-invoice-doc.js --write`
+// from DeliverDeskBackEnd, then the BACKEND test
+// utils/__tests__/invoiceDocVendorParity.contract.test.js — `npx vitest run`
+// here does not see the drift. Never hand-edit the vendored copy.
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 

@@ -62,3 +62,15 @@ export function resolveStoreLocation(inv) {
     || DEFAULT_STORE_KEY;
   return STORE_LOCATIONS[key] || STORE_LOCATIONS[DEFAULT_STORE_KEY];
 }
+
+// Location filter for the Reports and Payments tools. Values match the
+// invoices.location text the backend filters on. One copy (2026-10-07) — it
+// used to be hand-mirrored in views/reports.js and views/payments.js.
+export const STORE_OPTIONS = [
+  { value: '',                   label: 'All locations' },
+  { value: 'Pelham 2790',        label: 'Pelham 2790' },
+  { value: 'Pelham 807',         label: 'Pelham 807' },
+  { value: 'Hoover Showroom',    label: 'Hoover Showroom' },
+  { value: 'Irondale Warehouse', label: 'Irondale Warehouse' },
+  { value: 'Irondale Showroom',  label: 'Irondale Showroom' },
+];
