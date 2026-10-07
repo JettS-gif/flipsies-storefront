@@ -55,6 +55,43 @@ export default function ColorSelector({
   const label = (v: ProductVariant) =>
     isSize ? name(v) : name(v) + (v.in_stock ? ' (in stock)' : ' (needs to be ordered)');
 
+  // Sizes are buttons, not a dropdown: a closed <select> showed one size and hid
+  // the rest, so shoppers missed that the bed or mattress came in others (Jett
+  // 2026-10-07: "make the size more apparent"). Same routing as the swatches.
+  if (isSize) {
+    const current = variants.find((v) => v.id === value);
+    return (
+      <div className="mt-5">
+        <p id={selectId} className="text-sm font-semibold text-brand-charcoal mb-2">
+          Size: <span className="text-brand-charcoal">{current ? name(current) : 'Choose a size'}</span>
+        </p>
+        <ul aria-labelledby={selectId} className="flex flex-wrap gap-2">
+          {variants.map((v) => {
+            const active = v.id === value;
+            return (
+              <li key={v.id}>
+                <Link
+                  href={`/product/${v.id}`}
+                  aria-current={active ? 'true' : undefined}
+                  className={`flex flex-col items-center min-w-[5.5rem] rounded-lg border-2 px-3 py-2 text-center transition-colors ${
+                    active
+                      ? 'border-brand-yellow bg-brand-yellow/10 ring-2 ring-brand-yellow/30'
+                      : 'border-brand-border bg-white hover:border-brand-charcoal-light'
+                  }`}
+                >
+                  <span className="text-sm font-bold text-brand-charcoal">{name(v)}</span>
+                  {typeof v.retail_price === 'number' && (
+                    <span className="text-xs text-brand-charcoal-light">${Number(v.retail_price).toFixed(2)}</span>
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-5">
       <label htmlFor={selectId} className="block text-sm font-semibold text-brand-charcoal mb-2">

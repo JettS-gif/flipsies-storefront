@@ -25,6 +25,14 @@ export default function ProductCard({ product }: { product: Product }) {
   // bigger than what we stock, show the honest split instead of a bare count.
   const orderable = p.orderable_count ?? 0;
   const showFabricSplit = orderable > colorways;
+  // A collapsed group whose members share one colour is a SIZE group (mattresses,
+  // box springs), so "Available in 4 Colors!" would be wrong. Mirrors the PDP's
+  // variant_axis rule in the backend (>1 distinct colour ⇒ colour, else size).
+  const groupColors = new Set((p.variant_colors || []).filter(Boolean).map((c) => String(c).toLowerCase()));
+  const sizeGroup = colorways > 1 && groupColors.size <= 1 && !!p.size;
+  // A single-size product says its size on the card; a size group's tile is one
+  // arbitrary member, so it says "N sizes" instead of naming that member's size.
+  const sizeLabel = !sizeGroup && p.size ? String(p.size) : null;
 
   return (
     <Link
@@ -86,7 +94,7 @@ export default function ProductCard({ product }: { product: Product }) {
               </span>
             ) : colorways > 1 ? (
               <span className="bg-brand-green text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm whitespace-nowrap">
-                Available in {colorways} Colors!
+                Available in {colorways} {sizeGroup ? 'Sizes' : 'Colors'}!
               </span>
             ) : null}
           </div>
@@ -103,6 +111,11 @@ export default function ProductCard({ product }: { product: Product }) {
         <h3 className="text-sm font-semibold text-brand-charcoal leading-snug line-clamp-2 group-hover:text-brand-yellow-dark transition-colors">
           {displayName}
         </h3>
+        {(sizeLabel || sizeGroup) && (
+          <span className="inline-block mt-1.5 text-[11px] font-bold uppercase tracking-wide bg-brand-charcoal text-white px-2 py-0.5 rounded">
+            {sizeLabel ? `Size: ${sizeLabel}` : `${colorways} sizes`}
+          </span>
+        )}
         {subtitle && (
           <p className="text-xs text-brand-charcoal-light mt-1">{subtitle}</p>
         )}

@@ -267,6 +267,16 @@ export default async function ProductPage({ params }: Props) {
             {displayName}
           </h1>
 
+          {/* Size right under the title (Jett 2026-10-07): a box spring or bed
+              whose size only lived in a dropdown further down read as sizeless. */}
+          {p.size && (
+            <p className="mt-2">
+              <span className="inline-block text-sm font-bold uppercase tracking-wide bg-brand-charcoal text-white px-3 py-1 rounded">
+                Size: {p.size}
+              </span>
+            </p>
+          )}
+
           {p.sectional_piece_type && (
             <span className="inline-block mt-2 text-xs bg-brand-green-light text-brand-green px-3 py-1 rounded-full font-medium">
               Sectional — {p.sectional_piece_type}
