@@ -498,6 +498,43 @@ export function formatPhoneInput(s) {
   return `(${digits.slice(0, 3)})-${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
+// ── Name helpers ───────────────────────────────────────────────────────────────
+
+/**
+ * Capitalize the first letter of each part of a person's name, as typed:
+ * "steve fowler" → "Steve Fowler", "mary-kate o'neil" → "Mary-Kate O'Neil".
+ *
+ * Only ever RAISES a letter — never lowercases the rest — so "McDonald",
+ * "DeShawn" and a deliberate "LLC" survive (Steve F 2026-09-28 asked for
+ * first-letter caps, not a case rewrite). Length is unchanged, so the caret
+ * position stays valid; see nameInputValue.
+ */
+export function capitalizeName(s) {
+  if (s == null) return '';
+  return String(s)
+    .replace(/(^|[\s-])(\p{Ll})/gu, (_, lead, ch) => lead + ch.toUpperCase())
+    .replace(/\b([OD]')(\p{Ll})/gu, (_, lead, ch) => lead + ch.toUpperCase());
+}
+
+/**
+ * onInput for a name field: capitalizes in place and returns the value to
+ * store. Writing the DOM value ourselves (caret restored) means the controlled
+ * re-render finds nothing to change — otherwise Preact resets .value and the
+ * caret jumps to the end when someone fixes a typo mid-name.
+ *   onInput=${e => setName(nameInputValue(e))}
+ */
+export function nameInputValue(e) {
+  const el = e?.target;
+  if (!el) return '';
+  const next = capitalizeName(el.value);
+  if (next !== el.value) {
+    const { selectionStart: a, selectionEnd: b } = el;
+    el.value = next;
+    try { el.setSelectionRange(a, b); } catch { /* type without selection API */ }
+  }
+  return next;
+}
+
 // ── Time helpers ───────────────────────────────────────────────────────────────
 
 /**
@@ -732,4 +769,5 @@ if (typeof window !== 'undefined') {
   window.esc              = escapeHtml;
   window.formatPhoneInput = formatPhoneInput;
   window.fmtPhone         = fmtPhone;
+  window.nameInputValue   = nameInputValue;
 }
