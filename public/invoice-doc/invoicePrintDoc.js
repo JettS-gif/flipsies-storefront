@@ -23,6 +23,20 @@ import { groupInvoiceLines } from './packageGrouping.js';
 
 const e = (s) => escapeHtml(s == null ? '' : s);
 
+// The printed return terms restate the PUBLISHED policy: flipsies-storefront
+// src/lib/policy.ts (RETURNS, confirmed by Jett 2026-08-05), which also feeds
+// /returns and the Google merchant return-policy schema. This file cannot import
+// it (the storefront vendors THIS file, not the other way round), so the figures
+// are mirrored here and held equal by printReturnTerms.contract.test.js. The
+// customer signs this page, so it must never promise less, or more, than the
+// website does. It previously said "All sales are final" and "Delivery fees are
+// non-refundable once a delivery date is scheduled"; the site says neither.
+export const PRINT_RETURN_TERMS = Object.freeze({
+  defectiveSwapHours:   24,
+  changeOfMindDays:     7,
+  restockingFeePercent: 20,
+});
+
 export function buildInvoicePrintHtml(inv) {
   const items       = inv.items || [];
   const isTaxExempt = !!inv.tax_exempt;
@@ -32,6 +46,9 @@ export function buildInvoicePrintHtml(inv) {
   // statutory rate and print it as a line item, which confused
   // B2B customers ("why is there tax on my tax-exempt order?").
   const TAX_RATE    = isTaxExempt ? 0 : Number(inv.tax_rate ?? 0.10);
+  // Printed to the hundredth: live rates run 9.43%, 9.53%, 9.98%, and a
+  // whole-number label ("9%") disagreed with the tax amount beside it.
+  const taxPct      = String(Number((TAX_RATE * 100).toFixed(2)));
   // Read persisted DB columns; do NOT recompute tax/total in JS. The
   // DB trigger + ck_invoices_total_internally_consistent guarantee
   // these add up. Past divergence (haul_away migration regressed the
@@ -113,15 +130,15 @@ export function buildInvoicePrintHtml(inv) {
           : '';
         out.push(
           '<tr style="border-bottom:1px solid #eee;background:#F4FBF7;">' +
-          '<td style="padding:9px 10px;font-family:monospace;font-size:11px;color:#13684E;">SET</td>' +
-          '<td style="padding:9px 10px;font-size:13px;">' +
+          '<td style="padding:6px 10px;font-family:monospace;font-size:11px;color:#13684E;">SET</td>' +
+          '<td style="padding:6px 10px;font-size:13px;">' +
             '<div style="font-weight:600;color:#13684E;">' + e(entry.name) + '</div>' +
             '<div style="font-size:11.5px;color:#5A6B62;margin-top:2px;line-height:1.45;">Includes ' + e(entry.contents) + '</div>' +
             savingsCell +
           '</td>' +
-          '<td style="text-align:center;padding:9px 10px;font-size:13px;">' + entry.units + '</td>' +
-          '<td style="text-align:right;padding:9px 10px;font-size:13px;">$' + entry.group_total.toFixed(2) + '</td>' +
-          '<td style="text-align:right;padding:9px 10px;font-size:13px;font-weight:600;">$' + entry.group_total.toFixed(2) + '</td>' +
+          '<td style="text-align:center;padding:6px 10px;font-size:13px;">' + entry.units + '</td>' +
+          '<td style="text-align:right;padding:6px 10px;font-size:13px;">$' + entry.group_total.toFixed(2) + '</td>' +
+          '<td style="text-align:right;padding:6px 10px;font-size:13px;font-weight:600;">$' + entry.group_total.toFixed(2) + '</td>' +
           '</tr>'
         );
         continue;
@@ -158,28 +175,27 @@ export function buildInvoicePrintHtml(inv) {
         : '';
       out.push(
         '<tr style="border-bottom:1px solid #eee;">' +
-        '<td style="padding:9px 10px;font-family:monospace;font-size:11px;color:#0C447C;">' + e(i.sku||'—') + '</td>' +
-        '<td style="padding:9px 10px;font-size:13px;">' + e(i.name||i.description||'—') + subLineHtml + '</td>' +
-        '<td style="text-align:center;padding:9px 10px;font-size:13px;">' + qty + '</td>' +
-        '<td style="text-align:right;padding:9px 10px;font-size:13px;">' + priceCellInner + '</td>' +
-        '<td style="text-align:right;padding:9px 10px;font-size:13px;font-weight:600;">$' + lineTotal.toFixed(2) + '</td>' +
+        '<td style="padding:6px 10px;font-family:monospace;font-size:11px;color:#0C447C;">' + e(i.sku||'—') + '</td>' +
+        '<td style="padding:6px 10px;font-size:13px;">' + e(i.name||i.description||'—') + subLineHtml + '</td>' +
+        '<td style="text-align:center;padding:6px 10px;font-size:13px;">' + qty + '</td>' +
+        '<td style="text-align:right;padding:6px 10px;font-size:13px;">' + priceCellInner + '</td>' +
+        '<td style="text-align:right;padding:6px 10px;font-size:13px;font-weight:600;">$' + lineTotal.toFixed(2) + '</td>' +
         '</tr>'
       );
     }
     return out.join('');
   })();
 
-  const discountBanner = showDiscount
-    ? '<div style="background:#1D9E75;color:white;border-radius:10px;padding:14px 20px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center;">' +
-        '<div><div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;opacity:.85;margin-bottom:2px;">Your savings today</div>' +
-        '<div style="font-size:22px;font-weight:800;">$' + savings.toFixed(2) + ' off regular price</div></div>' +
-        '<div style="text-align:right;opacity:.9;font-size:13px;line-height:1.8;">' +
-        '<div>Regular price: $' + regularTotal.toFixed(2) + '</div>' +
-        '<div>Your price: $' + subtotal.toFixed(2) + '</div>' +
-        // Said out loud so nobody reads this as the amount owed — delivery and
-        // tax are on the totals block below, and the two must not look like
-        // they disagree.
-        '<div style="opacity:.75;font-size:11px;">before delivery &amp; tax</div></div></div>'
+  // Savings live IN the totals stack (Jett 2026-10-07), as the two lines that
+  // arrive at Subtotal: Regular price − Your savings = Subtotal. The separate
+  // green banner restated Subtotal as "Your price" and needed a "before delivery
+  // & tax" caveat so it would not read as the amount owed; inside the stack the
+  // arithmetic says that by itself.
+  const savingsRows = showDiscount
+    ? '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;color:#888;">' +
+        '<span>Regular price</span><span>$' + regularTotal.toFixed(2) + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;font-weight:700;color:#1D9E75;">' +
+        '<span>Your savings</span><span>&minus;$' + savings.toFixed(2) + '</span></div>'
     : '';
 
   const layawayBlock = isLayaway
@@ -266,6 +282,38 @@ export function buildInvoicePrintHtml(inv) {
   // inv.location → salesperson.store → Irondale default (see storeLocations.js).
   const store = resolveStoreLocation(inv);
 
+  // How the goods leave the building — read once, so the one-line summary in
+  // Details and the banner under the totals cannot disagree.
+  //
+  // trulyDeferred (2026-05-02) is a positive-state gate: "Delivery Charge: Not
+  // Yet Paid" only when there is genuinely no fulfillment commitment. Gating on
+  // inv.delivery_later alone printed it beside a real Scheduled Delivery banner
+  // when a stray /deliver-later call or the slot-expiry sweep had set the flag.
+  const isPickup   = inv.delivery_mode === 'pickup' || !!inv.pickup_date;
+  const isDelivery = !isPickup && (inv.delivery_mode === 'schedule' || !!inv.delivery_date);
+  const trulyDeferred = !!inv.delivery_later && !(Number(inv.delivery_fee || 0) > 0)
+    && !inv.delivery_date && !inv.delivery_order_id && !isPickup;
+  const shortDate = (d) => new Date(d + 'T12:00:00')
+    .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const longDate  = (d) => new Date(d + 'T12:00:00')
+    .toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  // The date and window ride at the TOP of page 1: with the banner below the
+  // totals (2026-10-03), a long ticket would otherwise push the delivery date
+  // to page 2 — and it is the first thing a customer or a crew looks for.
+  const fulfillmentLine = isQuote ? ''
+    : isPickup   ? `Pickup at ${e(store.name)} &middot; ${inv.pickup_date ? e(shortDate(inv.pickup_date)) + (inv.pickup_time ? ', ' + e(inv.pickup_time) : '') : 'date to be set'}`
+    : isDelivery ? `Delivery &middot; ${inv.delivery_date ? e(shortDate(inv.delivery_date)) + (inv.delivery_time ? ', ' + e(inv.delivery_time) : '') : 'date to be set'}`
+    : trulyDeferred ? 'Delivery not yet scheduled'
+    : '';
+
+  // Raw status keys carry underscores ("partially_returned", "en_route"), which
+  // printed verbatim on a customer document.
+  const statusText = String(inv.status || '').replace(/_/g, ' ');
+  const statusLabel = statusText.charAt(0).toUpperCase() + statusText.slice(1);
+
+  // Delivery address differs from Bill To only when the order carries its own.
+  const deliverTo = inv.address && inv.address !== inv.customer_address ? inv.address : '';
+
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -320,55 +368,12 @@ export function buildInvoicePrintHtml(inv) {
       <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#888;margin-bottom:6px;">Details</div>
       <div style="font-size:12px;color:#555;line-height:2;">
         <span style="color:#888;">Status:</span>
-        <strong style="margin-left:6px;${isVoided ? 'color:#E04B4A;' : ''}">${(inv.status||'').charAt(0).toUpperCase()+(inv.status||'').slice(1)}</strong>
+        <strong style="margin-left:6px;${isVoided ? 'color:#E04B4A;' : ''}">${e(statusLabel)}</strong>
         ${layawayBadge}
-        <br><span style="color:#888;">Location:</span>
-        <strong style="margin-left:6px;">${inv.location ? e(inv.location) : '&mdash;'}</strong>
+        ${fulfillmentLine ? `<br><strong style="color:#0C447C;">${fulfillmentLine}</strong>` : ''}
       </div>
     </div>
   </div>
-
-  ${discountBanner}
-
-  ${(() => {
-    // 2026-05-02: positive-state gate. Only show "Delivery Charge: Not
-    // Yet Paid" when there is GENUINELY no fulfillment commitment yet:
-    //   - no delivery_fee (or 0)
-    //   - no delivery_date set (no slot picked)
-    //   - no delivery_order_id (no order created)
-    //   - no pickup_date (didn't choose pickup either)
-    // Pre-fix this gated on inv.delivery_later alone, so an invoice
-    // with delivery_later=true (set by a stray /deliver-later call or
-    // slot-expiry sweep) plus a real delivery_fee + delivery_date
-    // would print BOTH the "Not Yet Paid" banner AND the
-    // "Scheduled Delivery" banner — contradictory and customer-facing.
-    const hasFee   = Number(inv.delivery_fee || 0) > 0;
-    const hasDate  = !!inv.delivery_date;
-    const hasOrder = !!inv.delivery_order_id;
-    const hasPickup = !!inv.pickup_date || inv.delivery_mode === 'pickup';
-    const trulyDeferred = inv.delivery_later && !hasFee && !hasDate && !hasOrder && !hasPickup;
-    return trulyDeferred ? `
-  <div style="background:#FFF8E1;border:2px solid #F0A500;border-radius:10px;
-    padding:18px 20px;margin-bottom:24px;">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-      <div>
-        <div style="font-size:13px;font-weight:800;color:#7C4A00;text-transform:uppercase;
-          letter-spacing:.06em;margin-bottom:8px;">📦 Delivery Charge: Not Yet Paid</div>
-        <div style="font-size:15px;font-weight:700;color:#7C4A00;">
-          This invoice does not include the delivery fee.
-        </div>
-        <div style="font-size:13px;color:#92580A;margin-top:6px;line-height:1.6;">
-          A separate charge will be billed once your delivery is scheduled.
-        </div>
-      </div>
-      <button onclick="invOpenDeliveryOptions('${inv.id}')"
-        style="flex-shrink:0;background:#F0A500;color:#fff;border:none;border-radius:8px;
-          padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">
-        Change Fulfillment
-      </button>
-    </div>
-  </div>` : '';
-  })()}
 
   ${isQuote ? `
   <div style="background:#FEF3E1;border:2px solid #F0A500;border-radius:10px;
@@ -380,44 +385,6 @@ export function buildInvoicePrintHtml(inv) {
       This is an estimate only. Prices and availability are subject to change.<br>
       Valid for 30 days from the date above.
     </div>
-  </div>` : (inv.delivery_mode === 'pickup' || inv.pickup_date) ? `
-  <div style="background:#E6F1FB;border:2px solid #0C447C;border-radius:10px;
-    padding:18px 20px;margin-bottom:24px;">
-    <div style="font-size:13px;font-weight:800;color:#0C447C;text-transform:uppercase;
-      letter-spacing:.06em;margin-bottom:8px;">📦 Customer Pick Up</div>
-    <div style="font-size:18px;font-weight:800;color:#0C447C;">
-      Flipsies Furniture — ${e(store.name)}
-    </div>
-    <div style="font-size:15px;font-weight:600;color:#1a1a1a;margin-top:4px;">
-      ${e(store.address)}
-    </div>
-    ${inv.pickup_date ? `
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #9FC3E8;
-      font-size:13px;color:#333;">
-      <span style="color:#0C447C;font-weight:600;">Scheduled:</span>
-      ${new Date(inv.pickup_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
-      ${inv.pickup_time ? `at <strong>${inv.pickup_time}</strong>` : ''}
-    </div>` : ''}
-  </div>` : (inv.delivery_mode === 'schedule' || inv.delivery_date) ? `
-  <div style="background:#E8F5E9;border:2px solid #2E7D32;border-radius:10px;
-    padding:18px 20px;margin-bottom:24px;">
-    <div style="font-size:13px;font-weight:800;color:#2E7D32;text-transform:uppercase;
-      letter-spacing:.06em;margin-bottom:8px;">🚚 Scheduled Delivery</div>
-    <div style="font-size:15px;font-weight:600;color:#1a1a1a;">
-      Delivery to: ${(inv.customer_address || inv.address) ? e(inv.customer_address || inv.address) : '&mdash;'}
-    </div>
-    ${inv.delivery_date ? `
-    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #A5D6A7;
-      font-size:13px;color:#333;">
-      <span style="color:#2E7D32;font-weight:600;">Date:</span>
-      ${new Date(inv.delivery_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'})}
-      ${inv.delivery_time ? `&nbsp;&nbsp;<span style="color:#2E7D32;font-weight:600;">Window:</span> <strong>${inv.delivery_time}</strong>` : ''}
-    </div>` : ''}
-    ${Number(inv.delivery_fee||0) > 0 ? `
-    <div style="margin-top:6px;font-size:13px;color:#555;">
-      <span style="color:#2E7D32;font-weight:600;">Delivery Fee:</span>
-      <strong>$${Number(inv.delivery_fee).toFixed(2)}</strong>
-    </div>` : ''}
   </div>` : ''}
 
   <div style="margin-bottom:24px;">
@@ -449,6 +416,7 @@ export function buildInvoicePrintHtml(inv) {
        original 260px, so only the gutter changes. -->
   <div style="display:flex;justify-content:flex-end;margin-bottom:24px;">
     <div style="width:270px;padding-right:10px;">
+      ${savingsRows}
       <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;">
         <span style="color:#888;">Subtotal</span><span>$${subtotal.toFixed(2)}</span>
       </div>
@@ -467,7 +435,7 @@ export function buildInvoicePrintHtml(inv) {
         <span style="color:#6b4e1c;font-weight:600;">$0.00</span>
       </div>` : `
       <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;">
-        <span style="color:#888;">Sales tax (${(TAX_RATE*100).toFixed(0)}%)</span><span>$${tax.toFixed(2)}</span>
+        <span style="color:#888;">Sales tax (${taxPct}%)</span><span>$${tax.toFixed(2)}</span>
       </div>`}
       ${haulAwayFee > 0 ? `
       <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;">
@@ -480,6 +448,57 @@ export function buildInvoicePrintHtml(inv) {
       ${paidRow}
     </div>
   </div>
+
+  <!-- Fulfillment sits BELOW the totals (Jett 2026-10-03): "get as much of the
+       actual invoice on page 1 as possible". Its date and window also print as one
+       line in Details at the top, so a long ticket cannot push them to page 2. The
+       QUOTE banner stays at the top: it tells the customer this is only an estimate. -->
+  ${trulyDeferred ? `
+  <div style="background:#FFF8E1;border:2px solid #F0A500;border-radius:10px;
+    padding:18px 20px;margin-bottom:24px;">
+    <div style="font-size:13px;font-weight:800;color:#7C4A00;text-transform:uppercase;
+      letter-spacing:.06em;margin-bottom:8px;">📦 Delivery Charge: Not Yet Paid</div>
+    <div style="font-size:15px;font-weight:700;color:#7C4A00;">
+      This invoice does not include the delivery fee.
+    </div>
+    <div style="font-size:13px;color:#92580A;margin-top:6px;line-height:1.6;">
+      A separate charge will be billed once your delivery is scheduled.
+    </div>
+  </div>` : ''}
+
+  ${isQuote ? '' : isPickup ? `
+  <div style="background:#E6F1FB;border:2px solid #0C447C;border-radius:10px;
+    padding:18px 20px;margin-bottom:24px;">
+    <div style="font-size:13px;font-weight:800;color:#0C447C;text-transform:uppercase;
+      letter-spacing:.06em;margin-bottom:8px;">📦 Customer Pick Up</div>
+    <div style="font-size:18px;font-weight:800;color:#0C447C;">
+      Flipsies Furniture — ${e(store.name)}
+    </div>
+    <div style="font-size:15px;font-weight:600;color:#1a1a1a;margin-top:4px;">
+      ${e(store.address)}
+    </div>
+    ${inv.pickup_date ? `
+    <div style="margin-top:10px;padding-top:10px;border-top:1px solid #9FC3E8;
+      font-size:13px;color:#333;">
+      <span style="color:#0C447C;font-weight:600;">Scheduled:</span>
+      ${e(longDate(inv.pickup_date))}
+      ${inv.pickup_time ? `at <strong>${e(inv.pickup_time)}</strong>` : ''}
+    </div>` : ''}
+  </div>` : isDelivery ? `
+  <div style="background:#E8F5E9;border:2px solid #2E7D32;border-radius:10px;
+    padding:14px 20px;margin-bottom:24px;">
+    <div style="font-size:13px;font-weight:800;color:#2E7D32;text-transform:uppercase;
+      letter-spacing:.06em;margin-bottom:6px;">🚚 Scheduled Delivery</div>
+    ${deliverTo ? `
+    <div style="font-size:14px;font-weight:600;color:#1a1a1a;margin-bottom:4px;">
+      Delivery to: ${e(deliverTo)}
+    </div>` : ''}
+    <div style="font-size:13px;color:#333;">
+      <span style="color:#2E7D32;font-weight:600;">Date:</span>
+      ${inv.delivery_date ? e(longDate(inv.delivery_date)) : 'to be scheduled'}
+      ${inv.delivery_time ? `&nbsp;&nbsp;<span style="color:#2E7D32;font-weight:600;">Window:</span> <strong>${e(inv.delivery_time)}</strong>` : ''}
+    </div>
+  </div>` : ''}
 
   ${warrantyBlock}
   ${notesBlock}
@@ -526,11 +545,18 @@ export function buildInvoicePrintHtml(inv) {
         <div style="font-size:11px;color:#888;">Date</div>
       </div>
     </div>
-    <div style="font-size:10px;color:#aaa;line-height:1.7;">
-      All sales are final. Merchandise is sold as-is unless otherwise noted. Flipsies Furniture is not responsible for
-      damage during customer-arranged transport. Delivery fees are non-refundable once a delivery date is scheduled.
-      Special orders and custom items are non-refundable. By signing above, customer acknowledges receipt of merchandise
-      and agrees to all terms.
+    <div style="font-size:10px;color:#888;line-height:1.6;">
+      <strong style="color:#555;">Returns &amp; exchanges.</strong>
+      Damaged or defective on arrival: we swap it within ${PRINT_RETURN_TERMS.defectiveSwapHours} hours at no charge &mdash;
+      please inspect every piece before our team leaves.
+      Changed your mind: tell us within ${PRINT_RETURN_TERMS.changeOfMindDays} days of delivery or pickup. The piece must
+      come back exactly as delivered (no marks, stains, smoke or pet odor, no wear). Still sealed in its factory packaging:
+      no restocking fee. Out of the box: ${PRINT_RETURN_TERMS.restockingFeePercent}% restocking fee. Credit is issued as
+      store credit. Return it to either showroom at no charge, or we can collect it for a quoted fee.
+      Custom orders, floor models and clearance items are not returnable except for manufacturer defects.
+      Flipsies Furniture is not responsible for damage during customer-arranged transport.
+      Full policy: flipsiesfurniture.com/returns. By signing above, customer acknowledges receipt of merchandise
+      and agrees to these terms.
     </div>
   </div>
 
