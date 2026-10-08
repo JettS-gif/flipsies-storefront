@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/HoverPrefetchLink';
 import type { StorefrontPackage } from '@/lib/packages';
 import CatalogImage from './CatalogImage';
 import { packageHero } from '@/lib/heroImage';

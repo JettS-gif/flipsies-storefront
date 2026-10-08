@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from '@/components/HoverPrefetchLink';
 import type { Product } from '@/lib/api';
 import ProductCardImage from '@/components/ProductCardImage';
 
