@@ -94,9 +94,13 @@ export function pageview(path: string): void {
 // Fires a conversion/event to GA4 (raw name) and, for mapped conversions, Meta.
 // Prefer GA4's recommended names (generate_lead, begin_checkout, purchase) so
 // the standard reports light up and the Meta mapping above applies.
-export function trackEvent(name: string, params: GtagParams = {}): void {
+//
+// opts.meta === false skips the Meta mirror for ONE call — the checkout
+// generate_lead, which counts as a lead for Google only (lib/googleLead.ts).
+export function trackEvent(name: string, params: GtagParams = {}, opts: { meta?: boolean } = {}): void {
   if (typeof window === 'undefined') return;
   if (GA_ID && window.gtag) window.gtag('event', name, params);
+  if (opts.meta === false) return;
 
   const metaName = META_EVENT[name];
   if (META_PIXEL_IDS.length && window.fbq && metaName) {

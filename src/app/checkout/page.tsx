@@ -9,6 +9,7 @@ import { addDaysCT } from '@/lib/ct';
 import { trackEvent } from '@/lib/analytics';
 import { visitorId, track } from '@/lib/siteEvents';
 import { purchased } from '@/lib/events';
+import { checkoutLeadCaptured } from '@/lib/googleLead';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { getStripe } from '@/lib/stripe';
 import { api, type AvailableSlot, type CheckAvailabilityResponse } from '@/lib/api';
@@ -477,6 +478,9 @@ export default function CheckoutPage() {
     leadSent.current = next;
     api
       .captureCheckoutLead({ name: name.trim() || undefined, email: email.trim(), phone: phone.trim() || undefined })
+      // Google Ads lead conversion — once per session, Google-sourced visits
+      // only, no PII, no Meta mirror. The rule lives in lib/googleLead.ts.
+      .then(() => { checkoutLeadCaptured(); })
       .catch(() => { /* fire-and-forget — never surface, never block */ });
   }
 

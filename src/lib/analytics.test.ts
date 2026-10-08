@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { META_PIXEL_IDS, GA_ID } from './analytics';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { META_PIXEL_IDS, GA_ID, trackEvent } from './analytics';
 
 // Locks the pixel roster itself, not the event shapes (events.test.ts owns
 // those). A pixel silently dropped from this list does not fail anything, does
@@ -37,5 +37,30 @@ describe('Meta pixel roster', () => {
     // Meta and GA4 fire from the same helpers; losing one must not read as
     // losing both.
     expect(GA_ID).toMatch(/^G-[A-Z0-9]+$/);
+  });
+});
+
+describe('trackEvent Meta mirror', () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  function stub() {
+    const gtag = vi.fn();
+    const fbq = vi.fn();
+    vi.stubGlobal('window', { gtag, fbq });
+    return { gtag, fbq };
+  }
+
+  it('mirrors generate_lead to Meta Lead by default (newsletter / delivery check)', () => {
+    const { gtag, fbq } = stub();
+    trackEvent('generate_lead', { source: 'footer_newsletter' });
+    expect(gtag).toHaveBeenCalledWith('event', 'generate_lead', { source: 'footer_newsletter' });
+    expect(fbq).toHaveBeenCalledWith('track', 'Lead', {});
+  });
+
+  it('{ meta: false } sends GA4 only — the checkout Google-lead conversion', () => {
+    const { gtag, fbq } = stub();
+    trackEvent('generate_lead', { source: 'checkout', method: 'checkout' }, { meta: false });
+    expect(gtag).toHaveBeenCalledTimes(1);
+    expect(fbq).not.toHaveBeenCalled();
   });
 });

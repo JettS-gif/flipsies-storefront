@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { pageview } from '@/lib/analytics';
 import { track } from '@/lib/siteEvents';
+import { rememberLandingSource } from '@/lib/googleLead';
 
 // Fires a GA4 page_view on client-side (SPA) route changes. The initial
 // load's page_view — including any utm_* params on the landing URL — is sent
@@ -24,6 +25,9 @@ import { track } from '@/lib/siteEvents';
 export default function Analytics() {
   const pathname = usePathname();
   useEffect(() => {
+    // Before anything else: the landing URL/referrer is the only place the
+    // visit source is visible (checkout's Google-lead rule reads it back).
+    rememberLandingSource();
     pageview(pathname);
     track({ event_type: 'page_view', path: pathname });
   }, [pathname]);
