@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
-import Link from 'next/link';
+import Link from '@/components/HoverPrefetchLink';
 import { useRouter } from 'next/navigation';
 import type { ProductVariant } from '@/lib/api';
 import CatalogImage from './CatalogImage';
@@ -21,9 +20,10 @@ import CatalogImage from './CatalogImage';
 // advertising the old price — a merchant-feed mismatch. Routing keeps price,
 // gallery, availability, canonical URL and JSON-LD consistent.
 //
-// The navigation still feels instant: every sibling is prefetched (Links
-// prefetch automatically in prod; the effect warms the dropdown-only ones
-// too), so the click is a client-side transition with no page reload.
+// Siblings prefetch on hover/touch, not on mount: a 23-colourway group used to
+// fire every sibling's prefetch as the page opened, then again as the swatches
+// scrolled into view — ~46 requests from one product page, against a Vercel
+// cap of 300/min shared by every device on the store NAT (2026-10-08).
 export default function ColorSelector({
   variants,
   currentId,
@@ -34,14 +34,6 @@ export default function ColorSelector({
   axis?: 'color' | 'size';
 }) {
   const router = useRouter();
-
-  // Warm every sibling so switching is instant regardless of which affordance is
-  // used. Variant counts are small (a handful per group).
-  useEffect(() => {
-    for (const v of variants) {
-      if (v.id !== currentId) router.prefetch(`/product/${v.id}`);
-    }
-  }, [variants, currentId, router]);
 
   if (!variants || variants.length < 2) return null;
 

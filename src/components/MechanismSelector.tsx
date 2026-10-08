@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import Link from '@/components/HoverPrefetchLink';
 import type { Mechanism } from '@/lib/api';
 
 // Southern Motion sells one seat in several reclining MECHANISMS (rocker,
@@ -17,20 +16,13 @@ import type { Mechanism } from '@/lib/api';
 // library rather than one row per fabric.
 export default function MechanismSelector({
   mechanisms,
-  currentId,
 }: {
   mechanisms: Mechanism[];
   currentId: string;
 }) {
-  const router = useRouter();
   const [openKey, setOpenKey] = useState<string | null>(null);
-
-  // Warm the in-stock destinations so switching is instant.
-  useEffect(() => {
-    for (const m of mechanisms) {
-      if (m.route_id && m.route_id !== currentId) router.prefetch(`/product/${m.route_id}`);
-    }
-  }, [mechanisms, currentId, router]);
+  // In-stock destinations prefetch on hover/touch (HoverPrefetchLink), not on
+  // mount — see ColorSelector for the request-budget reason.
 
   if (!mechanisms || mechanisms.length < 2) return null;
 
