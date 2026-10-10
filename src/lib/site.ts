@@ -32,8 +32,10 @@ export const STORE_EMAIL = 'jett@flipsiesfurniture.com';
  */
 export const ACCESSIBILITY = {
   contactName:  'Jett Schencker',
-  phone:        '(205) 764-3741',
-  phoneHref:    '+12057643741',
+  // The Irondale showroom line, not a personal cell (Jett 2026-10-10: his own
+  // number published here was drawing customer calls to his phone).
+  phone:        '(205) 957-4001',
+  phoneHref:    '+12059574001',
   email:        STORE_EMAIL,
   responseTime: '72 hours',
   /** No formal audit has been done. See the page for why that is SAID, not hidden. */

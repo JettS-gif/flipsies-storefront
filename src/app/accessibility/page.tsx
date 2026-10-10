@@ -36,7 +36,7 @@ export default function AccessibilityPage() {
         <p className="text-sm text-brand-charcoal-light leading-relaxed">
           Call <a href={`tel:${ACCESSIBILITY.phoneHref}`} className="text-brand-yellow-dark font-medium hover:underline">{ACCESSIBILITY.phone}</a>{' '}
           or email <a href={`mailto:${ACCESSIBILITY.email}`} className="text-brand-yellow-dark font-medium hover:underline">{ACCESSIBILITY.email}</a>.
-          You will reach {ACCESSIBILITY.contactName}, and we aim to respond within{' '}
+          Your request is passed to {ACCESSIBILITY.contactName}, and we aim to respond within{' '}
           <strong>{ACCESSIBILITY.responseTime}</strong>.
         </p>
         <p className="text-sm text-brand-charcoal-light leading-relaxed mt-3">
