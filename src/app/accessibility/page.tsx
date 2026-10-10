@@ -40,9 +40,11 @@ export default function AccessibilityPage() {
           <strong>{ACCESSIBILITY.responseTime}</strong>.
         </p>
         <p className="text-sm text-brand-charcoal-light leading-relaxed mt-3">
-          We can browse the catalogue with you, quote delivery, take payment and place the order over
-          the phone — <strong>everything the website does, a person here can do with you instead.</strong>{' '}
-          You do not need to explain why.
+          We can browse the catalogue with you, quote delivery and place the order over the phone,
+          then text you a secure link to pay — <strong>everything the website does, a person here can
+          do with you instead.</strong>{' '}
+          You do not need to explain why. We will never ask you to read a card number to us over the
+          phone.
         </p>
       </div>
 
@@ -75,8 +77,10 @@ export default function AccessibilityPage() {
             photograph at all — we are working through that.
           </p>
           <p>
-            Some content comes from third parties we do not control, including embedded maps and
-            payment fields. If one of those blocks you, call us and we will complete the order for you.
+            Some content comes from third parties we do not control, including embedded maps and the
+            secure card form, which is also what our texted payment link opens. If one of those blocks
+            you, call us and we will complete the order with you; if the card form itself is the
+            problem, you can pay at either showroom instead.
           </p>
         </div>
       </section>
