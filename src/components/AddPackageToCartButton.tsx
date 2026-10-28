@@ -17,6 +17,7 @@ export default function AddPackageToCartButton({
     price: number;
     images: string[];
     category: string | null;
+    in_stock?: boolean;
   };
 }) {
   const { addItem } = useCart();
@@ -30,6 +31,8 @@ export default function AddPackageToCartButton({
       price: pkg.price,
       image_url: pkg.images?.[0] ?? null,
       category: pkg.category,
+      // Snapshot of the set's badge, same contract as AddToCartButton.
+      in_stock: pkg.in_stock,
     };
     addItem(item);
     setAdded(true);

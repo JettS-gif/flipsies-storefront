@@ -353,13 +353,15 @@ export default function CheckoutPage() {
   const [total, setTotal] = useState(0);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [creatingIntent, setCreatingIntent] = useState(false);
-  // 409 item_oversold response from /store/order. Surfaced as a
-  // dedicated block so the customer can see exactly which SKUs sold
-  // out and head back to the cart to drop them — never silently
-  // converted to a 6-8 week backorder.
-  const [oversoldItems, setOversoldItems] = useState<Array<{
+  // 409 now_special_order from /store/order: lines the cart showed "In Stock"
+  // sold out before payment. A shortage no longer refuses the sale (Jett
+  // 09-28: never reject payment over logistics) — the shopper either confirms
+  // ordering it as a special order or goes back to the cart. Never silently
+  // converted: they were promised stock, so they choose.
+  const [specialOrderItems, setSpecialOrderItems] = useState<Array<{
     product_id: string;
     sku: string;
+    name?: string | null;
     requested: number;
     qty_available: number;
   }> | null>(null);
@@ -564,7 +566,7 @@ export default function CheckoutPage() {
       const fabricPairs = items
         .filter(i => i.product_id && i.fabric_id)
         .map(i => `${i.product_id}:${i.fabric_id}`);
-      const resp = await api.checkAvailability(trimmed, productIds, fabricPairs);
+      const resp = await api.checkAvailability(trimmed, productIds, fabricPairs, visitorId());
       setAvailability(resp);
     } catch (err) {
       console.error('[checkout] check-availability failed:', err);
@@ -613,11 +615,23 @@ export default function CheckoutPage() {
   // /store/order handler can create the invoice with the right delivery
   // metadata and the Stripe webhook can auto-create the delivery order
   // on successful payment.
-  async function createPaymentIntent() {
+  async function createPaymentIntent(acceptSpecialOrder = false) {
     setCreatingIntent(true);
     setPaymentError(null);
-    setOversoldItems(null);
+    setSpecialOrderItems(null);
     setServerScheduledByCall(false);
+
+    // The delivery step already told the shopper which lines are made to order
+    // (delivery_on_arrival lists them), so those don't get asked a second time.
+    const toldMadeToOrder = new Set(
+      availability?.status === 'delivery_on_arrival'
+        ? availability.special_orders.map(s => s.sku)
+        : [],
+    );
+    const stockFlags = (i: CartItem) => ({
+      shown_in_stock: i.in_stock === true && !toldMadeToOrder.has(i.sku),
+      accept_special_order: acceptSpecialOrder,
+    });
 
     try {
       const res = await fetch('/api/create-payment-intent', {
@@ -629,8 +643,9 @@ export default function CheckoutPage() {
           // from the packages row, so anything we sent would be ignored.
           items: items.map(i => (
             i.package_id
-              ? { package_id: i.package_id, qty: i.qty }
+              ? { package_id: i.package_id, qty: i.qty, ...stockFlags(i) }
               : {
+                  ...stockFlags(i),
                   product_id: i.product_id,
                   sku: i.sku,
                   name: i.name,
@@ -716,8 +731,8 @@ export default function CheckoutPage() {
 
       if (!res.ok) {
         const err = await res.json();
-        if (res.status === 409 && err.error === 'item_oversold' && Array.isArray(err.items)) {
-          setOversoldItems(err.items);
+        if (res.status === 409 && err.error === 'now_special_order' && Array.isArray(err.items)) {
+          setSpecialOrderItems(err.items);
           return;
         }
         // `message` first — the backend ships a human sentence there, naming the
@@ -1277,24 +1292,37 @@ export default function CheckoutPage() {
             <p className="text-sm text-red-500">{paymentError}</p>
           )}
 
-          {oversoldItems && oversoldItems.length > 0 && (
-            <div className="rounded-lg border-2 border-red-300 bg-red-50 px-4 py-4 text-sm">
-              <p className="font-semibold text-red-800 mb-2">
-                Some items just sold out
+          {specialOrderItems && specialOrderItems.length > 0 && (
+            <div className="rounded-lg border-2 border-brand-yellow bg-brand-yellow-light px-4 py-4 text-sm">
+              <p className="font-semibold text-brand-charcoal mb-2">
+                {specialOrderItems.length === 1 ? 'This item just sold out' : 'These items just sold out'}
               </p>
-              <p className="text-red-700 mb-3">
-                The following {oversoldItems.length === 1 ? 'item' : 'items'} were available when you added {oversoldItems.length === 1 ? 'it' : 'them'} to your cart but a parallel order took the last {oversoldItems.length === 1 ? 'unit' : 'units'}. Please head back to your cart to remove or adjust.
+              <p className="text-brand-charcoal-light mb-3">
+                We can order {specialOrderItems.length === 1 ? 'it' : 'them'} for you. You&apos;ll review your total before paying, and we&apos;ll call you when {specialOrderItems.length === 1 ? 'it arrives' : 'they arrive'} to set up delivery or pickup.
               </p>
-              <ul className="list-disc list-inside text-red-700 mb-3 font-mono text-xs">
-                {oversoldItems.map(it => (
-                  <li key={it.product_id}>
-                    {it.sku} — requested {it.requested}, {it.qty_available} left
-                  </li>
-                ))}
+              <ul className="list-disc list-inside text-brand-charcoal mb-4">
+                {specialOrderItems.map(it => {
+                  const lead = items.find(c => c.sku === it.sku)?.lead_label;
+                  return (
+                    <li key={it.product_id}>
+                      {it.name || it.sku} — arrives in {lead || '6-8 weeks'}
+                    </li>
+                  );
+                })}
               </ul>
-              <Link href="/cart" className="btn-brand inline-block text-sm px-4 py-2">
-                Back to Cart
-              </Link>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => createPaymentIntent(true)}
+                  disabled={creatingIntent}
+                  className="btn-brand text-sm px-4 py-2"
+                >
+                  {creatingIntent ? 'Placing order…' : 'Order it for me'}
+                </button>
+                <Link href="/cart" className="btn-outline inline-block text-sm px-4 py-2">
+                  Back to Cart
+                </Link>
+              </div>
             </div>
           )}
 

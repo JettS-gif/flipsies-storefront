@@ -25,6 +25,10 @@ interface CartItem {
   /** Colourway within the fabric — the backend validates it against fabric_id. */
   fabric_color_id?: string;
   fabric_name?: string | null;
+  /** The cart showed this line "In Stock". Only adds a confirm step if stock ran out. */
+  shown_in_stock?: boolean;
+  /** The shopper confirmed ordering it as a special order. */
+  accept_special_order?: boolean;
 }
 
 interface RequestBody {
@@ -79,10 +83,19 @@ export async function POST(req: Request) {
         // across the components itself (utils/expandPackage.js). Passing a
         // client-built component list or price would be ignored anyway — and
         // must be, for the same reason the product price is re-derived.
+        //
+        // shown_in_stock / accept_special_order drive the backend's "this sold
+        // out, order it for you?" confirm. Neither touches price or stock.
         items: items.map(i => (
           i.package_id
-            ? { package_id: i.package_id, qty: i.qty }
+            ? {
+                package_id: i.package_id, qty: i.qty,
+                shown_in_stock: i.shown_in_stock === true,
+                accept_special_order: i.accept_special_order === true,
+              }
             : {
+                shown_in_stock: i.shown_in_stock === true,
+                accept_special_order: i.accept_special_order === true,
                 product_id: i.product_id,
                 sku: i.sku,
                 name: i.name,
@@ -108,8 +121,8 @@ export async function POST(req: Request) {
     if (!orderRes.ok) {
       const err = await orderRes.json().catch(() => ({ error: 'Order creation failed' }));
       // Forward the backend status + full body so the checkout UI can
-      // act on structured errors (e.g. 409 item_oversold needs the
-      // items[] list to tell the customer which cart lines to remove).
+      // act on structured errors (e.g. 409 now_special_order needs the
+      // items[] list to tell the customer which lines sold out).
       // Without this, 4xx race / validation errors looked identical to
       // 5xx server failures.
       return NextResponse.json(err, { status: orderRes.status });

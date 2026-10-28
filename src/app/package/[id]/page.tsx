@@ -162,6 +162,7 @@ export default async function PackagePage({ params }: Props) {
             pkg={{
               id: pkg.id, sku: pkg.sku, name: pkg.name,
               price: pkg.price, images: pkg.images, category: pkg.category,
+              in_stock: pkg.in_stock,
             }}
           />
 

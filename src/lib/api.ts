@@ -483,10 +483,13 @@ export const api = {
    * (found 2026-07-31). The backend resolves the fabric's child product
    * read-only and reads ITS stock. Omitting this keeps the old behaviour.
    */
-  checkAvailability: (address: string, productIds?: string[], fabricPairs?: string[]) => {
+  checkAvailability: (address: string, productIds?: string[], fabricPairs?: string[], visitorId?: string) => {
     const qs = new URLSearchParams({ address });
     if (productIds?.length) qs.set('product_ids', productIds.join(','));
     if (fabricPairs?.length) qs.set('fabric_pairs', fabricPairs.join(','));
+    // Joins the backend's record of this answer (range, ZIP, distance) to the
+    // visit — that record is how the checkout drop gets diagnosed.
+    if (visitorId) qs.set('visitor_id', visitorId);
     return request<CheckAvailabilityResponse>(
       'GET',
       `/storefront/check-availability?${qs.toString()}`,

@@ -47,9 +47,10 @@ export interface CartItem {
    * DELIBERATELY A SNAPSHOT, and it is allowed to go stale. The cart persists
    * to localStorage and syncs to the customer portal, so a line can sit for
    * days while the last one sells. That is fine because this drives COPY, not
-   * a promise: the authoritative check is the `item_oversold` 409 from
-   * /store/order, which still refuses to sell what we do not have. A stale
-   * badge shows the wrong wait; it cannot oversell.
+   * a promise: /store/order reads stock itself and turns a shortage into a
+   * special order, asking first (409 `now_special_order`) when this snapshot
+   * says the shopper was shown "In Stock". A stale badge shows the wrong wait;
+   * it cannot oversell.
    *
    * Undefined on lines added before this shipped — every consumer must treat
    * `undefined` as "unknown", not as "out of stock", or an old cart suddenly
