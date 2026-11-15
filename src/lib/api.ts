@@ -368,6 +368,13 @@ export const api = {
     return { ...res, data: res.data.map(hydrateProduct) };
   },
 
+  /** Meta catalog labels (new_arrival / best_seller / deal) by product id. Server-only: carries the catalog secret. */
+  getAdLabels: async () =>
+    request<{ labels: Record<string, string[]>; generated_at: string }>('GET', '/storefront/ad-labels', undefined, {
+      next: { revalidate: 900 },
+      headers: catalogAuth(),
+    }),
+
   getProduct: async (id: string) => {
     const p = await request<Product>('GET', `/storefront/products/${id}`, undefined, {
       next: { revalidate: 60 },
