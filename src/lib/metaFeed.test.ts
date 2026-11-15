@@ -15,8 +15,14 @@ describe('meta feed', () => {
   it('is the Google row plus three label columns', () => {
     const [header, row] = buildMetaFeed([base], { 'abc-123': ['best_seller'] }).split('\n');
     expect(header.split('\t')).toEqual([...GOOGLE_FEED_COLUMNS, ...META_LABEL_COLUMNS]);
-    expect(row.startsWith(googleRow(base))).toBe(true);
+    const g = googleRow(base).split('\t');
+    expect(row.split('\t').slice(1, g.length)).toEqual(g.slice(1));
     expect(row.split('\t').slice(-3)).toEqual(['', 'best_seller', '']);
+  });
+
+  it('uses the SKU as the id, because that is what the pixel reports as content_ids', () => {
+    const row = buildMetaFeed([base], {}).split('\n')[1].split('\t');
+    expect(row[0]).toBe('101-113-14');
   });
 
   it('puts each label in its own fixed column so product sets can filter on it', () => {

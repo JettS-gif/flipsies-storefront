@@ -30,11 +30,26 @@ export function labelCells(p: Product, labels: AdLabels): string[] {
   return LABEL_FOR_COLUMN.map((l) => (mine.has(l) ? l : ''));
 }
 
+const ID_COL = GOOGLE_FEED_COLUMNS.indexOf('id');
+const MPN_COL = GOOGLE_FEED_COLUMNS.indexOf('mpn');
+
+/**
+ * One Meta row. `id` is the SKU, not the product UUID the Google feed uses: the
+ * pixel reports content_ids as the SKU (events.ts toGaItem), and Meta joins a
+ * ViewContent / AddToCart to a catalog item ONLY by exact id. With UUIDs every
+ * retargeting ad would have nothing to show the person who viewed the product.
+ */
+export function metaRow(p: Product, labels: AdLabels): string {
+  const cells = googleRow(p).split(SEP);
+  if (cells[MPN_COL]) cells[ID_COL] = cells[MPN_COL];
+  return [...cells, ...labelCells(p, labels)].join(SEP);
+}
+
 export function buildMetaFeed(products: Product[], labels: AdLabels): string {
   const lines = [[...GOOGLE_FEED_COLUMNS, ...META_LABEL_COLUMNS].join(SEP)];
   for (const p of products) {
     if (!isFeedEligible(p)) continue;
-    lines.push([googleRow(p), ...labelCells(p, labels)].join(SEP));
+    lines.push(metaRow(p, labels));
   }
   return lines.join('\n') + '\n';
 }
