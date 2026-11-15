@@ -15,6 +15,7 @@ import { getStripe } from '@/lib/stripe';
 import { api, type AvailableSlot, type CheckAvailabilityResponse } from '@/lib/api';
 import { loadStoredSlot, saveStoredSlot, clearStoredSlot } from '@/lib/deliverySlot';
 import { DELIVERY } from '@/lib/policy';
+import { stripeReturnOutcome, PAYMENT_NOT_COMPLETED_MESSAGE } from '@/lib/stripeReturn';
 import Link from 'next/link';
 import ShippingQuoteRequest from '@/components/ShippingQuoteRequest';
 
@@ -386,11 +387,25 @@ export default function CheckoutPage() {
     try { window.scrollTo({ top: 0, behavior: 'auto' }); } catch { /* non-fatal */ }
   }
 
+  // Payment redirect that came back without paying (stripeReturnOutcome).
+  const [returnError, setReturnError] = useState<string | null>(null);
+
   // Handle return from Stripe redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('status') === 'success') {
-      firePurchase();
+    const outcome = stripeReturnOutcome(params);
+    if (outcome === 'failed') {
+      // Cart, slot and pending purchase stay as they are: a retry with the same
+      // cart reuses the unpaid invoice (utils/storefrontOrder/reuse.js).
+      setReturnError(PAYMENT_NOT_COMPLETED_MESSAGE);
+      window.history.replaceState({}, '', '/checkout');
+      return;
+    }
+    if (outcome === 'succeeded' || outcome === 'processing') {
+      if (outcome === 'succeeded') firePurchase();
+      else {
+        try { sessionStorage.removeItem(PENDING_PURCHASE_KEY); } catch { /* non-fatal */ }
+      }
       clearCart();
       clearStoredSlot();
       setInvoiceNumber(params.get('invoice') || '');
@@ -452,6 +467,7 @@ export default function CheckoutPage() {
     // Going Back and forward again is the same lead; captureLead only sends
     // when something is new, and the server upserts on email regardless.
     captureLead();
+    setReturnError(null);
     setStep(1);
   }
 
@@ -782,6 +798,12 @@ export default function CheckoutPage() {
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
       <h1 className="text-2xl font-bold text-brand-charcoal mb-2">Checkout</h1>
       <StepBar current={step} />
+
+      {returnError && step < 3 && (
+        <div role="alert" className="mb-6 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {returnError}
+        </div>
+      )}
 
       {/* ── Step 0: Customer Info ── */}
       {step === 0 && (

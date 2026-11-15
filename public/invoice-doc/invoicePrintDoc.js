@@ -276,7 +276,9 @@ export function buildInvoicePrintHtml(inv) {
     ? '<span style="margin-left:8px;background:#FEF9EC;color:#7C5C0C;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;">Layaway</span>'
     : '';
 
-  const smsPhone = inv.customer_phone || '______________________';
+  // Escaped like phoneLine: a web order stores the phone exactly as typed, and
+  // this popup shares the staff app's origin and its login token — review 2026-11-14.
+  const smsPhone = inv.customer_phone ? e(inv.customer_phone) : '______________________';
 
   // Resolve the selling showroom for the printed header + pickup block:
   // inv.location → salesperson.store → Irondale default (see storeLocations.js).
