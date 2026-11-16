@@ -6,6 +6,8 @@ import type { Metadata } from 'next';
 import JsonLd from '@/components/JsonLd';
 import AddPackageToCartButton from '@/components/AddPackageToCartButton';
 import { fetchPackage } from '@/lib/packages';
+import { fetchLadder } from '@/lib/bedDeals';
+import MattressPicker from '@/components/MattressPicker';
 import { SITE_URL, SITE_NAME } from '@/lib/site';
 import { publicDescription } from '@/lib/publicDescription';
 import { packageImages } from '@/lib/heroImage';
@@ -42,6 +44,8 @@ export default async function PackagePage({ params }: Props) {
   const { id } = await params;
   const pkg = await getPackage(id);
   if (!pkg) notFound();
+  // Complete-bed bundles: the other mattress steps for this bed (empty otherwise).
+  const ladder = await fetchLadder(pkg);
 
   const url = `${SITE_URL}/package/${pkg.id}`;
   // packageImages, not pkg.images: 26 of 77 published packages carry no images
@@ -157,6 +161,8 @@ export default async function PackagePage({ params }: Props) {
           {pkgDesc && (
             <p className="text-sm text-brand-charcoal-light mt-4 leading-relaxed">{pkgDesc}</p>
           )}
+
+          <MattressPicker current={pkg} ladder={ladder} />
 
           <AddPackageToCartButton
             pkg={{

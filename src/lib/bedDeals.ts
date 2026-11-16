@@ -15,24 +15,69 @@ import { fetchPackages, type StorefrontPackage } from './packages';
 export const BED_DEALS_ANCHOR = 'beds';
 
 const NAME = /^Complete (Queen|King) Bed\b/;
+// Base bundle "UBF-23GYQ-COMPLETE"; mattress-ladder steps add a code: "…-COMPLETE-D10".
+const SKU = /^(.*)-COMPLETE(?:-[A-Z0-9]+)?$/i;
 
 export function isCompleteBed(p: Pick<StorefrontPackage, 'name' | 'sku'>): boolean {
-  return NAME.test(p.name || '') && /-COMPLETE$/i.test(p.sku || '');
+  return NAME.test(p.name || '') && SKU.test(p.sku || '');
 }
 
+/** Bundles for the same bed share this key; one key = one mattress ladder. */
+export function bedKey(p: Pick<StorefrontPackage, 'sku'>): string {
+  return SKU.exec(p.sku || '')?.[1]?.toUpperCase() || '';
+}
+
+/** The mattress step's label, from the last name segment: "… · Dreamer 10\" Mattress". */
+export function mattressLabel(p: Pick<StorefrontPackage, 'name'>): string {
+  const parts = (p.name || '').split(' · ');
+  return parts.length > 3 ? parts[parts.length - 1] : 'Mattress';
+}
+
+/** Every step of `pkg`'s ladder (itself included), cheapest first. */
+export function ladderFor(pkg: StorefrontPackage, all: StorefrontPackage[]): StorefrontPackage[] {
+  const key = bedKey(pkg);
+  return all
+    .filter(p => isCompleteBed(p) && bedKey(p) === key)
+    .sort((a, b) => a.price - b.price || a.name.localeCompare(b.name));
+}
+
+/**
+ * One card per bed (its cheapest bundle) so Deals and the home page show "from"
+ * prices instead of every mattress step; the bundle page offers the rest.
+ */
 export function splitBySize(pkgs: StorefrontPackage[]): { queen: StorefrontPackage[]; king: StorefrontPackage[] } {
-  const beds = pkgs.filter(isCompleteBed).sort((a, b) => a.name.localeCompare(b.name));
+  const base = new Map<string, StorefrontPackage>();
+  for (const p of pkgs.filter(isCompleteBed)) {
+    const k = bedKey(p);
+    const cur = base.get(k);
+    if (!cur || p.price < cur.price) base.set(k, p);
+  }
+  const beds = [...base.values()].sort((a, b) => a.name.localeCompare(b.name));
   return {
     queen: beds.filter(p => NAME.exec(p.name)?.[1] === 'Queen'),
     king: beds.filter(p => NAME.exec(p.name)?.[1] === 'King'),
   };
 }
 
+async function fetchAllCompleteBeds(): Promise<StorefrontPackage[]> {
+  return (await fetchPackages({ search: 'complete', limit: 100 })).filter(isCompleteBed);
+}
+
 export async function fetchCompleteBeds(): Promise<{ queen: StorefrontPackage[]; king: StorefrontPackage[] }> {
   try {
-    return splitBySize(await fetchPackages({ search: 'complete', limit: 50 }));
+    return splitBySize(await fetchAllCompleteBeds());
   } catch {
     return { queen: [], king: [] };
+  }
+}
+
+/** The published ladder for a bundle page; empty when the bundle isn't a complete bed. */
+export async function fetchLadder(pkg: StorefrontPackage): Promise<StorefrontPackage[]> {
+  if (!isCompleteBed(pkg)) return [];
+  try {
+    return ladderFor(pkg, await fetchAllCompleteBeds());
+  } catch {
+    return [];
   }
 }
 
