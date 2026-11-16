@@ -15,9 +15,13 @@ const money = (n: number) =>
 export default function PackageCards({
   packages,
   title = 'Complete the room — save on the set',
+  // The default claims a set discount; a bundle priced at the sum of its pieces
+  // (the complete-bed deals) must say something else.
+  subtitle = 'Buy the whole set for less than the pieces separately.',
 }: {
   packages: StorefrontPackage[];
   title?: string;
+  subtitle?: string;
 }) {
   if (packages.length === 0) return null;
   return (
@@ -26,7 +30,7 @@ export default function PackageCards({
         <div>
           <h2 className="text-xl font-bold text-brand-charcoal">{title}</h2>
           <p className="text-sm text-brand-charcoal-light mt-0.5">
-            Buy the whole set for less than the pieces separately.
+            {subtitle}
           </p>
         </div>
       </div>

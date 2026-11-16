@@ -1,6 +1,7 @@
 import Link from "next/link";
 import CheckDeliveryButton from "@/components/CheckDeliveryButton";
 import ProductCarousel from "@/components/ProductCarousel";
+import BedDealsBanner from "@/components/BedDealsBanner";
 import Reviews from "@/components/Reviews";
 import { SHOWROOMS, OPENING_HOURS } from "@/lib/site";
 
@@ -96,6 +97,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Complete-bed deals band — renders nothing until a bundle is published. */}
+      <BedDealsBanner />
 
       {/* Best-sellers carousel — real top sellers from sales data */}
       <ProductCarousel />

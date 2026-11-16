@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { api, type Product } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
+import BedDealsSection from '@/components/BedDealsSection';
+import { fetchCompleteBeds, huntPin } from '@/lib/bedDeals';
 import { pageMetadata } from '@/lib/site';
 
 export const metadata = pageMetadata({
@@ -84,10 +86,13 @@ async function fetchLowestByRoom(): Promise<{ room: string; items: Product[] }[]
 }
 
 export default async function DealsPage() {
-  const [clearance, lowestByRoom] = await Promise.all([
+  const [clearance, lowestByRoom, beds] = await Promise.all([
     fetchClearance(),
     fetchLowestByRoom(),
+    fetchCompleteBeds(),
   ]);
+  const pin = huntPin();
+  const hasBeds = beds.queen.length > 0 || beds.king.length > 0 || !!pin;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -98,6 +103,9 @@ export default async function DealsPage() {
           while they last — plus the lowest-priced piece in every room.
         </p>
       </header>
+
+      {/* ── Complete beds — first, because the in-store bed sign's QR lands on #beds ── */}
+      <BedDealsSection queen={beds.queen} king={beds.king} pin={pin} />
 
       {/* ── Clearance — the reorient centerpiece ─────────────────────── */}
       {clearance.length > 0 && (
@@ -142,7 +150,7 @@ export default async function DealsPage() {
       ))}
 
       {/* ── Empty state — only when BOTH sections are empty ───────────── */}
-      {clearance.length === 0 && lowestByRoom.length === 0 && (
+      {clearance.length === 0 && lowestByRoom.length === 0 && !hasBeds && (
         <div className="text-center bg-brand-warm-gray rounded-2xl p-10 max-w-2xl mx-auto">
           <div className="text-4xl mb-4">🏷️</div>
           <h2 className="text-xl font-semibold text-brand-charcoal mb-2">
