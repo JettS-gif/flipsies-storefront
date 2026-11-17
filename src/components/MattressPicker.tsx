@@ -3,7 +3,8 @@ import type { StorefrontPackage } from '@/lib/packages';
 import { mattressLabel } from '@/lib/bedDeals';
 
 const money = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  // Cents shown: rounding $499.97 to whole dollars printed "$500" next to the "$499" headline.
+  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
 
 // "Choose your mattress" for the complete-bed bundles. Each step is its own
 // package (same bed, different mattress, Jett's set price), so picking one is a
