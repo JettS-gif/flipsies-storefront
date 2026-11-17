@@ -586,6 +586,20 @@ export const api = {
       { cache: 'no-store' },
     ),
 
+  /** Radio scavenger hunt (/hunt). The token is the player's credential, so it rides in POST bodies only. */
+  huntInfo: () =>
+    request<HuntState>('GET', '/storefront/hunt', undefined, { cache: 'no-store' }),
+  huntSignup: (payload: {
+    name: string; phone: string; email?: string;
+    age_confirmed: boolean; rules_accepted: boolean; marketing_opt_in: boolean;
+    utm_source?: string; utm_medium?: string; utm_campaign?: string;
+  }) =>
+    request<HuntState & { token: string; returning: boolean }>('POST', '/storefront/hunt/signup', payload, { cache: 'no-store' }),
+  huntStatus: (token: string) =>
+    request<HuntState>('POST', '/storefront/hunt/status', { token }, { cache: 'no-store' }),
+  huntAnswer: (token: string, step: number, answer: string) =>
+    request<HuntState & { correct: boolean; message?: string }>('POST', '/storefront/hunt/answer', { token, step, answer }, { cache: 'no-store' }),
+
   subscribe: (payload: {
     email: string;
     name?: string;
@@ -759,4 +773,21 @@ export type CheckAvailabilityResponse =
 export interface LeadCaptureResponse {
   lead_id: string | null;  // null if the insert failed but availability still computed
   availability: CheckAvailabilityResponse;
+}
+
+// ── Radio scavenger hunt ─────────────────────────────────────────
+export interface HuntStep {
+  step: number;
+  label: string;
+  hint: string;
+  opens_at: string;
+  open: boolean;
+  solved_at: string | null;
+}
+
+export interface HuntState {
+  hunt: { title: string; phase: 'not_open' | 'signup' | 'live' | 'closed'; closes_at: string; rules_version?: string };
+  player?: { first_name: string; status: 'playing' | 'verified' | 'disqualified' };
+  steps: HuntStep[];
+  finish_place?: number | null;
 }
