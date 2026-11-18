@@ -94,3 +94,8 @@ export function huntPin(now: Date = new Date()): string | null {
   const t = now.getTime();
   return t >= HUNT_OPENS && t < HUNT_CLOSES ? HUNT_PIN : null;
 }
+
+// Sign-up stays open until the hunt closes, so the home-page banner runs until then.
+export function huntIsOpen(now: Date = new Date()): boolean {
+  return now.getTime() < HUNT_CLOSES;
+}

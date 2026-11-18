@@ -29,6 +29,9 @@ const STATIC_PATHS: { path: string; priority: number; changeFrequency: ChangeFre
   // stale crawl of an opening we already filled is the one way this page can
   // waste somebody's time.
   { path: '/careers',    priority: 0.5, changeFrequency: 'weekly' },
+  // Radio scavenger hunt, 2026-11-21. Remove with the hunt pages after the event.
+  { path: '/hunt',       priority: 0.6, changeFrequency: 'daily' },
+  { path: '/hunt/rules', priority: 0.3, changeFrequency: 'monthly' },
   { path: '/privacy',    priority: 0.2, changeFrequency: 'yearly' },
   { path: '/terms',      priority: 0.2, changeFrequency: 'yearly' },
   { path: '/accessibility', priority: 0.3, changeFrequency: 'yearly' },

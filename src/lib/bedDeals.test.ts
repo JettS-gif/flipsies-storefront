@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isCompleteBed, splitBySize, huntPin, bedKey, ladderFor, mattressLabel } from './bedDeals';
+import { isCompleteBed, splitBySize, huntPin, huntIsOpen, bedKey, ladderFor, mattressLabel } from './bedDeals';
 import type { StorefrontPackage } from './packages';
 
 const pkg = (name: string, sku: string): StorefrontPackage => ({
@@ -67,5 +67,13 @@ describe('hunt PIN window (Sat 2026-11-21, 12:00–16:00 CST)', () => {
     expect(huntPin(new Date('2026-11-21T21:59:59Z'))).toBe('SNOOZE');
     expect(huntPin(new Date('2026-11-21T22:00:00Z'))).toBeNull();
     expect(huntPin(new Date('2026-11-16T19:00:00Z'))).toBeNull();
+  });
+});
+
+describe('hunt sign-up banner window', () => {
+  it('runs until the hunt closes at 16:00 CST, then stops', () => {
+    expect(huntIsOpen(new Date('2026-11-18T19:00:00Z'))).toBe(true);
+    expect(huntIsOpen(new Date('2026-11-21T21:59:59Z'))).toBe(true);
+    expect(huntIsOpen(new Date('2026-11-21T22:00:00Z'))).toBe(false);
   });
 });

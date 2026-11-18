@@ -2,6 +2,7 @@ import Link from "next/link";
 import CheckDeliveryButton from "@/components/CheckDeliveryButton";
 import ProductCarousel from "@/components/ProductCarousel";
 import BedDealsBanner from "@/components/BedDealsBanner";
+import HuntBanner from "@/components/HuntBanner";
 import Reviews from "@/components/Reviews";
 import { SHOWROOMS, OPENING_HOURS } from "@/lib/site";
 
@@ -97,6 +98,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Scavenger hunt sign-up band — renders nothing after the hunt closes. */}
+      <HuntBanner />
 
       {/* Complete-bed deals band — renders nothing until a bundle is published. */}
       <BedDealsBanner />

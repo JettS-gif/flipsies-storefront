@@ -11,7 +11,7 @@ export const metadata = {
     description: 'Official rules for the Flipsies Furniture $2,000 Radio Scavenger Hunt, November 21, 2026.',
     path: '/hunt/rules',
   }),
-  robots: { index: false, follow: true },
+  robots: { index: true, follow: true },
 };
 
 const LAST_UPDATED = 'November 17, 2026';

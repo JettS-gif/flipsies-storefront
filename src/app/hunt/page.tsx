@@ -8,8 +8,8 @@ export const metadata = {
     description: 'Sign up free for the Flipsies $2,000 radio scavenger hunt, Saturday, November 21, across our Hoover and Irondale stores.',
     path: '/hunt',
   }),
-  // A one-day event: it should not linger in search results afterwards.
-  robots: { index: false, follow: true },
+  // Indexable while the hunt is promoted; the page comes down after the event.
+  robots: { index: true, follow: true },
 };
 
 export default function HuntPage() {
