@@ -186,6 +186,20 @@ function Game({ state, token, now, onState, onSwitch }: {
           );
         })}
       </ol>
+
+      <section className="rounded-xl border border-brand-border bg-white p-4 text-sm text-brand-charcoal-light space-y-2">
+        <h3 className="font-semibold text-brand-charcoal">The rules you agreed to</h3>
+        <ul className="list-disc pl-5 space-y-1">
+          <li>Answers go in order, and each box opens when its clue airs. Nothing is accepted after 4:00 pm.</li>
+          <li>The site&apos;s timestamps decide the finish order.</li>
+          <li>To win, reach the Vault Keeper in Irondale by 4:30 pm with the original Cards A, B and C, a passport stamped in both stores, and a photo ID matching your registered name.</li>
+          <li>Nothing is hidden in or under furniture. Never move or climb on merchandise, and obey traffic laws.</li>
+          <li>One entry per person. Extra entries, borrowed cards or tampering mean disqualification.</li>
+        </ul>
+        <p>
+          <Link href="/hunt/rules" className="underline" target="_blank">Read the full official rules</Link>
+        </p>
+      </section>
     </div>
   );
 }
