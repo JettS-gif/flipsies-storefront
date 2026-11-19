@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, type HuntState } from '@/lib/api';
 
-// The player's game on /hunt. Sign-up returns a token that is the player's only credential;
-// it lives in this browser's localStorage. Losing it costs nothing: signing up again with the
-// same phone number hands the same entry back. Answers are checked by the backend, never here.
+// The player's game on /hunt. Sign-up texts a code; typing it in returns a token that is the
+// player's only credential, kept in this browser's localStorage. Losing it costs nothing:
+// signing up again with the same phone number texts a new code for the same entry. Answers
+// are checked by the backend, never here.
 
 const TOKEN_KEY = 'flipsies_hunt_token';
 
@@ -69,8 +70,23 @@ function SignUp({ closed, onDone }: { closed: boolean; onDone: (token: string, s
   const [marketing, setMarketing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Set once a code is on its way: the form swaps to the code box.
+  const [sent, setSent] = useState<{ last4: string; returning: boolean; devCode?: string } | null>(null);
 
   if (closed) return <p className="text-brand-charcoal">Sign-up for this hunt is closed. Thanks for your interest!</p>;
+
+  // Also the "text me a new code" button: the backend treats a repeat sign-up as a code request.
+  const requestCode = async () => {
+    const q = new URLSearchParams(window.location.search);
+    const r = await api.huntSignup({
+      name, phone, email: email || undefined,
+      age_confirmed: true, rules_accepted: true, marketing_opt_in: marketing,
+      utm_source: q.get('utm_source') || undefined,
+      utm_medium: q.get('utm_medium') || undefined,
+      utm_campaign: q.get('utm_campaign') || undefined,
+    });
+    setSent({ last4: r.phone_last4, returning: r.returning, devCode: r.dev_code });
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,21 +94,17 @@ function SignUp({ closed, onDone }: { closed: boolean; onDone: (token: string, s
     if (!age) { setErr('Please confirm you are 18 or older and agree to the official rules.'); return; }
     setBusy(true);
     try {
-      const q = new URLSearchParams(window.location.search);
-      const r = await api.huntSignup({
-        name, phone, email: email || undefined,
-        age_confirmed: true, rules_accepted: true, marketing_opt_in: marketing,
-        utm_source: q.get('utm_source') || undefined,
-        utm_medium: q.get('utm_medium') || undefined,
-        utm_campaign: q.get('utm_campaign') || undefined,
-      });
-      onDone(r.token, r);
+      await requestCode();
     } catch (e2) {
       setErr(errMsg(e2, 'Sign-up did not go through. Please try again.'));
     } finally {
       setBusy(false);
     }
   };
+
+  if (sent) {
+    return <CodeStep phone={phone} sent={sent} onResend={requestCode} onBack={() => setSent(null)} onDone={onDone} />;
+  }
 
   const field = 'w-full border border-brand-border rounded-lg px-3 py-2.5 text-brand-charcoal bg-white';
   return (
@@ -108,6 +120,9 @@ function SignUp({ closed, onDone }: { closed: boolean; onDone: (token: string, s
       <label className="block text-sm font-semibold text-brand-charcoal">
         Mobile number
         <input className={`${field} mt-1`} value={phone} onChange={e => setPhone(e.target.value)} type="tel" autoComplete="tel" inputMode="tel" required />
+        <span className="block font-normal text-xs text-brand-charcoal-light mt-1">
+          We&apos;ll text this number a one-time code to confirm it&apos;s yours. Msg &amp; data rates may apply.
+        </span>
       </label>
       <label className="block text-sm font-semibold text-brand-charcoal">
         Email <span className="font-normal text-brand-charcoal-light">(optional)</span>
@@ -122,7 +137,71 @@ function SignUp({ closed, onDone }: { closed: boolean; onDone: (token: string, s
         <span>Also send me Flipsies deals by text and email. Optional, and it has nothing to do with winning.</span>
       </label>
       {err && <p className="text-sm text-red-700" role="alert">{err}</p>}
-      <button type="submit" disabled={busy} className="btn-brand w-full !py-3">{busy ? 'Signing up…' : 'Sign me up'}</button>
+      <button type="submit" disabled={busy} className="btn-brand w-full !py-3">{busy ? 'Sending your code…' : 'Sign me up'}</button>
+    </form>
+  );
+}
+
+function CodeStep({ phone, sent, onResend, onBack, onDone }: {
+  phone: string;
+  sent: { last4: string; returning: boolean; devCode?: string };
+  onResend: () => Promise<void>;
+  onBack: () => void;
+  onDone: (token: string, s: HuntState) => void;
+}) {
+  const [code, setCode] = useState(sent.devCode || '');
+  const [busy, setBusy] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [err, setErr] = useState('');
+  const [note, setNote] = useState('');
+
+  const verify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(''); setNote('');
+    setBusy(true);
+    try {
+      const r = await api.huntVerify(phone, code);
+      onDone(r.token, r);
+    } catch (e2) {
+      setErr(errMsg(e2, 'That code did not go through. Please try again.'));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const resend = async () => {
+    setErr(''); setNote('');
+    setResending(true);
+    try { await onResend(); setCode(''); setNote('New code sent. Use the newest text.'); }
+    catch (e2) { setErr(errMsg(e2, 'We could not send a new code. Please try again.')); }
+    finally { setResending(false); }
+  };
+
+  return (
+    <form onSubmit={verify} className="space-y-4 max-w-md">
+      <h2 className="text-xl font-bold text-brand-charcoal">
+        {sent.returning ? 'Welcome back. Check your texts' : 'Check your texts'}
+      </h2>
+      <p className="text-sm text-brand-charcoal-light">
+        We texted a 6-digit code to the number ending in {sent.last4}. It works for 10 minutes.
+      </p>
+      <label className="block text-sm font-semibold text-brand-charcoal">
+        Code
+        <input
+          className="w-full border border-brand-border rounded-lg px-3 py-2.5 text-brand-charcoal bg-white mt-1 tracking-widest text-lg"
+          value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+          inputMode="numeric" autoComplete="one-time-code" maxLength={6} required
+        />
+      </label>
+      {err && <p className="text-sm text-red-700" role="alert">{err}</p>}
+      {note && <p className="text-sm text-brand-charcoal" role="status">{note}</p>}
+      <button type="submit" disabled={busy || resending || code.length !== 6} className="btn-brand w-full !py-3">{busy ? 'Checking…' : 'Confirm and play'}</button>
+      <div className="flex flex-wrap justify-between gap-2 text-sm">
+        <button type="button" onClick={resend} disabled={busy || resending} className="underline text-brand-charcoal-light">{resending ? 'Sending…' : 'Text me a new code'}</button>
+        <button type="button" onClick={onBack} disabled={busy || resending} className="underline text-brand-charcoal-light">Change number</button>
+      </div>
+      <p className="text-xs text-brand-charcoal-light">
+        No text? In the store, a Vault Keeper can give you a code.
+      </p>
     </form>
   );
 }

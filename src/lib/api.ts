@@ -594,7 +594,10 @@ export const api = {
     age_confirmed: boolean; rules_accepted: boolean; marketing_opt_in: boolean;
     utm_source?: string; utm_medium?: string; utm_campaign?: string;
   }) =>
-    request<HuntState & { token: string; returning: boolean }>('POST', '/storefront/hunt/signup', payload, { cache: 'no-store' }),
+    request<{ code_sent: true; returning: boolean; phone_last4: string; dev_code?: string }>('POST', '/storefront/hunt/signup', payload, { cache: 'no-store' }),
+  /** The texted code (or one a Vault Keeper read out) trades for the player's token. */
+  huntVerify: (phone: string, code: string) =>
+    request<HuntState & { token: string }>('POST', '/storefront/hunt/verify', { phone, code }, { cache: 'no-store' }),
   huntStatus: (token: string) =>
     request<HuntState>('POST', '/storefront/hunt/status', { token }, { cache: 'no-store' }),
   huntAnswer: (token: string, step: number, answer: string) =>
