@@ -15,10 +15,39 @@ import {
   isSignedIn,
   clearCustomerSession,
   portalGetOrders,
+  portalGetGiftCards,
   type CustomerProfile,
   type OrderCard,
+  type PublicGiftCard,
 } from '@/lib/customerSession';
 import { statusLabel, money, orderDate } from '@/lib/orderLabels';
+
+// Gift cards saved to this account (from the card's /gift/<code> page). Renders
+// nothing when there are none, or when the list can't load: the orders below are
+// the page's job and a gift card hiccup must not crowd them out.
+function GiftCardsSection() {
+  const [cards, setCards] = useState<PublicGiftCard[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    portalGetGiftCards().then(r => { if (!cancelled && r.ok) setCards(r.cards); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+  if (!cards.length) return null;
+  return (
+    <div className="mb-8">
+      <h2 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wide mb-3">Your gift cards</h2>
+      <ul className="space-y-3">
+        {cards.map((c, i) => (
+          <li key={`${c.last4}-${i}`} className="bg-white rounded-2xl border border-brand-border p-4 sm:p-5 shadow-sm flex items-center justify-between">
+            <span className="text-sm text-brand-charcoal">Gift card ending {c.last4}</span>
+            <span className="text-lg font-semibold text-brand-charcoal">{money(c.balance)}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="text-xs text-brand-charcoal-light mt-2">Use a gift card at either showroom or over the phone.</p>
+    </div>
+  );
+}
 
 export default function AccountHomePage() {
   const router = useRouter();
@@ -81,6 +110,8 @@ export default function AccountHomePage() {
             Sign out
           </button>
         </div>
+
+        <GiftCardsSection />
 
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wide">

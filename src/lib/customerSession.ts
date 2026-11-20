@@ -67,11 +67,20 @@ export interface RequestOtpResult {
   devCode?: string;
 }
 
-export async function portalRequestOtp(phone: string): Promise<RequestOtpResult> {
+/** Signing in from a gift card page. A sold card nobody has saved lets a NEW
+ *  phone create an account (first_name required then); the card is saved to
+ *  whichever account signs in. Backend: routes/store.js /portal/verify-otp. */
+export interface GiftSignup {
+  gift_card_code: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+export async function portalRequestOtp(phone: string, gift?: GiftSignup): Promise<RequestOtpResult> {
   const res = await fetch(`${API_BASE}/portal/request-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone: phone.replace(/\D/g, '') }),
+    body: JSON.stringify({ phone: phone.replace(/\D/g, ''), ...(gift ? { gift_card_code: gift.gift_card_code } : {}) }),
   });
   const body = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, dev: body?.dev, devCode: body?.devCode };
@@ -82,16 +91,71 @@ export interface VerifyOtpResult {
   status: number;
   token?: string;
   customer?: CustomerProfile;
+  /** true when this sign-in created the account (gift card signup). */
+  created?: boolean;
+  gift_card?: GiftCardSaveResult;
+  error?: string;
+  message?: string;
 }
 
-export async function portalVerifyOtp(phone: string, code: string): Promise<VerifyOtpResult> {
+export async function portalVerifyOtp(phone: string, code: string, gift?: GiftSignup): Promise<VerifyOtpResult> {
   const res = await fetch(`${API_BASE}/portal/verify-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phone: phone.replace(/\D/g, ''), code: code.replace(/\D/g, '') }),
+    body: JSON.stringify({ phone: phone.replace(/\D/g, ''), code: code.replace(/\D/g, ''), ...(gift || {}) }),
   });
   const body = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, token: body?.token, customer: body?.customer };
+  return {
+    ok: res.ok, status: res.status, token: body?.token, customer: body?.customer,
+    created: !!body?.created, gift_card: body?.gift_card, error: body?.error, message: body?.message,
+  };
+}
+
+// ── Gift cards ─────────────────────────────────────────────────────────────────
+
+/** What the public balance page may show. Mirrors BE utils/giftCardPortal.js publicCardView. */
+export interface PublicGiftCard {
+  last4: string;
+  /** unissued = printed but not sold at the register yet. */
+  status: 'unissued' | 'active' | 'void';
+  balance: number;
+  saved_to_account: boolean;
+}
+
+export interface GiftCardSaveResult {
+  result: 'linked' | 'already_yours' | 'linked_elsewhere' | 'not_active' | 'not_found';
+  message?: string | null;
+  card?: PublicGiftCard;
+}
+
+/** Public: no sign-in. notFound for an unknown or mistyped code. */
+export async function getGiftCardBalance(code: string): Promise<{ ok: boolean; notFound: boolean; card: PublicGiftCard | null }> {
+  const res = await fetch(`${API_BASE}/storefront/gift-cards/${encodeURIComponent(code)}`, { cache: 'no-store' });
+  if (res.status === 404) return { ok: false, notFound: true, card: null };
+  const body = await res.json().catch(() => ({}));
+  return { ok: res.ok, notFound: false, card: body?.card || null };
+}
+
+export async function portalGetGiftCards(): Promise<{ ok: boolean; unauthorized: boolean; cards: PublicGiftCard[] }> {
+  const token = getCustomerToken();
+  if (!token) return { ok: false, unauthorized: true, cards: [] };
+  const res = await fetch(`${API_BASE}/portal/gift-cards`, { headers: { Authorization: `Bearer ${token}` } });
+  if (res.status === 401) return { ok: false, unauthorized: true, cards: [] };
+  const body = await res.json().catch(() => ({}));
+  return { ok: res.ok, unauthorized: false, cards: Array.isArray(body?.cards) ? body.cards : [] };
+}
+
+export async function portalSaveGiftCard(code: string): Promise<{ ok: boolean; unauthorized: boolean; save: GiftCardSaveResult | null; message?: string }> {
+  const token = getCustomerToken();
+  if (!token) return { ok: false, unauthorized: true, save: null };
+  const res = await fetch(`${API_BASE}/portal/gift-cards`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ code }),
+  });
+  if (res.status === 401) return { ok: false, unauthorized: true, save: null };
+  const body = await res.json().catch(() => ({}));
+  return { ok: res.ok, unauthorized: false, save: res.ok ? body : null, message: body?.message };
 }
 
 // ── Authed portal data ─────────────────────────────────────────────────────────
