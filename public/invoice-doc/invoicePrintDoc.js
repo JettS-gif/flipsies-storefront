@@ -437,7 +437,7 @@ export function buildInvoicePrintHtml(inv) {
         <span style="color:#6b4e1c;font-weight:600;">$0.00</span>
       </div>` : `
       <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;">
-        <span style="color:#888;">Sales tax (${taxPct}%)</span><span>$${tax.toFixed(2)}</span>
+        <span style="color:#888;">${inv.tax_kind === 'rental' ? 'Rental tax' : 'Sales tax'} (${taxPct}%)</span><span>$${tax.toFixed(2)}</span>
       </div>`}
       ${haulAwayFee > 0 ? `
       <div style="display:flex;justify-content:space-between;padding:5px 0;font-size:13px;">
