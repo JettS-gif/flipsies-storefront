@@ -255,6 +255,11 @@ function Game({ state, token, now, onState, onSwitch }: {
             Each correct answer unlocks your next clue on this page. Write your answers down as you go: the vault
             digits are built from them, together with the radio clues. Keep this page open on your phone.
           </p>
+          <p className="text-sm mt-2">
+            <b>Radio clues:</b> 12:05 and 1:00 from our Hoover store; from 2:00 on Birmingham Mountain Radio,
+            WPYA 107.3, from our Irondale store. Missed one? Each radio clue is posted on the Flipsies Furniture
+            Facebook page after it airs.
+          </p>
         </div>
       )}
 

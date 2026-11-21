@@ -65,7 +65,8 @@ export default function HuntRulesPage() {
         <H>5. How to play</H>
         <p>
           Four clues are read on the radio: at about 12:05 pm and 1:00 pm during the broadcast from our Hoover store,
-          and at about 2:30 pm and 3:30 pm during the broadcast from our Irondale store. Each clue leads to a station
+          and at about 2:30 pm and 3:30 pm during the broadcast from our Irondale store on Birmingham Mountain Radio,
+          WPYA 107.3. Each radio clue is also posted on the Flipsies Furniture Facebook page after it airs. Each clue leads to a station
           in one of our stores, where you will find the information needed for an answer. Between the radio clues,
           your page on flipsiesfurniture.com/hunt shows further clues to track down in the same store. Stations in
           each store hand out a serial-numbered card (Cards A, B and C) and stamp your passport, one card per player
