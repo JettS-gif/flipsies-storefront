@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { api, type Product } from '@/lib/api';
 import ProductCard from '@/components/ProductCard';
 import BedDealsSection from '@/components/BedDealsSection';
-import { fetchCompleteBeds, huntPin } from '@/lib/bedDeals';
+import { fetchCompleteBeds, huntPin, huntIsOpen } from '@/lib/bedDeals';
+import HuntVaultBox from '@/components/HuntVaultBox';
 import { pageMetadata } from '@/lib/site';
 
 export const metadata = pageMetadata({
@@ -92,10 +93,12 @@ export default async function DealsPage() {
     fetchCompleteBeds(),
   ]);
   const pin = huntPin();
+  const huntOpen = huntIsOpen();
   const hasBeds = beds.queen.length > 0 || beds.king.length > 0 || !!pin;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      {huntOpen && <HuntVaultBox pin={pin} />}
       <header className="text-center mb-10">
         <h1 className="text-3xl sm:text-4xl font-bold text-brand-charcoal">Deals &amp; Clearance</h1>
         <p className="text-brand-charcoal-light mt-3 max-w-xl mx-auto">
@@ -105,7 +108,7 @@ export default async function DealsPage() {
       </header>
 
       {/* ── Complete beds — first, because the in-store bed sign's QR lands on #beds ── */}
-      <BedDealsSection queen={beds.queen} king={beds.king} pin={pin} />
+      <BedDealsSection queen={beds.queen} king={beds.king} anchor={!huntOpen} />
 
       {/* ── Clearance — the reorient centerpiece ─────────────────────── */}
       {clearance.length > 0 && (
