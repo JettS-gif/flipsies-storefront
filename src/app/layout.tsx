@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/Navbar";
+import HuntTopBar from "@/components/HuntTopBar";
 import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
 import Script from "next/script";
@@ -147,6 +148,7 @@ export default function RootLayout({
           </>
         )}
         <CartProvider>
+          <HuntTopBar />
           <Navbar />
           <main className="flex-1">{children}</main>
           <Footer />
