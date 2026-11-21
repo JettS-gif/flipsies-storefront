@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import { fetchPackageIdBySku } from '@/lib/packages';
 import { redirect, notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
@@ -39,6 +40,9 @@ export default async function ScanPage({ params }: Props) {
   ]);
 
   if (productResult.status === 'rejected') {
+    // Package sale tags carry the PACKAGE's SKU. Until 2026-11-20 they all landed on "not found".
+    const packageId = await fetchPackageIdBySku(decoded).catch(() => null);
+    if (packageId) redirect(`/package/${packageId}`);
     notFound();
   }
 

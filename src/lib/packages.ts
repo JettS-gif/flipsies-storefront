@@ -85,6 +85,17 @@ export async function fetchPackages(q: PackageQuery = {}): Promise<StorefrontPac
   return (json?.data as StorefrontPackage[]) || [];
 }
 
+/** A package sale tag's QR carries the package SKU; resolve it to the package id (published only). */
+export async function fetchPackageIdBySku(sku: string): Promise<string | null> {
+  const res = await fetch(`${API_BASE}/storefront/packages/scan/${encodeURIComponent(sku)}`, {
+    next: { revalidate: 60 },
+    headers: { ...serverUa(), ...catalogAuth() },
+  });
+  if (!res.ok) return null;
+  const json = await res.json();
+  return typeof json?.id === 'string' ? json.id : null;
+}
+
 export async function fetchPackage(id: string): Promise<StorefrontPackage | null> {
   const res = await fetch(`${API_BASE}/storefront/packages/${id}`, {
     next: { revalidate: 60 },
