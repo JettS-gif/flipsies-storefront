@@ -79,11 +79,11 @@ export default function HuntRulesPage() {
           pause an answer box for a few minutes.
         </p>
         <p>
-          Cards A, B and C each carry one digit of the four-digit vault code. The Vault Master in our Irondale store,
-          after checking your original Cards A, B and C, your passport stamped in both stores, and a photo ID matching
-          your registered name, gives you the fourth digit for your passport&apos;s Final vault box. Entering the full
-          vault code opens the final riddle.
-          A wrong vault code or a wrong answer to the final riddle locks that box for one minute each time.
+          Each digit of the four-digit vault code is worked out from your earlier answers together with information
+          from a radio clue. Before your passport&apos;s Final vault box is stamped, the Vault Master in our Irondale
+          store checks your original Cards A, B and C, your passport stamped in both stores, and a photo ID matching
+          your registered name. Entering the full vault code opens the final riddle. Wrong vault digits, a wrong vault
+          code, or a wrong answer to the final riddle lock that box for one minute each time.
         </p>
 
         <H>6. How the winner is decided</H>

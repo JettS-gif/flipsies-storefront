@@ -248,6 +248,16 @@ function Game({ state, token, now, onState, onSwitch }: {
         <p className="text-sm text-brand-charcoal">The hunt has closed. Thanks for playing!</p>
       ) : null}
 
+      {!closed && solved < steps.length && (
+        <div className="rounded-xl border-2 border-brand-yellow bg-brand-yellow-light p-4 text-brand-charcoal">
+          <p className="font-semibold">How it works: enter every answer here.</p>
+          <p className="text-sm mt-1">
+            Each correct answer unlocks your next clue on this page. Write your answers down as you go: the vault
+            digits are built from them, together with the radio clues. Keep this page open on your phone.
+          </p>
+        </div>
+      )}
+
       <ol className="space-y-3">
         {steps.map(s => {
           const isNext = next?.step === s.step;
@@ -275,7 +285,7 @@ function Game({ state, token, now, onState, onSwitch }: {
         <h3 className="font-semibold text-brand-charcoal">The rules you agreed to</h3>
         <ul className="list-disc pl-5 space-y-1">
           <li>Answers go in order, and each clue appears here as soon as you solve the one before it. Hoover steps open at 12:05, Irondale steps at 2:00, and the final riddle at 3:30. The radio clues are shortcuts, never something you have to wait for. Nothing is accepted after 4:00 pm.</li>
-          <li>Cards A, B and C hold the first three digits of the vault code. The Vault Master in Irondale gives the fourth, for your passport&apos;s Final vault box, after checking your original cards, your passport stamped in both stores, and a photo ID matching your registered name. Entering all four unlocks the final riddle.</li>
+          <li>Each vault digit is worked out from your answers together with a radio clue. The Vault Master in Irondale checks your original Cards A, B and C, your passport stamped in both stores, and a photo ID matching your registered name before stamping your Final vault box. The four digits unlock the final riddle.</li>
           <li>A wrong vault code or final-riddle answer locks that box for one minute.</li>
           <li>The first correct answer to the final riddle, by the site&apos;s timestamp, wins.</li>
           <li>Nothing is hidden in or under furniture. Never move or climb on merchandise, and obey traffic laws.</li>
