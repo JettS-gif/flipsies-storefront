@@ -72,15 +72,17 @@ export default function HuntRulesPage() {
           per station.
         </p>
         <p>
-          Enter each answer on flipsiesfurniture.com/hunt as you solve it. Answers must be entered in order. A radio
-          clue&apos;s answer box opens when the clue airs, and each website clue appears once the answer before it is
-          correct. No answer is accepted after 4:00 pm. To keep the game fair, too many wrong answers in a row will
+          Enter each answer on flipsiesfurniture.com/hunt as you solve it. Answers must be entered in order, and each
+          website clue appears once the answer before it is correct. Hoover steps open at 12:05 pm, Irondale steps at
+          2:00 pm, and the final riddle at 3:30 pm. The radio clues are extra help toward the same answers; no step
+          waits for one. No answer is accepted after 4:00 pm. To keep the game fair, too many wrong answers in a row will
           pause an answer box for a few minutes.
         </p>
         <p>
-          The final radio clue leads to the Vault Master in our Irondale store. After checking your original Cards A,
-          B and C, your passport stamped in both stores, and a photo ID matching your registered name, the Vault
-          Master gives you the last digit of the vault code. Entering the full vault code opens the final riddle.
+          Cards A, B and C each carry one digit of the four-digit vault code. The Vault Master in our Irondale store,
+          after checking your original Cards A, B and C, your passport stamped in both stores, and a photo ID matching
+          your registered name, gives you the fourth digit for your passport&apos;s Final vault box. Entering the full
+          vault code opens the final riddle.
           A wrong vault code or a wrong answer to the final riddle locks that box for one minute each time.
         </p>
 

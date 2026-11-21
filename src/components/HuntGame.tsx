@@ -274,8 +274,8 @@ function Game({ state, token, now, onState, onSwitch }: {
       <section className="rounded-xl border border-brand-border bg-white p-4 text-sm text-brand-charcoal-light space-y-2">
         <h3 className="font-semibold text-brand-charcoal">The rules you agreed to</h3>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Answers go in order. Radio clues open their boxes when they air; between them, the site shows the next clue to track down. Nothing is accepted after 4:00 pm.</li>
-          <li>The Vault Master in Irondale gives the vault code&apos;s last digit after checking your original Cards A, B and C, your passport stamped in both stores, and a photo ID matching your registered name.</li>
+          <li>Answers go in order, and each clue appears here as soon as you solve the one before it. Hoover steps open at 12:05, Irondale steps at 2:00, and the final riddle at 3:30. The radio clues are shortcuts, never something you have to wait for. Nothing is accepted after 4:00 pm.</li>
+          <li>Cards A, B and C hold the first three digits of the vault code. The Vault Master in Irondale gives the fourth, for your passport&apos;s Final vault box, after checking your original cards, your passport stamped in both stores, and a photo ID matching your registered name. Entering all four unlocks the final riddle.</li>
           <li>A wrong vault code or final-riddle answer locks that box for one minute.</li>
           <li>The first correct answer to the final riddle, by the site&apos;s timestamp, wins.</li>
           <li>Nothing is hidden in or under furniture. Never move or climb on merchandise, and obey traffic laws.</li>
