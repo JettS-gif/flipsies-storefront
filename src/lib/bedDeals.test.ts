@@ -63,8 +63,8 @@ describe('mattress ladder', () => {
 describe('hunt PIN window (Sat 2026-11-21, 12:00–16:00 CST)', () => {
   it('is hidden before, shown during, hidden after', () => {
     expect(huntPin(new Date('2026-11-21T17:59:59Z'))).toBeNull();
-    expect(huntPin(new Date('2026-11-21T18:00:00Z'))).toBe('SNOOZE');
-    expect(huntPin(new Date('2026-11-21T21:59:59Z'))).toBe('SNOOZE');
+    expect(huntPin(new Date('2026-11-21T18:00:00Z'))).toBe('EZONSO');
+    expect(huntPin(new Date('2026-11-21T21:59:59Z'))).toBe('EZONSO');
     expect(huntPin(new Date('2026-11-21T22:00:00Z'))).toBeNull();
     expect(huntPin(new Date('2026-11-16T19:00:00Z'))).toBeNull();
   });
@@ -75,5 +75,13 @@ describe('hunt sign-up banner window', () => {
     expect(huntIsOpen(new Date('2026-11-18T19:00:00Z'))).toBe(true);
     expect(huntIsOpen(new Date('2026-11-21T21:59:59Z'))).toBe(true);
     expect(huntIsOpen(new Date('2026-11-21T22:00:00Z'))).toBe(false);
+  });
+});
+
+describe('hunt PIN scramble', () => {
+  it('is an anagram of the answer the online step and the Vault Keeper accept', () => {
+    const shown = huntPin(new Date('2026-11-21T19:00:00Z'));
+    expect(shown?.split('').sort().join('')).toBe('SNOOZE'.split('').sort().join(''));
+    expect(shown).not.toBe('SNOOZE');
   });
 });

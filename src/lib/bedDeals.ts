@@ -86,7 +86,9 @@ export async function fetchLadder(pkg: StorefrontPackage): Promise<StorefrontPac
 // PIN, but only during the hunt. Server-rendered and time-gated so the PIN is not
 // in any page (or bundle) before the window opens. 12:00–16:00 America/Chicago;
 // Nov 21 is CST (UTC-6). Delete after the event.
-const HUNT_PIN = 'SNOOZE';
+// Shown scrambled so the stop takes some working out (Jett 2026-11-20). The answer, and what the
+// online step and the Vault Keeper accept, is still SNOOZE.
+const HUNT_PIN = 'EZONSO';
 const HUNT_OPENS = Date.UTC(2026, 10, 21, 18, 0, 0);   // 12:00 CST
 const HUNT_CLOSES = Date.UTC(2026, 10, 21, 22, 0, 0);  // 16:00 CST
 

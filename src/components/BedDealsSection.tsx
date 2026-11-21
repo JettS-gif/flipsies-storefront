@@ -36,8 +36,10 @@ export default function BedDealsSection({
             Scavenger hunt players
           </p>
           <p className="mt-1 text-lg">
-            The Hoover vault PIN is <strong className="tracking-widest">{pin}</strong>. Tell it to the
-            Vault Keeper at the bed display, and show your Card A.
+            The Hoover vault PIN is scrambled:{' '}
+            <strong className="tracking-widest">{pin.split('').join(' ')}</strong>. Hint: it&rsquo;s what you hit
+            when the alarm goes off on a bed this comfortable. Unscramble it, tell the word to the Vault Keeper at
+            the bed display, and show your Card A.
           </p>
         </div>
       )}
