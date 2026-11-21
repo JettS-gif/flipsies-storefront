@@ -14,7 +14,7 @@ export const metadata = {
   robots: { index: true, follow: true },
 };
 
-const LAST_UPDATED = 'November 17, 2026';
+const LAST_UPDATED = 'November 21, 2026';
 const STORE_PHONE = '(205) 238-5076';
 
 const H = ({ children }: { children: React.ReactNode }) => (
@@ -66,20 +66,29 @@ export default function HuntRulesPage() {
         <p>
           Four clues are read on the radio: at about 12:05 pm and 1:00 pm during the broadcast from our Hoover store,
           and at about 2:30 pm and 3:30 pm during the broadcast from our Irondale store. Each clue leads to a station
-          in one of our stores, where you will find the information needed for an answer. Stations in each store hand
-          out a serial-numbered card (Cards A, B and C) and stamp your passport, one card per player per station.
+          in one of our stores, where you will find the information needed for an answer. Between the radio clues,
+          your page on flipsiesfurniture.com/hunt shows further clues to track down in the same store. Stations in
+          each store hand out a serial-numbered card (Cards A, B and C) and stamp your passport, one card per player
+          per station.
         </p>
         <p>
-          Enter each answer on flipsiesfurniture.com/hunt as you solve it. Answers must be entered in order, and each
-          answer box opens when its clue airs. Answers entered before a clue airs or after 4:00 pm are not accepted.
-          To keep the game fair, too many wrong answers in a row will pause that answer box for a few minutes.
+          Enter each answer on flipsiesfurniture.com/hunt as you solve it. Answers must be entered in order. A radio
+          clue&apos;s answer box opens when the clue airs, and each website clue appears once the answer before it is
+          correct. No answer is accepted after 4:00 pm. To keep the game fair, too many wrong answers in a row will
+          pause an answer box for a few minutes.
+        </p>
+        <p>
+          The final radio clue leads to the Vault Master in our Irondale store. After checking your original Cards A,
+          B and C, your passport stamped in both stores, and a photo ID matching your registered name, the Vault
+          Master gives you the last digit of the vault code. Entering the full vault code opens the final riddle.
+          A wrong vault code or a wrong answer to the final riddle locks that box for one minute each time.
         </p>
 
         <H>6. How the winner is decided</H>
         <p>
-          The potential winner is the first registered player to enter all four correct answers on
+          The potential winner is the first registered player to enter the correct answer to the final riddle on
           flipsiesfurniture.com/hunt, as recorded by our system&apos;s timestamps. To be confirmed as the winner, that
-          player must then go to the Vault Keeper at the final station in our Irondale store by 4:30 pm and show:
+          player must show the Vault Master at the final station in our Irondale store, by 4:30 pm:
         </p>
         <ul className="list-disc pl-6 space-y-1">
           <li>the original, physical Cards A, B and C (photos or copies are not accepted);</li>
@@ -88,7 +97,7 @@ export default function HuntRulesPage() {
         </ul>
         <p>
           If the first finisher cannot be verified, the next finisher in timestamp order is offered the chance to
-          verify, and so on. If no player enters all four answers by 4:00 pm, the prize goes to the verified player
+          verify, and so on. If no player answers the final riddle by 4:00 pm, the prize goes to the verified player
           who entered the most correct answers, with the earliest time for their last correct answer breaking any tie.
         </p>
 

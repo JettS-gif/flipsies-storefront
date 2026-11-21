@@ -232,11 +232,11 @@ function Game({ state, token, now, onState, onSwitch }: {
       {solved === steps.length ? (
         <div className="rounded-xl bg-brand-yellow-light border border-brand-yellow p-5">
           <p className="text-lg font-bold text-brand-charcoal">
-            You cracked the vault{state.finish_place ? `, finisher #${state.finish_place}` : ''}!
+            You solved the final riddle{state.finish_place ? `, finisher #${state.finish_place}` : ''}!
           </p>
           <p className="text-sm text-brand-charcoal mt-1">
-            Go to the Vault Keeper at the final station in our Irondale store with Cards A, B and C, your passport
-            stamped in both stores, and your photo ID. The first finisher to be verified wins the $2,000.
+            Show this screen to the Vault Master at the final station in our Irondale store, with your Cards A, B and C,
+            stamped passport and photo ID. The first correct answer to the final riddle wins the $2,000.
           </p>
         </div>
       ) : state.hunt.phase === 'signup' && !nextOpen ? (
@@ -260,7 +260,12 @@ function Game({ state, token, now, onState, onSwitch }: {
                   {s.solved_at ? `✓ ${clock(s.solved_at)}` : open ? 'Open now' : `Opens ${clock(s.opens_at)}`}
                 </p>
               </div>
-              {isNext && open && <AnswerBox token={token} step={s.step} hint={s.hint} onState={onState} />}
+              {!s.solved_at && s.prompt && (
+                <p className="mt-2 text-sm text-brand-charcoal whitespace-pre-line">{s.prompt}</p>
+              )}
+              {isNext && open && (
+                <AnswerBox key={s.step} token={token} step={s.step} hint={s.hint} lockedUntil={s.locked_until || null} onState={onState} />
+              )}
             </li>
           );
         })}
@@ -269,9 +274,10 @@ function Game({ state, token, now, onState, onSwitch }: {
       <section className="rounded-xl border border-brand-border bg-white p-4 text-sm text-brand-charcoal-light space-y-2">
         <h3 className="font-semibold text-brand-charcoal">The rules you agreed to</h3>
         <ul className="list-disc pl-5 space-y-1">
-          <li>Answers go in order, and each box opens when its clue airs. Nothing is accepted after 4:00 pm.</li>
-          <li>The site&apos;s timestamps decide the finish order.</li>
-          <li>To win, reach the Vault Keeper in Irondale by 4:30 pm with the original Cards A, B and C, a passport stamped in both stores, and a photo ID matching your registered name.</li>
+          <li>Answers go in order. Radio clues open their boxes when they air; between them, the site shows the next clue to track down. Nothing is accepted after 4:00 pm.</li>
+          <li>The Vault Master in Irondale gives the vault code&apos;s last digit after checking your original Cards A, B and C, your passport stamped in both stores, and a photo ID matching your registered name.</li>
+          <li>A wrong vault code or final-riddle answer locks that box for one minute.</li>
+          <li>The first correct answer to the final riddle, by the site&apos;s timestamp, wins.</li>
           <li>Nothing is hidden in or under furniture. Never move or climb on merchandise, and obey traffic laws.</li>
           <li>One entry per person. Extra entries, borrowed cards or tampering mean disqualification.</li>
         </ul>
@@ -283,12 +289,20 @@ function Game({ state, token, now, onState, onSwitch }: {
   );
 }
 
-function AnswerBox({ token, step, hint, onState }: {
-  token: string; step: number; hint: string; onState: (s: HuntState) => void;
+function AnswerBox({ token, step, hint, lockedUntil, onState }: {
+  token: string; step: number; hint: string; lockedUntil: string | null; onState: (s: HuntState) => void;
 }) {
   const [answer, setAnswer] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [tick, setTick] = useState(() => Date.now());
+  const lockMs = lockedUntil ? new Date(lockedUntil).getTime() - tick : 0;
+  const locked = lockMs > 0;
+  useEffect(() => {
+    if (!lockedUntil) return;
+    const id = setInterval(() => setTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [lockedUntil]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -317,8 +331,9 @@ function AnswerBox({ token, step, hint, onState }: {
         autoComplete="off"
         className="flex-1 min-w-0 border border-brand-border rounded-lg px-3 py-2.5 text-brand-charcoal bg-white"
       />
-      <button type="submit" disabled={busy} className="btn-brand !py-2.5 !px-5">{busy ? '…' : 'Check'}</button>
-      {msg && <p className="basis-full text-sm text-red-700" role="alert">{msg}</p>}
+      <button type="submit" disabled={busy || locked} className="btn-brand !py-2.5 !px-5">{busy ? '…' : locked ? `${Math.ceil(lockMs / 1000)}s` : 'Check'}</button>
+      {locked && <p className="basis-full text-sm text-red-700" role="status">Locked for {Math.ceil(lockMs / 1000)} more seconds after a wrong answer.</p>}
+      {!locked && msg && <p className="basis-full text-sm text-red-700" role="alert">{msg}</p>}
     </form>
   );
 }

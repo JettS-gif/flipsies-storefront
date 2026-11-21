@@ -786,6 +786,10 @@ export interface HuntStep {
   opens_at: string;
   open: boolean;
   solved_at: string | null;
+  /** The clue to track down for this step; the server sends it only once the step is reachable. */
+  prompt?: string | null;
+  /** Vault code + final riddle: a wrong answer locks the box until this time. */
+  locked_until?: string | null;
 }
 
 export interface HuntState {
